@@ -10,14 +10,19 @@ from core.db import get_conn
 
 
 # --------------------------- Lettura file ---------------------------
-def _read_file(uploaded) -> pd.DataFrame:
+def _excel_sheets(uploaded) -> list:
+    uploaded.seek(0)
+    return pd.ExcelFile(uploaded).sheet_names
+
+
+def _read_file(uploaded, sheet_name=None) -> pd.DataFrame:
     name = uploaded.name.lower()
     if name.endswith(".csv"):
+        uploaded.seek(0)
         return pd.read_csv(uploaded)
-    if name.endswith(".xlsx"):
-        return pd.read_excel(uploaded, engine="openpyxl")
-    if name.endswith(".xls"):
-        return pd.read_excel(uploaded)
+    if name.endswith((".xls", ".xlsx")):
+        uploaded.seek(0)
+        return pd.read_excel(uploaded, sheet_name=0 if sheet_name is None else sheet_name)
     raise ValueError("Formato non supportato. Usa CSV, XLS o XLSX.")
 
 
@@ -75,8 +80,18 @@ def _render_upload():
     f = st.file_uploader("File forecast (CSV / XLS / XLSX)", type=["csv", "xls", "xlsx"])
     if not f:
         return
+
+    sheet = None
+    if not f.name.lower().endswith(".csv"):
+        try:
+            sheets = _excel_sheets(f)
+        except Exception as e:
+            st.error(str(e))
+            return
+        sheet = st.selectbox("Foglio del file", sheets) if len(sheets) > 1 else sheets[0]
+
     try:
-        df = _read_file(f)
+        df = _read_file(f, sheet)
     except Exception as e:  # formato/parse error -> messaggio leggibile
         st.error(str(e))
         return
