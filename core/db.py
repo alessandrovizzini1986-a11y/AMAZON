@@ -62,6 +62,11 @@ _SCHEMA_POSTGRES = [
 ]
 
 
+def current_backend() -> str:
+    """Backend attivo: 'postgres' se è configurata una connessione, altrimenti 'sqlite'."""
+    return "postgres" if _database_url() else "sqlite"
+
+
 def _database_url():
     """URL Postgres se configurato, altrimenti None (-> SQLite)."""
     url = os.environ.get("DATABASE_URL")

@@ -70,9 +70,12 @@ def _render_upload():
     key_cols = st.multiselect(
         "Colonne chiave — identificano la voce da confrontare (es. Voce, Station)", cols
     )
-    num_cols = [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]
+    num_cols = [
+        c for c in cols
+        if c not in key_cols and pd.api.types.is_numeric_dtype(df[c])
+    ]
     if not num_cols:
-        st.warning("Nessuna colonna numerica trovata: non posso calcolare i valori.")
+        st.warning("Nessuna colonna numerica disponibile per il valore (escluse le colonne chiave).")
         return
     value_col = st.selectbox("Colonna valore (numerica)", num_cols)
 
