@@ -38,5 +38,11 @@ Senza password configurata l'app resta **aperta** e mostra un avviso: imposta se
 
 ## Archivio dati
 
-I dati sono salvati in `data/gestionale.db` (SQLite). Percorso personalizzabile con la variabile d'ambiente `DB_PATH`.
+In locale i dati sono salvati in `data/gestionale.db` (SQLite). Percorso personalizzabile con la variabile d'ambiente `DB_PATH`.
 La cartella `data/` è esclusa da Git.
+
+Online il filesystem è effimero: se è configurata `database_url` (variabile d'ambiente `DATABASE_URL` o `st.secrets`) l'app usa **Postgres** (es. Neon) così gli snapshot restano salvati. Il backend è scelto in automatico.
+
+## Deploy online
+
+Guida passo-passo (Neon + Streamlit Community Cloud, gratis): vedi **[DEPLOY.md](DEPLOY.md)**.

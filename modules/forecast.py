@@ -6,7 +6,7 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-from core.db import get_conn
+from core import db
 
 
 # --------------------------- Lettura file ---------------------------
@@ -27,41 +27,8 @@ def _read_file(uploaded, sheet_name=None) -> pd.DataFrame:
 
 
 # --------------------------- Accesso dati ---------------------------
-def _save_snapshot(name: str, filename: str, items) -> int:
-    with get_conn() as conn:
-        cur = conn.execute(
-            "INSERT INTO forecast_snapshot (name, source_filename, uploaded_at) "
-            "VALUES (?, ?, ?)",
-            (name, filename, datetime.now().isoformat(timespec="seconds")),
-        )
-        sid = cur.lastrowid
-        conn.executemany(
-            "INSERT OR REPLACE INTO forecast_row (snapshot_id, key, value) "
-            "VALUES (?, ?, ?)",
-            [(sid, str(k), float(v)) for k, v in items],
-        )
-    return sid
-
-
-def _list_snapshots():
-    with get_conn() as conn:
-        return conn.execute(
-            "SELECT id, name, source_filename, uploaded_at "
-            "FROM forecast_snapshot ORDER BY id DESC"
-        ).fetchall()
-
-
 def _load_rows(sid: int) -> pd.DataFrame:
-    with get_conn() as conn:
-        rows = conn.execute(
-            "SELECT key, value FROM forecast_row WHERE snapshot_id = ?", (sid,)
-        ).fetchall()
-    return pd.DataFrame(rows, columns=["chiave", "valore"])
-
-
-def _delete_snapshot(sid: int):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM forecast_snapshot WHERE id = ?", (sid,))
+    return pd.DataFrame(db.load_rows(sid), columns=["chiave", "valore"])
 
 
 # --------------------------- UI ---------------------------
@@ -117,12 +84,12 @@ def _render_upload():
         work = df[key_cols + [value_col]].copy()
         work["__key__"] = work[key_cols].astype(str).agg(" | ".join, axis=1)
         grouped = work.groupby("__key__")[value_col].sum()
-        sid = _save_snapshot(name, f.name, list(grouped.items()))
+        sid = db.save_snapshot(name, f.name, list(grouped.items()))
         st.success(f"Snapshot salvato (id {sid}) — {len(grouped)} voci aggregate.")
 
 
 def _render_compare():
-    snaps = _list_snapshots()
+    snaps = db.list_snapshots()
     if len(snaps) < 2:
         st.info("Servono almeno due snapshot salvati per confrontare.")
         return
@@ -177,7 +144,7 @@ def _render_compare():
 
 
 def _render_archive():
-    snaps = _list_snapshots()
+    snaps = db.list_snapshots()
     if not snaps:
         st.info("Nessuno snapshot salvato.")
         return
@@ -185,5 +152,5 @@ def _render_archive():
         c1, c2 = st.columns([5, 1])
         c1.write(f"**[{sid}] {name}**  \n_{filename or '—'} · {uploaded_at}_")
         if c2.button("🗑️ Elimina", key=f"del_{sid}"):
-            _delete_snapshot(sid)
+            db.delete_snapshot(sid)
             st.rerun()
