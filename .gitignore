@@ -1,0 +1,25 @@
+# === DATI SENSIBILI — NON committare mai (GDPR: fatture, buste paga, ecc.) ===
+data/
+uploads/
+*.db
+*.sqlite
+*.sqlite3
+*.pdf
+*.xls
+*.xlsx
+*.csv
+
+# === Secrets ===
+.streamlit/secrets.toml
+.env
+
+# === Python ===
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# === OS ===
+.DS_Store
