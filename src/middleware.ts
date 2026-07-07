@@ -4,6 +4,9 @@ import { jwtVerify } from "jose";
 const PUBLIC_PATHS = ["/login"];
 
 export async function middleware(req: NextRequest) {
+  // modalità accesso libero per il pilot in solitaria — vedi src/lib/auth.ts
+  if (process.env.AUTH_BYPASS === "true") return NextResponse.next();
+
   const { pathname } = req.nextUrl;
   if (
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||

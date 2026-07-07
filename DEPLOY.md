@@ -59,6 +59,18 @@ npm run db:seed             # opzionale: dati demo fittizi per il pilot
 - Senza seed: creare l'admin una tantum inserendo la riga in tabella `User`
   (hash bcrypt) oppure lanciare il seed e disattivare gli utenti demo.
 
+## Modalità accesso libero (pilot in solitaria)
+
+Per usare l'app da soli senza gestire login (utile mentre si finisce di
+configurare tutto), impostare su Vercel:
+- `AUTH_BYPASS` = `true`
+- (opzionale) `AUTH_BYPASS_EMAIL` = email dell'utente da impersonare (default
+  `admin@fleetdsp.demo`)
+
+**⚠️ Con questa attiva l'app è raggiungibile da chiunque abbia l'URL, senza
+credenziali.** Va rimossa (cancellare la variabile `AUTH_BYPASS` e Redeploy)
+prima di invitare altri utenti reali.
+
 ## Limiti noti per la produzione
 
 - **Foto check-in/danni** sono salvate sul filesystem (`uploads/`): su Vercel il

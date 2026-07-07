@@ -42,7 +42,29 @@ export async function destroySession() {
   (await cookies()).delete(COOKIE);
 }
 
+/**
+ * Modalità accesso libero per il pilot in solitaria: se AUTH_BYPASS=true,
+ * salta completamente login/cookie e agisce sempre come l'utente indicato
+ * da AUTH_BYPASS_EMAIL (default: l'admin del seed). Va disattivata (rimuovere
+ * la variabile) prima di invitare altri utenti: con questa attiva l'app è
+ * raggiungibile da chiunque abbia l'URL, senza credenziali.
+ */
+async function getBypassSession(): Promise<SessionUser | null> {
+  const email = process.env.AUTH_BYPASS_EMAIL ?? "admin@fleetdsp.demo";
+  const user = await db.user.findUnique({ where: { email } });
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    name: `${user.firstName} ${user.lastName}`,
+    role: user.role,
+    stationId: user.stationId,
+  };
+}
+
 export async function getSession(): Promise<SessionUser | null> {
+  if (process.env.AUTH_BYPASS === "true") return getBypassSession();
+
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   try {
