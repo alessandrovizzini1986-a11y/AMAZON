@@ -9,12 +9,13 @@ senza toccare il codice dei componenti.
 
 | File atteso                          | Uso nel codice                                | Stato |
 | ------------------------------------ | --------------------------------------------- | ----- |
-| `logo.svg`                           | Header app, pagina login                      | 🔶 placeholder |
-| `icon-tagliando.svg`                 | Voce menu Tagliandi                           | 🔶 placeholder |
-| `icon-multa.svg`                     | Voce menu Multe                               | 🔶 placeholder |
-| `icon-movimentazione.svg`            | Voce menu Movimentazione                      | 🔶 placeholder |
-| `icon-sostitutivo.svg`               | Voce menu Sostitutivi                         | 🔶 placeholder |
-| `icon-danno.svg`                     | Voce menu Danni                               | 🔶 placeholder |
+| `logo.png` (+ copia in `public/brand/`) | Pagina login                               | ✅ generato in Canva (design `DAHOu9CU_-c`, [modifica](https://www.canva.com/d/nbLV8InIJqEc5z6)) |
+| `onepager-stakeholder.pdf`           | Presentazione interna MVP                     | 🔶 bozza Canva (design `DAHOu2Grww0`, [modifica](https://www.canva.com/d/mC5oJ5ZP1FUuSca)) — sostituire il pannello immagine stock in basso, es. con lo screenshot reale della dashboard |
+| `icon-tagliando.svg`                 | Voce menu Tagliandi                           | 🔶 placeholder emoji |
+| `icon-multa.svg`                     | Voce menu Multe                               | 🔶 placeholder emoji |
+| `icon-movimentazione.svg`            | Voce menu Movimentazione                      | 🔶 placeholder emoji |
+| `icon-sostitutivo.svg`               | Voce menu Sostitutivi                         | 🔶 placeholder emoji |
+| `icon-danno.svg`                     | Voce menu Danni                               | 🔶 placeholder emoji |
 | `report-template.pdf` (brand template Canva) | Export PDF revisione mensile          | 🔶 da creare in Canva |
 
 ## Palette

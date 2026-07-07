@@ -10,11 +10,9 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center p-4">
       <div className="card w-full max-w-sm p-8">
         <div className="mb-8 text-center">
-          {/* logo: DA SOSTITUIRE CON ASSET CANVA (design/brand/logo.svg) */}
-          <div className="mx-auto mb-3 h-12 w-12 rounded-card bg-brand text-ink-inverse flex items-center justify-center text-xl font-bold">
-            F
-          </div>
-          <h1 className="text-2xl font-bold">FleetDSP</h1>
+          {/* logo generato dal Brand Kit Canva (design DAHOu9CU_-c) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/logo.png" alt="FleetDSP" className="mx-auto h-32 w-32 object-contain -my-4" />
           <p className="text-sm text-ink-muted mt-1">Gestionale flotta veicoli commerciali</p>
         </div>
         <form action={formAction} className="space-y-4">
