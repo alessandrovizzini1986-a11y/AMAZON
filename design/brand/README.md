@@ -10,6 +10,8 @@ senza toccare il codice dei componenti.
 | File atteso                          | Uso nel codice                                | Stato |
 | ------------------------------------ | --------------------------------------------- | ----- |
 | `logo.png` (+ copia in `public/brand/`) | Pagina login                               | ✅ generato in Canva (design `DAHOu9CU_-c`, [modifica](https://www.canva.com/d/nbLV8InIJqEc5z6)) |
+| `icon-source/app-icon-master-1024.png` → `src/app/icon.png`, `apple-icon.png`, `public/icons/*` | Favicon browser (preferiti Edge/Chrome), icona home screen Android/iOS, icone manifest PWA | ✅ monogramma "F" pieno su navy — testato leggibile a 16px (il mark a cerchi concentrici del design Canva `DAHOvVNTumI` sfumava in una macchia a quella dimensione, quindi qui si usa una "F" solida invece del logo con gli anelli) |
+| `icon-source/og-image-1200x630.png` → `src/app/opengraph-image.png` | Anteprima link su WhatsApp/LinkedIn/Facebook | ✅ costruita su misura 1200×630 (il design Canva `DAHOvTLjwWg` usciva quadrato 1200×1200 con un'illustrazione stock di troppo) |
 | `onepager-stakeholder.pdf`           | Presentazione interna MVP                     | 🔶 bozza Canva (design `DAHOu2Grww0`, [modifica](https://www.canva.com/d/mC5oJ5ZP1FUuSca)) — sostituire il pannello immagine stock in basso, es. con lo screenshot reale della dashboard |
 | `icon-tagliando.svg`                 | Voce menu Tagliandi                           | 🔶 placeholder emoji |
 | `icon-multa.svg`                     | Voce menu Multe                               | 🔶 placeholder emoji |
