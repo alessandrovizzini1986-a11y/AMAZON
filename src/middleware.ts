@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_PATHS = ["/login"];
+// Percorsi pubblici: pagina login + asset che devono restare raggiungibili
+// SENZA sessione (favicon, icona PWA, immagine Open Graph, manifest) — browser,
+// crawler di WhatsApp/LinkedIn e Android li richiedono senza alcun cookie.
+const PUBLIC_PATHS = [
+  "/login",
+  "/icon.png",
+  "/apple-icon.png",
+  "/opengraph-image.png",
+  "/manifest.webmanifest",
+  "/icons/",
+];
 
 export async function middleware(req: NextRequest) {
   // modalità accesso libero per il pilot in solitaria — vedi src/lib/auth.ts
@@ -30,5 +40,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|brand/|design).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|brand/|design|icon.png|apple-icon.png|opengraph-image.png|manifest.webmanifest|icons/).*)",
+  ],
 };

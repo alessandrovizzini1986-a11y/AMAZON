@@ -28,3 +28,5 @@ next-env.d.ts
 
 # uploads runtime (foto check-in, file import)
 /uploads
+.vercel
+.env*
