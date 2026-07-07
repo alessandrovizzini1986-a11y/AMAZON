@@ -212,9 +212,10 @@ async function main() {
 
   console.log("Seed: storico interventi…");
   for (const v of vehicles) {
-    const n = int(1, 4);
+    const n = int(2, 5);
     for (let i = 0; i < n; i++) {
-      const data = daysAgo(int(30, 500));
+      // almeno un intervento recente per veicolo, il resto storico
+      const data = i === 0 ? daysAgo(int(3, 28)) : daysAgo(int(30, 500));
       await db.serviceRecord.create({
         data: {
           vehicleId: v.id,
@@ -258,6 +259,14 @@ async function main() {
       });
       assignmentLog.push({ vehicleId: v.id, driverId: driver.id, date });
       kmCursor += kmDay;
+    }
+    // assegnazione per OGGI (senza check-in: il driver la completa dall'app)
+    if (rnd() < 0.7) {
+      const driver = pick(drivers);
+      await db.assignment.create({
+        data: { date: daysAgo(0), vehicleId: v.id, driverId: driver.id, stationId: v.stationId },
+      });
+      assignmentLog.push({ vehicleId: v.id, driverId: driver.id, date: daysAgo(0) });
     }
   }
 

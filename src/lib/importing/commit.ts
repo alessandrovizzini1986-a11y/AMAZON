@@ -1,7 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword } from "@/lib/password";
 import type { Role, VehicleStatus, FuelType, ServiceType, FineStatus, ReplacementReason, PracticeStatus } from "@prisma/client";
 
 /**

@@ -74,6 +74,4 @@ export async function verifyCredentials(email: string, password: string) {
   return user;
 }
 
-export function hashPassword(password: string) {
-  return bcrypt.hash(password, 10);
-}
+export { hashPassword } from "./password";
