@@ -1,0 +1,442 @@
+// FleetDSP — schema dati gestionale flotta DSP Amazon
+// Vincoli chiave:
+//  - targa unica tra i veicoli non dismessi (indice parziale, vedi migrazione)
+//  - pratica sostitutivo unica per (veicolo, data ingresso officina)
+//  - ogni mutazione applicativa scrive su AuditLog
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  ADMIN
+  RESP_MEZZI
+  DRIVER
+}
+
+enum VehicleStatus {
+  ATTIVO
+  IN_OFFICINA
+  SOSTITUTIVO
+  DISMESSO
+}
+
+enum FuelType {
+  DIESEL
+  DIESEL_HVO // compatibile EN 15940
+  BENZINA
+  ELETTRICO
+  METANO
+  GPL
+  IBRIDO
+}
+
+enum ServiceType {
+  TAGLIANDO
+  REVISIONE
+  RIPARAZIONE
+  GOMME
+  CARROZZERIA
+  ALTRO
+}
+
+enum FineStatus {
+  DA_NOTIFICARE
+  NOTIFICATA
+  PAGATA
+  RICORSO
+  ANNULLATA
+}
+
+enum AppealStatus {
+  NESSUNO
+  IN_PREPARAZIONE
+  PRESENTATO
+  ACCOLTO
+  RESPINTO
+}
+
+enum ChargebackStatus {
+  NON_PREVISTO
+  DA_ADDEBITARE
+  ADDEBITATO
+  CONTESTATO
+  SALDATO
+}
+
+enum ReplacementReason {
+  INCIDENTE
+  GUASTO
+  MANUTENZIONE
+}
+
+enum PracticeStatus {
+  APERTA
+  INVIATA
+  CONFERMATA
+  CONTESTATA
+  CHIUSA
+}
+
+enum TransferStatus {
+  RICHIESTO
+  APPROVATO
+  RIFIUTATO
+  COMPLETATO
+}
+
+enum LiableParty {
+  DRIVER
+  TERZI
+  IGNOTO
+}
+
+enum ImportStatus {
+  COMPLETATO
+  PARZIALE
+  FALLITO
+}
+
+// ---------- Anagrafiche ----------
+
+model Station {
+  id        String   @id @default(cuid())
+  code      String   @unique // es. DML1
+  name      String
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  users            User[]
+  vehicles         Vehicle[]
+  stationHistory   VehicleStationHistory[] @relation("historyStation")
+  assignments      Assignment[]
+  transfersFrom    StationTransfer[]       @relation("transferFrom")
+  transfersTo      StationTransfer[]       @relation("transferTo")
+  tollTransactions TollTransaction[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         Role
+  stationId    String? // null per ADMIN cluster-wide
+  station      Station?  @relation(fields: [stationId], references: [id])
+  licenseNo    String? // patente, per multe con decurtazione punti
+  phone        String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  assignments       Assignment[]
+  finesAssigned     Fine[]            @relation("fineDriver")
+  damagesReported   Damage[]          @relation("damageReporter")
+  auditLogs         AuditLog[]
+  importJobs        ImportJob[]
+  transfersRequested StationTransfer[] @relation("transferRequestedBy")
+  transfersApproved  StationTransfer[] @relation("transferApprovedBy")
+}
+
+model Vehicle {
+  id                 String        @id @default(cuid())
+  targa              String // unicità parziale su stato != DISMESSO via migrazione SQL
+  modello            String
+  allestimento       String?
+  alimentazione      FuelType
+  hvoCompatibile     Boolean       @default(false) // EN 15940
+  immatricolazione   DateTime
+  stationId          String
+  station            Station       @relation(fields: [stationId], references: [id])
+  stato              VehicleStatus @default(ATTIVO)
+  kmAttuali          Int           @default(0)
+  canoneGiorno       Decimal       @db.Decimal(10, 2) // configurabile, mai hardcoded
+  leasingCompany     String? // ALD / Ayvens / Leasys...
+  contrattoLeasingNo String?
+
+  // scadenzario (doppia soglia: km e data — alert sulla prima che scatta)
+  prossimoTagliandoData DateTime?
+  prossimoTagliandoKm   Int?
+  prossimaRevisione     DateTime? // scadenza legale, distinta dal tagliando
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stationHistory   VehicleStationHistory[]
+  serviceRecords   ServiceRecord[]
+  fines            Fine[]
+  assignments      Assignment[]
+  transfers        StationTransfer[]
+  replacementCases ReplacementCase[]       @relation("caseVehicle")
+  replacementFor   ReplacementCase[]       @relation("caseReplacementVehicle")
+  damages          Damage[]
+  fuelCards        FuelCard[]
+}
+
+model VehicleStationHistory {
+  id        String    @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle   @relation(fields: [vehicleId], references: [id])
+  stationId String
+  station   Station   @relation("historyStation", fields: [stationId], references: [id])
+  fromDate  DateTime
+  toDate    DateTime?
+  note      String?
+
+  @@index([vehicleId, fromDate])
+}
+
+// ---------- Manutenzione ----------
+
+model ServiceRecord {
+  id            String      @id @default(cuid())
+  vehicleId     String
+  vehicle       Vehicle     @relation(fields: [vehicleId], references: [id])
+  tipo          ServiceType
+  officina      String
+  data          DateTime
+  kmIntervento  Int
+  costo         Decimal     @db.Decimal(10, 2)
+  descrizione   String?
+  createdAt     DateTime    @default(now())
+
+  @@index([vehicleId, data])
+}
+
+// ---------- Multe ----------
+
+model Fine {
+  id             String     @id @default(cuid())
+  vehicleId      String
+  vehicle        Vehicle    @relation(fields: [vehicleId], references: [id])
+  verbaleNo      String?
+  dataOraInfrazione DateTime
+  luogo          String
+  tipoViolazione String
+  importo        Decimal    @db.Decimal(10, 2)
+  puntiPatente   Int        @default(0)
+  stato          FineStatus @default(DA_NOTIFICARE)
+  dataNotifica   DateTime?
+
+  // assegnazione conducente: da log movimentazione, mai "a caso".
+  // se non c'è check-in/out coerente il campo resta null = "da assegnare"
+  driverId          String?
+  driver            User?    @relation("fineDriver", fields: [driverId], references: [id])
+  assegnazioneFonte String? // es. "check-in 2026-03-12 DML2" oppure "manuale: <motivo>"
+
+  // ricorso
+  statoRicorso    AppealStatus @default(NESSUNO)
+  scadenzaRicorso DateTime? // 60gg prefetto / 30gg giudice di pace, calcolata da config
+  noteRicorso     String?
+
+  // riaddebito al driver secondo policy
+  riaddebito        ChargebackStatus @default(NON_PREVISTO)
+  importoRiaddebito Decimal?         @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleId, dataOraInfrazione])
+  @@index([driverId])
+  @@index([stato])
+}
+
+// ---------- Movimentazione ----------
+
+model Assignment {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id])
+  driverId  String
+  driver    User     @relation(fields: [driverId], references: [id])
+  stationId String
+  station   Station  @relation(fields: [stationId], references: [id])
+
+  checkInAt    DateTime?
+  checkInKm    Int?
+  checkInFoto  String? // path/URL foto stato mezzo
+  checkInNote  String?
+  checkOutAt   DateTime?
+  checkOutKm   Int?
+  checkOutFoto String?
+  checkOutNote String?
+  danniRilevati String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([vehicleId, date]) // un mezzo non può essere assegnato due volte lo stesso giorno
+  @@index([driverId, date])
+  @@index([stationId, date])
+}
+
+model StationTransfer {
+  id            String         @id @default(cuid())
+  vehicleId     String
+  vehicle       Vehicle        @relation(fields: [vehicleId], references: [id])
+  fromStationId String
+  fromStation   Station        @relation("transferFrom", fields: [fromStationId], references: [id])
+  toStationId   String
+  toStation     Station        @relation("transferTo", fields: [toStationId], references: [id])
+  status        TransferStatus @default(RICHIESTO)
+  requestedById String
+  requestedBy   User           @relation("transferRequestedBy", fields: [requestedById], references: [id])
+  approvedById  String?
+  approvedBy    User?          @relation("transferApprovedBy", fields: [approvedById], references: [id])
+  motivo        String?
+  requestedAt   DateTime       @default(now())
+  resolvedAt    DateTime?
+
+  @@index([vehicleId])
+  @@index([status])
+}
+
+// ---------- Mezzi sostitutivi / storno canone ----------
+
+model ReplacementCase {
+  id                   String            @id @default(cuid())
+  vehicleId            String
+  vehicle              Vehicle           @relation("caseVehicle", fields: [vehicleId], references: [id])
+  motivo               ReplacementReason
+  dataIngressoOfficina DateTime          @db.Date
+  centroConvenzionato  String
+  replacementVehicleId String?
+  replacementVehicle   Vehicle?          @relation("caseReplacementVehicle", fields: [replacementVehicleId], references: [id])
+  dataRicezioneSostitutivo DateTime?     @db.Date
+  dataRientroOriginale     DateTime?     @db.Date
+
+  stato PracticeStatus @default(APERTA)
+
+  // lock/versionamento: al passaggio a INVIATA il canone viene fotografato
+  // e la pratica non è più modificabile (solo Admin con audit trail)
+  inviataAt            DateTime?
+  canoneGiornoSnapshot Decimal?  @db.Decimal(10, 2)
+  giorniScoperti       Int? // congelati all'invio
+  importoStorno        Decimal?  @db.Decimal(10, 2)
+
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // un solo storno per (targa, data ingresso officina): mai doppia richiesta
+  @@unique([vehicleId, dataIngressoOfficina])
+  @@index([stato])
+}
+
+// ---------- Danni / sinistri ----------
+
+model Damage {
+  id               String      @id @default(cuid())
+  vehicleId        String
+  vehicle          Vehicle     @relation(fields: [vehicleId], references: [id])
+  tipo             String
+  data             DateTime
+  descrizione      String?
+  fotoUrl          String?
+  centroRiparazione String?
+  responsabilita   LiableParty @default(IGNOTO)
+  reporterId       String?
+  reporter         User?       @relation("damageReporter", fields: [reporterId], references: [id])
+  praticaAssicurativa String? // riferimento sinistro assicurazione
+  costoStimato     Decimal?    @db.Decimal(10, 2)
+  chiuso           Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+
+  @@index([vehicleId, data])
+}
+
+// ---------- Fuel & Telepass ----------
+
+model FuelCard {
+  id        String   @id @default(cuid())
+  pan       String   @unique // identificativo carta Q8 — chiave di riconciliazione, NON la targa
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  attiva    Boolean  @default(true)
+
+  transactions FuelTransaction[]
+}
+
+model FuelTransaction {
+  id         String   @id @default(cuid())
+  fuelCardId String
+  fuelCard   FuelCard @relation(fields: [fuelCardId], references: [id])
+  data       DateTime
+  litri      Decimal  @db.Decimal(10, 2)
+  importo    Decimal  @db.Decimal(10, 2)
+  puntoVendita String?
+  prodotto   String? // DIESEL / HVO / ...
+  importJobId String?
+  importJob  ImportJob? @relation(fields: [importJobId], references: [id])
+
+  @@index([fuelCardId, data])
+}
+
+model TollTransaction {
+  id        String   @id @default(cuid())
+  stationId String
+  station   Station  @relation(fields: [stationId], references: [id])
+  deviceCode String? // codice apparato Telepass
+  targa     String?
+  data      DateTime
+  tratta    String?
+  importo   Decimal  @db.Decimal(10, 2)
+  importJobId String?
+  importJob ImportJob? @relation(fields: [importJobId], references: [id])
+
+  @@index([stationId, data])
+}
+
+// ---------- Config & controllo ----------
+
+// Zero hardcoded: soglie alert, coefficienti consumo, giorni ricorso, ecc.
+model AppConfig {
+  key         String   @id
+  value       String // serializzato; type indica il parsing
+  type        String   @default("string") // string | number | number[] | boolean
+  description String
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String // es. fine.create, replacement.send
+  entity    String
+  entityId  String?
+  meta      Json? // before/after o payload sintetico
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model ImportJob {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  entity       String // vehicles | drivers | services | fines | leases | movements | replacements | fuel | tolls
+  fileName     String
+  status       ImportStatus
+  totalRows    Int
+  importedRows Int
+  skippedRows  Int
+  errorLog     Json? // [{row, error}]
+  createdAt    DateTime     @default(now())
+
+  fuelTransactions FuelTransaction[]
+  tollTransactions TollTransaction[]
+
+  @@index([createdAt])
+}
