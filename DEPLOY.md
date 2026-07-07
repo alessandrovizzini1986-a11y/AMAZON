@@ -1,16 +1,38 @@
-# Deploy FleetDSP — Vercel + Supabase (≈15 minuti)
+# Deploy FleetDSP — Vercel + Supabase/Neon (≈15 minuti)
 
 Il progetto è pronto per il deploy: nessun servizio proprietario, servono solo
-un database PostgreSQL e un hosting Node. La combinazione consigliata (piani
-gratuiti sufficienti per il pilot) è **Supabase** (DB) + **Vercel** (app).
+un database PostgreSQL e un hosting Node. Va bene sia **Supabase** che **Neon**
+(entrambi collegabili da Vercel in un click) + **Vercel** per l'app.
 
-## 1. Database — Supabase
+## ⚠️ Connessioni pooled (PgBouncer) — parametro obbligatorio
 
-1. Creare un progetto su [supabase.com](https://supabase.com) (regione EU).
-2. Da **Project Settings → Database → Connection string** copiare la stringa
-   **URI** in modalità *Session pooler* (porta 5432), es.:
+Sia Supabase ("Session/Transaction pooler") sia Neon (host con `-pooler` nel
+nome) instradano le connessioni attraverso **PgBouncer**. Prisma usa prepared
+statement che **non sono compatibili** con PgBouncer in modalità transazione
+senza un parametro esplicito: senza di esso, la prima query reale (es. il
+login) fallisce in modo deterministico con un errore generico
+"Application error: a server-side exception has occurred" (causa tipica:
+`prepared statement "s0" already exists` nei log Vercel).
+
+**Fix:** aggiungere `&pgbouncer=true` in fondo a `DATABASE_URL` quando la
+stringa punta a un host pooled, es.:
+```
+postgresql://user:pass@ep-xxxx-pooler.c-3.us-east-2.aws.neon.tech/db?sslmode=require&pgbouncer=true
+```
+Le migrazioni (`prisma migrate deploy`) vanno invece eseguite preferibilmente
+sulla connection string **diretta** (non pooled), se il provider la espone.
+
+## 1. Database — Supabase o Neon
+
+1. Creare un progetto su [supabase.com](https://supabase.com) (regione EU) o
+   su [neon.tech](https://neon.tech) (o collegarlo da Vercel → Storage →
+   Create Database).
+2. Copiare la connection string pooled e aggiungere `&pgbouncer=true` come
+   sopra. Su Supabase: **Project Settings → Database → Connection string**,
+   modalità *Session pooler* (porta 5432), es.:
    `postgresql://postgres.xxxx:PASSWORD@aws-0-eu-central-1.pooler.supabase.com:5432/postgres`
-3. Dal proprio PC, applicare migrazioni e dati demo:
+3. Dal proprio PC, applicare migrazioni e dati demo (usare qui la stringa
+   **senza** `pgbouncer=true`, o la variante diretta se disponibile):
 
 ```bash
 export DATABASE_URL="<connection string>"
@@ -25,8 +47,8 @@ npm run db:seed             # opzionale: dati demo fittizi per il pilot
    (consigliato: `main` dopo il merge della PR).
 2. Framework: Next.js (rilevato automaticamente). Il comando di build standard
    funziona già (`prisma generate` gira nel postinstall).
-3. **Environment Variables** (Production):
-   - `DATABASE_URL` → connection string Supabase (vedi sopra)
+3. **Environment Variables** (scope **Production**, non solo Preview):
+   - `DATABASE_URL` → connection string pooled **con `&pgbouncer=true`** (vedi sopra)
    - `AUTH_SECRET` → generare con `openssl rand -base64 32`
 4. Deploy. Al termine l'app è su `https://<progetto>.vercel.app`.
 
@@ -36,6 +58,18 @@ npm run db:seed             # opzionale: dati demo fittizi per il pilot
   via **Utenti → Reset password**, o non usare il seed in produzione).
 - Senza seed: creare l'admin una tantum inserendo la riga in tabella `User`
   (hash bcrypt) oppure lanciare il seed e disattivare gli utenti demo.
+
+## Modalità accesso libero (pilot in solitaria)
+
+Per usare l'app da soli senza gestire login (utile mentre si finisce di
+configurare tutto), impostare su Vercel:
+- `AUTH_BYPASS` = `true`
+- (opzionale) `AUTH_BYPASS_EMAIL` = email dell'utente da impersonare (default
+  `admin@fleetdsp.demo`)
+
+**⚠️ Con questa attiva l'app è raggiungibile da chiunque abbia l'URL, senza
+credenziali.** Va rimossa (cancellare la variabile `AUTH_BYPASS` e Redeploy)
+prima di invitare altri utenti reali.
 
 ## Limiti noti per la produzione
 
