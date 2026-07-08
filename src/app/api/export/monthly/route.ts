@@ -5,6 +5,7 @@ import { assertCan } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { giorniScoperti, importoStorno } from "@/domain/replacement";
+import { getConfigNumber } from "@/lib/config";
 
 /**
  * Export Excel per la revisione mensile con manager/Amazon.
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
     db.station.findMany(),
   ]);
   const stCode = (id: string) => stations.find((s) => s.id === id)?.code ?? id;
+  const giorniConvenzionaliMese = await getConfigNumber("replacement.giorniConvenzionaliMese");
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "FleetDSP";
@@ -77,7 +79,7 @@ export async function GET(req: NextRequest) {
     { header: "Targa", key: "t" }, { header: "Stazione", key: "s" }, { header: "Motivo", key: "m" },
     { header: "Ingresso officina", key: "in" }, { header: "Ricezione sostitutivo", key: "ric" },
     { header: "Rientro originale", key: "rie" }, { header: "Giorni scoperti", key: "g" },
-    { header: "Canone €/g", key: "c" }, { header: "Storno €", key: "st" }, { header: "Stato", key: "stato" },
+    { header: "Canone €/mese", key: "c" }, { header: "Storno €", key: "st" }, { header: "Stato", key: "stato" },
   ];
   for (const c of cases) {
     const giorni = c.giorniScoperti ?? giorniScoperti({
@@ -86,11 +88,11 @@ export async function GET(req: NextRequest) {
       dataRientroOriginale: c.dataRientroOriginale,
       oggi,
     });
-    const canone = Number(c.canoneGiornoSnapshot ?? c.vehicle.canoneGiorno);
+    const canone = Number(c.canoneMeseSnapshot ?? c.vehicle.canoneMese ?? 0);
     wsStorni.addRow({
       t: c.vehicle.targa, s: stCode(c.vehicle.stationId), m: c.motivo,
       in: c.dataIngressoOfficina, ric: c.dataRicezioneSostitutivo ?? "", rie: c.dataRientroOriginale ?? "",
-      g: giorni, c: canone, st: c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone), stato: c.stato,
+      g: giorni, c: canone, st: c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone, giorniConvenzionaliMese), stato: c.stato,
     });
   }
   style(wsStorni);

@@ -36,6 +36,11 @@ export const CONFIG_DEFAULTS: Record<
     type: "number",
     description: "Giorni oltre i quali una pratica sostitutivo inviata senza risposta va in alert",
   },
+  "replacement.giorniConvenzionaliMese": {
+    value: "30",
+    type: "number",
+    description: "Base giorni convenzionale per il pro-rata del canone mensile nello storno (giorni scoperti × canone/mese ÷ questa base)",
+  },
   "fuel.consumo.atteso.l100km": {
     value: "11",
     type: "number",

@@ -44,12 +44,12 @@ const STATIONS = [
 ];
 
 const MODELS = [
-  { modello: "Fiat Ducato L2H2", canone: [36, 42] },
-  { modello: "Mercedes Sprinter 314", canone: [44, 52] },
-  { modello: "Ford Transit L3H2", canone: [40, 47] },
-  { modello: "Iveco Daily 35S14", canone: [42, 50] },
-  { modello: "Renault Master L2H2", canone: [38, 45] },
-  { modello: "VW Crafter 35", canone: [43, 49] },
+  { modello: "Fiat Ducato L2H2", canone: [420, 480] }, // canone mensile
+  { modello: "Mercedes Sprinter 314", canone: [500, 570] },
+  { modello: "Ford Transit L3H2", canone: [450, 510] },
+  { modello: "Iveco Daily 35S14", canone: [470, 540] },
+  { modello: "Renault Master L2H2", canone: [430, 490] },
+  { modello: "VW Crafter 35", canone: [480, 530] },
 ];
 
 const LEASING = ["Ayvens", "Leasys", "ALD Automotive", "Arval"];
@@ -197,7 +197,7 @@ async function main() {
           stationId: st.id,
           stato: rnd() < 0.88 ? "ATTIVO" : rnd() < 0.5 ? "IN_OFFICINA" : "SOSTITUTIVO",
           kmAttuali: km,
-          canoneGiorno: canone,
+          canoneMese: canone,
           leasingCompany: pick(LEASING),
           contrattoLeasingNo: `NLT-${int(10000, 99999)}`,
           prossimoTagliandoData: tagliandoData,
@@ -332,9 +332,9 @@ async function main() {
         dataRientroOriginale: rientro,
         stato: c.stato,
         inviataAt: inviata ? daysAgo(c.back - 5) : null,
-        canoneGiornoSnapshot: inviata ? v.canone : null,
+        canoneMeseSnapshot: inviata ? v.canone : null,
         giorniScoperti: inviata ? giorni : null,
-        importoStorno: inviata ? Math.round(giorni * v.canone * 100) / 100 : null,
+        importoStorno: inviata ? Math.round(giorni * (v.canone / 30) * 100) / 100 : null,
         note: i === 4 ? "Leasing contesta 3 giorni: documentazione officina inviata" : null,
       },
     });

@@ -14,7 +14,16 @@ const STATUS_LABELS: Record<string, string> = {
   ATTIVO: "Attivo",
   IN_OFFICINA: "In officina",
   SOSTITUTIVO: "Sostitutivo",
+  UFFICIO: "Ufficio",
   DISMESSO: "Dismesso",
+};
+
+const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  MT: "Medio termine (MT)",
+  LT: "Lungo termine (LT)",
+  BT: "Breve termine (BT)",
+  SOST: "Sostitutivo (SOST)",
+  UFFICIO: "Ufficio",
 };
 
 function d(v: Date | null | undefined) {
@@ -53,8 +62,8 @@ export function VehicleForm({
         </select>
       </div>
       <div>
-        <label className="label">Data immatricolazione *</label>
-        <input className="input" type="date" name="immatricolazione" defaultValue={d(vehicle?.immatricolazione)} required />
+        <label className="label">Data immatricolazione</label>
+        <input className="input" type="date" name="immatricolazione" defaultValue={d(vehicle?.immatricolazione)} />
       </div>
       <div>
         <label className="label">Stazione *</label>
@@ -79,16 +88,39 @@ export function VehicleForm({
         <input className="input" type="number" name="kmAttuali" min={0} defaultValue={vehicle?.kmAttuali ?? 0} />
       </div>
       <div>
-        <label className="label">Canone €/giorno *</label>
-        <input className="input" type="number" step="0.01" min={0} name="canoneGiorno" defaultValue={vehicle ? String(vehicle.canoneGiorno) : ""} required />
+        <label className="label">Canone €/mese</label>
+        <input className="input" type="number" step="0.01" min={0} name="canoneMese" defaultValue={vehicle?.canoneMese ? String(vehicle.canoneMese) : ""} />
       </div>
       <div>
-        <label className="label">Società leasing</label>
-        <input className="input" name="leasingCompany" defaultValue={vehicle?.leasingCompany ?? ""} placeholder="es. Ayvens" />
+        <label className="label">Franchigia danni €</label>
+        <input className="input" type="number" step="0.01" min={0} name="franchigiaDanni" defaultValue={vehicle?.franchigiaDanni ? String(vehicle.franchigiaDanni) : ""} />
       </div>
       <div>
-        <label className="label">N. contratto leasing</label>
+        <label className="label">Società noleggio</label>
+        <input className="input" name="leasingCompany" defaultValue={vehicle?.leasingCompany ?? ""} placeholder="es. ALD, Europcar, Hertz" />
+      </div>
+      <div>
+        <label className="label">N. contratto (N° RA)</label>
         <input className="input" name="contrattoLeasingNo" defaultValue={vehicle?.contrattoLeasingNo ?? ""} />
+      </div>
+      <div>
+        <label className="label">Tipo contratto</label>
+        <select className="input" name="tipoContratto" defaultValue={vehicle?.tipoContratto ?? ""}>
+          <option value="">— non specificato —</option>
+          {Object.entries(CONTRACT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="label">Data inizio contratto</label>
+        <input className="input" type="date" name="contrattoDataInizio" defaultValue={d(vehicle?.contrattoDataInizio)} />
+      </div>
+      <div>
+        <label className="label">Data fine contratto</label>
+        <input className="input" type="date" name="contrattoDataFine" defaultValue={d(vehicle?.contrattoDataFine)} />
+      </div>
+      <div className="md:col-span-3">
+        <label className="label">Note</label>
+        <input className="input" name="note" defaultValue={vehicle?.note ?? ""} placeholder="es. spostamenti tra stazioni, riferimenti mezzo sostituito" />
       </div>
       <div>
         <label className="label">Prossimo tagliando (data)</label>
@@ -109,4 +141,4 @@ export function VehicleForm({
   );
 }
 
-export { FUEL_LABELS, STATUS_LABELS };
+export { FUEL_LABELS, STATUS_LABELS, CONTRACT_TYPE_LABELS };

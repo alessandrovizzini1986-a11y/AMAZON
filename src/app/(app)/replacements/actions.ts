@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { assertCan, stationScope } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { giorniScoperti, importoStorno } from "@/domain/replacement";
+import { getConfigNumber } from "@/lib/config";
 
 const caseSchema = z.object({
   vehicleId: z.string().min(1),
@@ -123,15 +124,16 @@ export async function sendReplacementCaseAction(caseId: string) {
     dataRientroOriginale: rc.dataRientroOriginale,
     oggi,
   });
-  const canone = Number(rc.vehicle.canoneGiorno);
-  const storno = importoStorno(giorni, canone);
+  const canone = Number(rc.vehicle.canoneMese ?? 0);
+  const giorniConvenzionaliMese = await getConfigNumber("replacement.giorniConvenzionaliMese");
+  const storno = importoStorno(giorni, canone, giorniConvenzionaliMese);
 
   await db.replacementCase.update({
     where: { id: caseId },
     data: {
       stato: "INVIATA",
       inviataAt: oggi,
-      canoneGiornoSnapshot: canone,
+      canoneMeseSnapshot: canone,
       giorniScoperti: giorni,
       importoStorno: storno,
     },

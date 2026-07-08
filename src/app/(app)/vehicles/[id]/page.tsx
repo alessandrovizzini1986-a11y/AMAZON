@@ -55,7 +55,7 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
     <div>
       <PageHeader
         title={`${vehicle.targa} — ${vehicle.modello}`}
-        subtitle={`${vehicle.station.code} · ${FUEL_LABELS[vehicle.alimentazione]} · immatricolato ${fmtDate(vehicle.immatricolazione)}`}
+        subtitle={`${vehicle.station.code} · ${FUEL_LABELS[vehicle.alimentazione]}${vehicle.immatricolazione ? ` · immatricolato ${fmtDate(vehicle.immatricolazione)}` : ""}`}
         action={<StatusBadge tone={vehicle.stato === "ATTIVO" ? "ok" : vehicle.stato === "DISMESSO" ? "neutral" : "warn"}>{STATUS_LABELS[vehicle.stato]}</StatusBadge>}
       />
 
@@ -79,12 +79,34 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
         </div>
         {isAdmin && (
           <div className="card p-4">
-            <div className="text-xs font-semibold text-ink-muted uppercase">Canone leasing</div>
-            <div className="text-2xl font-bold">{fmtEur(Number(vehicle.canoneGiorno))}<span className="text-sm font-normal text-ink-muted">/giorno</span></div>
-            <div className="text-xs text-ink-muted">{vehicle.leasingCompany ?? "—"}{vehicle.contrattoLeasingNo ? ` · ${vehicle.contrattoLeasingNo}` : ""}</div>
+            <div className="text-xs font-semibold text-ink-muted uppercase">Canone noleggio</div>
+            <div className="text-2xl font-bold">
+              {vehicle.canoneMese ? fmtEur(Number(vehicle.canoneMese)) : "—"}
+              <span className="text-sm font-normal text-ink-muted">/mese</span>
+            </div>
+            <div className="text-xs text-ink-muted">
+              {vehicle.leasingCompany ?? "—"}{vehicle.contrattoLeasingNo ? ` · ${vehicle.contrattoLeasingNo}` : ""}
+              {vehicle.tipoContratto ? ` · ${vehicle.tipoContratto}` : ""}
+            </div>
+            {vehicle.franchigiaDanni && (
+              <div className="text-xs text-ink-muted">Franchigia danni: {fmtEur(Number(vehicle.franchigiaDanni))}</div>
+            )}
           </div>
         )}
       </div>
+
+      {(vehicle.contrattoDataInizio || vehicle.contrattoDataFine || vehicle.note) && (
+        <div className="card p-4 mb-6 text-sm">
+          {(vehicle.contrattoDataInizio || vehicle.contrattoDataFine) && (
+            <p className="text-ink-muted">
+              Contratto: {vehicle.contrattoDataInizio ? fmtDate(vehicle.contrattoDataInizio) : "—"}
+              {" → "}
+              {vehicle.contrattoDataFine ? fmtDate(vehicle.contrattoDataFine) : "in corso"}
+            </p>
+          )}
+          {vehicle.note && <p className="mt-1">{vehicle.note}</p>}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* storico interventi */}

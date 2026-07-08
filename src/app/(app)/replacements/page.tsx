@@ -27,7 +27,7 @@ export default async function ReplacementsPage({
   const params = await searchParams;
   const scope = stationScope(user);
 
-  const [cases, vehicles, sogliaStagnante] = await Promise.all([
+  const [cases, vehicles, sogliaStagnante, giorniConvenzionaliMese] = await Promise.all([
     db.replacementCase.findMany({
       where: {
         ...(scope.stationId ? { vehicle: { stationId: scope.stationId } } : {}),
@@ -43,6 +43,7 @@ export default async function ReplacementsPage({
       select: { id: true, targa: true, modello: true },
     }),
     getConfigNumber("replacement.alert.giorniSenzaRisposta"),
+    getConfigNumber("replacement.giorniConvenzionaliMese"),
   ]);
 
   const oggi = new Date();
@@ -53,8 +54,8 @@ export default async function ReplacementsPage({
       dataRientroOriginale: c.dataRientroOriginale,
       oggi,
     });
-    const canone = c.canoneGiornoSnapshot ? Number(c.canoneGiornoSnapshot) : Number(c.vehicle.canoneGiorno);
-    const storno = c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone);
+    const canone = c.canoneMeseSnapshot ? Number(c.canoneMeseSnapshot) : Number(c.vehicle.canoneMese ?? 0);
+    const storno = c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone, giorniConvenzionaliMese);
     const stagnante = isPraticaStagnante({ stato: c.stato, inviataAt: c.inviataAt, oggi, sogliaGiorni: sogliaStagnante });
     return { c, giorni, storno, stagnante };
   });

@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
-import type { Role, VehicleStatus, FuelType, ServiceType, FineStatus, ReplacementReason, PracticeStatus } from "@prisma/client";
+import type { Role, VehicleStatus, FuelType, ServiceType, FineStatus, ReplacementReason, PracticeStatus, ContractType } from "@prisma/client";
 
 /**
  * Risoluzione FK + controllo duplicati + inserimento per ogni entità di import.
@@ -52,15 +52,20 @@ async function commitVehicleRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"
         targa,
         modello: s(row.modello)!,
         allestimento: s(row.allestimento),
-        alimentazione: row.alimentazione as FuelType,
+        alimentazione: (row.alimentazione as FuelType) ?? "DIESEL",
         hvoCompatibile: row.hvoCompatibile === true || row.alimentazione === "DIESEL_HVO",
-        immatricolazione: row.immatricolazione as Date,
+        immatricolazione: (row.immatricolazione as Date) ?? null,
         stationId,
         stato: (row.stato as VehicleStatus) ?? "ATTIVO",
         kmAttuali: (row.kmAttuali as number) ?? 0,
-        canoneGiorno: row.canoneGiorno as number,
+        canoneMese: (row.canoneMese as number) ?? null,
+        franchigiaDanni: (row.franchigiaDanni as number) ?? null,
         leasingCompany: s(row.leasingCompany),
         contrattoLeasingNo: s(row.contrattoLeasingNo),
+        tipoContratto: (row.tipoContratto as ContractType) ?? null,
+        contrattoDataInizio: (row.contrattoDataInizio as Date) ?? null,
+        contrattoDataFine: (row.contrattoDataFine as Date) ?? null,
+        note: s(row.note),
         prossimoTagliandoData: (row.prossimoTagliandoData as Date) ?? null,
         prossimoTagliandoKm: (row.prossimoTagliandoKm as number) ?? null,
         prossimaRevisione: (row.prossimaRevisione as Date) ?? null,
@@ -170,9 +175,10 @@ async function commitLeaseRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] 
     await db.vehicle.update({
       where: { id: vehicleId },
       data: {
-        canoneGiorno: row.canoneGiorno as number,
+        canoneMese: row.canoneMese as number,
         leasingCompany: s(row.leasingCompany),
         contrattoLeasingNo: s(row.contrattoLeasingNo),
+        franchigiaDanni: (row.franchigiaDanni as number) ?? undefined,
       },
     });
   }
