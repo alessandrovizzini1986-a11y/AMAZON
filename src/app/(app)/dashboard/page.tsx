@@ -9,6 +9,7 @@ import { PageHeader, KpiCard, SourceNote } from "@/components/ui";
 import { fmtEur } from "@/lib/format";
 import { CostByStationChart, FinesTrendChart, type CostRow, type WeekRow } from "./charts";
 import { StationFilter } from "./StationFilter";
+import { ExportExcelButton } from "./ExportExcelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,13 @@ export default async function DashboardPage({
   ]);
 
   // ---- KPI manutenzione (stessa logica del modulo tagliandi: fonte unica) ----
-  let alertManutenzione = 0;
+  // checkTagliando/checkRevisione tornano "warn" anche quando manca lo scadenzario
+  // (nessuna data/km pianificati) — per il KPI un dato mancante non è un alert
+  // reale, altrimenti l'intera flotta senza scadenzario importato risulterebbe
+  // "in scadenza" (bug osservato: 513/513, cioè l'intero parco).
+  let dangerManutenzione = 0;
+  let warnManutenzione = 0;
+  let datiMancantiManutenzione = 0;
   for (const v of vehicles) {
     const t = checkTagliando({
       oggi, kmAttuali: v.kmAttuali,
@@ -75,8 +82,22 @@ export default async function DashboardPage({
       sogliaGiorni, sogliaKm,
     });
     const r = checkRevisione({ oggi, prossimaRevisione: v.prossimaRevisione, sogliaGiorni });
-    if (t.urgency !== "ok" || r.urgency !== "ok") alertManutenzione++;
+    const tPianificato = t.giorniMancanti !== null || t.kmMancanti !== null;
+    const rPianificato = r.giorniMancanti !== null;
+    if (!tPianificato && !rPianificato) {
+      datiMancantiManutenzione++;
+      continue;
+    }
+    const worst =
+      (tPianificato && t.urgency === "danger") || (rPianificato && r.urgency === "danger")
+        ? "danger"
+        : (tPianificato && t.urgency === "warn") || (rPianificato && r.urgency === "warn")
+          ? "warn"
+          : "ok";
+    if (worst === "danger") dangerManutenzione++;
+    else if (worst === "warn") warnManutenzione++;
   }
+  const alertManutenzione = dangerManutenzione + warnManutenzione;
 
   // ---- storno canone attivo ----
   let stornoAttivo = 0;
@@ -145,6 +166,10 @@ export default async function DashboardPage({
     ? `stazione ${stations.find((s) => s.id === stationFilter)?.code}`
     : `cluster (${stations.length} stazioni)`;
 
+  // propaga il filtro stazione selezionato ai link di drill-down (KPI, tabella costi)
+  const withStation = (href: string) =>
+    stationFilter ? `${href}${href.includes("?") ? "&" : "?"}station=${stationFilter}` : href;
+
   return (
     <div>
       <PageHeader
@@ -154,9 +179,7 @@ export default async function DashboardPage({
           isAdmin ? (
             <div className="flex gap-2">
               <StationFilter stations={stations} value={stationFilter ?? ""} />
-              <a href={`/api/export/monthly${stationFilter ? `?station=${stationFilter}` : ""}`} className="btn-secondary whitespace-nowrap">
-                ⬇ Export Excel
-              </a>
+              <ExportExcelButton stationId={stationFilter} />
             </div>
           ) : undefined
         }
@@ -164,30 +187,30 @@ export default async function DashboardPage({
 
       {/* KPI row — ogni card dichiara la fonte e porta al drill-down */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
-        <KpiCard label="Veicoli in flotta" value={vehicles.length} href="/vehicles"
+        <KpiCard label="Veicoli in flotta" value={vehicles.length} href={withStation("/vehicles")}
           source="Vehicle, non dismessi" />
-        <KpiCard label="Veicoli guasti" value={veicoliGuasti} href="/replacements"
+        <KpiCard label="Veicoli guasti" value={veicoliGuasti} href={withStation("/replacements")}
           tone={veicoliGuasti > 0 ? "warn" : "ok"}
           source="pratica sostitutivo aperta o stato IN_OFFICINA" />
-        <KpiCard label="Veicoli sostitutivi" value={veicoliSostitutivi} href="/vehicles?stato=SOSTITUTIVO"
+        <KpiCard label="Veicoli sostitutivi" value={veicoliSostitutivi} href={withStation("/vehicles?stato=SOSTITUTIVO")}
           tone="neutral"
           source="Vehicle con stato=SOSTITUTIVO" />
-        <KpiCard label="Sostitutivi mancanti" value={sostitutiviMancanti} href="/replacements?senzaSostitutivo=1"
+        <KpiCard label="Sostitutivi mancanti" value={sostitutiviMancanti} href={withStation("/replacements?senzaSostitutivo=1")}
           tone={sostitutiviMancanti > 0 ? "danger" : "ok"}
           source="pratiche aperte senza mezzo sostitutivo assegnato" />
-        <KpiCard label="Alert manutenzione" value={alertManutenzione} href="/maintenance?view=alerts"
-          tone={alertManutenzione > 0 ? "danger" : "ok"}
-          source="scadenzario doppia soglia (AppConfig)" />
-        <KpiCard label="Multe da assegnare" value={finesDaAssegnare} href="/fines?assegnazione=da_assegnare"
+        <KpiCard label="Alert manutenzione" value={alertManutenzione} href={withStation("/maintenance?view=alerts")}
+          tone={dangerManutenzione > 0 ? "danger" : warnManutenzione > 0 ? "warn" : "ok"}
+          source={`${dangerManutenzione} urgenti, ${warnManutenzione} in scadenza (soglie AppConfig)${datiMancantiManutenzione > 0 ? ` · ${datiMancantiManutenzione} senza scadenzario` : ""}`} />
+        <KpiCard label="Multe da assegnare" value={finesDaAssegnare} href={withStation("/fines?assegnazione=da_assegnare")}
           tone={finesDaAssegnare > 0 ? "warn" : "ok"}
           source="Fine con driverId nullo" />
-        <KpiCard label="Storno canone attivo" value={fmtEur(stornoAttivo)} href="/replacements"
+        <KpiCard label="Storno canone attivo" value={fmtEur(stornoAttivo)} href={withStation("/replacements")}
           tone="neutral"
           source="pratiche non chiuse, giorni×canone" />
-        <KpiCard label="Pratiche senza risposta" value={praticheStagnanti} href="/replacements"
+        <KpiCard label="Pratiche senza risposta" value={praticheStagnanti} href={withStation("/replacements")}
           tone={praticheStagnanti > 0 ? "danger" : "ok"}
           source={`inviate da >${sogliaStagnante}gg (AppConfig)`} />
-        <KpiCard label="Danni aperti" value={damagesOpen} href="/damages"
+        <KpiCard label="Danni aperti" value={damagesOpen} href={withStation("/damages")}
           tone={damagesOpen > 0 ? "warn" : "ok"}
           source="Damage con chiuso=false" />
       </div>
@@ -198,6 +221,14 @@ export default async function DashboardPage({
           <p className="text-xs text-ink-muted mb-2">
             Totale {fmtEur(totCosti)} · le stazioni non si compensano mai tra loro · click su una barra per la vista di stazione
           </p>
+
+          {totCosti === 0 && (
+            <p className="mb-3 text-sm text-ink-muted bg-surface rounded-control px-3 py-2 border border-line">
+              Nessun costo registrato negli ultimi 30 giorni per {scopeLabel}.{" "}
+              <Link href="/import" className="text-brand underline">Carica fatture/transazioni del mese →</Link>
+            </p>
+          )}
+
           <CostByStationChart data={costRows} />
           {/* tabella dettaglio = "relief" per le serie a basso contrasto + drill-down */}
           <div className="overflow-x-auto mt-3">
@@ -206,21 +237,24 @@ export default async function DashboardPage({
                 <tr><th>Stazione</th><th>Manutenzione</th><th>Carburante</th><th>Pedaggi</th><th>Multe</th><th>Totale</th><th>Dettaglio</th></tr>
               </thead>
               <tbody>
-                {costRows.map((r) => (
-                  <tr key={r.stationId}>
-                    <td className="font-semibold">{r.station}</td>
-                    <td>{fmtEur(r.manutenzione)}</td>
-                    <td>{fmtEur(r.carburante)}</td>
-                    <td>{fmtEur(r.pedaggi)}</td>
-                    <td>{fmtEur(r.multe)}</td>
-                    <td className="font-semibold">{fmtEur(r.manutenzione + r.carburante + r.pedaggi + r.multe)}</td>
-                    <td className="text-xs whitespace-nowrap">
-                      <Link className="text-brand underline" href={`/vehicles?station=${r.stationId}`}>flotta</Link>{" · "}
-                      <Link className="text-brand underline" href={`/fines?station=${r.stationId}`}>multe</Link>{" · "}
-                      <Link className="text-brand underline" href="/fuel">fuel</Link>
-                    </td>
-                  </tr>
-                ))}
+                {costRows.map((r) => {
+                  const rigaAZero = r.manutenzione === 0 && r.carburante === 0 && r.pedaggi === 0 && r.multe === 0;
+                  return (
+                    <tr key={r.stationId} className={rigaAZero ? "opacity-50" : ""}>
+                      <td className="font-semibold">{r.station}</td>
+                      <td>{fmtEur(r.manutenzione)}</td>
+                      <td>{fmtEur(r.carburante)}</td>
+                      <td>{fmtEur(r.pedaggi)}</td>
+                      <td>{fmtEur(r.multe)}</td>
+                      <td className="font-semibold">{fmtEur(r.manutenzione + r.carburante + r.pedaggi + r.multe)}</td>
+                      <td className="text-xs whitespace-nowrap">
+                        <Link className="text-brand underline" href={`/vehicles?station=${r.stationId}`}>flotta</Link>{" · "}
+                        <Link className="text-brand underline" href={`/fines?station=${r.stationId}`}>multe</Link>{" · "}
+                        <Link className="text-brand underline" href={`/fuel?station=${r.stationId}`}>fuel</Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

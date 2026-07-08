@@ -10,17 +10,23 @@ import { assignFuelCardAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function FuelPage() {
+export default async function FuelPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ station?: string }>;
+}) {
   const user = await requireUser();
   assertCan(user, "fuel.manage");
+  const params = await searchParams;
   const scope = stationScope(user);
+  const stationFilter = scope.stationId ?? (user.role === "ADMIN" ? params.station || null : null);
 
   const since = new Date();
   since.setDate(since.getDate() - 30);
 
   const [cards, vehicles, tollsByStation, consumoAtteso, tolleranza] = await Promise.all([
     db.fuelCard.findMany({
-      where: scope.stationId ? { OR: [{ vehicle: { stationId: scope.stationId } }, { vehicleId: null }] } : {},
+      where: stationFilter ? { OR: [{ vehicle: { stationId: stationFilter } }, { vehicleId: null }] } : {},
       include: {
         vehicle: { include: { station: true } },
         transactions: { where: { data: { gte: since } }, orderBy: { data: "desc" } },
@@ -28,13 +34,13 @@ export default async function FuelPage() {
       orderBy: { pan: "asc" },
     }),
     db.vehicle.findMany({
-      where: { ...(scope.stationId ? { stationId: scope.stationId } : {}), stato: { not: "DISMESSO" } },
+      where: { ...(stationFilter ? { stationId: stationFilter } : {}), stato: { not: "DISMESSO" } },
       orderBy: { targa: "asc" },
       select: { id: true, targa: true },
     }),
     db.tollTransaction.groupBy({
       by: ["stationId"],
-      where: { data: { gte: since }, ...(scope.stationId ? { stationId: scope.stationId } : {}) },
+      where: { data: { gte: since }, ...(stationFilter ? { stationId: stationFilter } : {}) },
       _sum: { importo: true },
       _count: true,
     }),
@@ -44,6 +50,7 @@ export default async function FuelPage() {
 
   const stations = await db.station.findMany({ orderBy: { code: "asc" } });
   const stationName = (id: string) => stations.find((s) => s.id === id)?.code ?? id;
+  const filterStation = stationFilter ? stations.find((s) => s.id === stationFilter) ?? null : null;
 
   // km percorsi negli ultimi 30 giorni per veicolo (da check-in/out completati)
   const assignments = await db.assignment.findMany({
@@ -74,6 +81,13 @@ export default async function FuelPage() {
         title="Fuel & Pedaggi"
         subtitle={`Ultimi 30 giorni · riconciliazione per PAN carta (mai per targa) · consumo atteso ${consumoAtteso} l/100km ± ${Math.round(tolleranza * 100)}% (configurabile)`}
       />
+
+      {filterStation && (
+        <p className="mb-4 text-sm text-info bg-info-soft rounded-control px-3 py-2 flex items-center justify-between">
+          <span>Filtro attivo: solo stazione <strong>{filterStation.code} — {filterStation.name}</strong></span>
+          <a href="/fuel" className="underline">rimuovi filtro</a>
+        </p>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         <div className="card p-4">
