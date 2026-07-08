@@ -8,6 +8,7 @@ import { giorniScoperti, importoStorno, isPraticaStagnante } from "@/domain/repl
 import { PageHeader, KpiCard, SourceNote } from "@/components/ui";
 import { fmtEur } from "@/lib/format";
 import { CostByStationChart, FinesTrendChart, type CostRow, type WeekRow } from "./charts";
+import { StationFilter } from "./StationFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,17 @@ export default async function DashboardPage({
     if (isPraticaStagnante({ stato: c.stato, inviataAt: c.inviataAt, oggi, sogliaGiorni: sogliaStagnante })) praticheStagnanti++;
   }
 
+  // ---- veicoli guasti / sostitutivi / sostitutivi mancanti ----
+  // "guasto" = veicolo con pratica sostitutivo aperta (motivo reale spesso GUASTO/INCIDENTE/MANUTENZIONE)
+  // oppure stato IN_OFFICINA — l'uno non esclude l'altro, contiamo veicoli distinti
+  const veicoliGuastiIds = new Set<string>();
+  for (const c of openCases) veicoliGuastiIds.add(c.vehicleId);
+  for (const v of vehicles) if (v.stato === "IN_OFFICINA") veicoliGuastiIds.add(v.id);
+  const veicoliGuasti = veicoliGuastiIds.size;
+
+  const veicoliSostitutivi = vehicles.filter((v) => v.stato === "SOSTITUTIVO").length;
+  const sostitutiviMancanti = openCases.filter((c) => !c.replacementVehicleId).length;
+
   // ---- costi per stazione (mai compensati tra loro) ----
   const byStation = new Map<string, CostRow>();
   const stationList = stationFilter ? stations.filter((s) => s.id === stationFilter) : stations;
@@ -141,12 +153,7 @@ export default async function DashboardPage({
         action={
           isAdmin ? (
             <div className="flex gap-2">
-              <form method="get">
-                <select className="input" name="station" defaultValue={stationFilter ?? ""} onChange={undefined}>
-                  <option value="">Vista cluster</option>
-                  {stations.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
-                </select>
-              </form>
+              <StationFilter stations={stations} value={stationFilter ?? ""} />
               <a href={`/api/export/monthly${stationFilter ? `?station=${stationFilter}` : ""}`} className="btn-secondary whitespace-nowrap">
                 ⬇ Export Excel
               </a>
@@ -155,19 +162,19 @@ export default async function DashboardPage({
         }
       />
 
-      {isAdmin && (
-        <script
-          // submit del form al cambio select senza JS client dedicato
-          dangerouslySetInnerHTML={{
-            __html: `document.querySelector('select[name="station"]')?.addEventListener('change', e => e.target.form.submit());`,
-          }}
-        />
-      )}
-
       {/* KPI row — ogni card dichiara la fonte e porta al drill-down */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
         <KpiCard label="Veicoli in flotta" value={vehicles.length} href="/vehicles"
           source="Vehicle, non dismessi" />
+        <KpiCard label="Veicoli guasti" value={veicoliGuasti} href="/replacements"
+          tone={veicoliGuasti > 0 ? "warn" : "ok"}
+          source="pratica sostitutivo aperta o stato IN_OFFICINA" />
+        <KpiCard label="Veicoli sostitutivi" value={veicoliSostitutivi} href="/vehicles?stato=SOSTITUTIVO"
+          tone="neutral"
+          source="Vehicle con stato=SOSTITUTIVO" />
+        <KpiCard label="Sostitutivi mancanti" value={sostitutiviMancanti} href="/replacements?senzaSostitutivo=1"
+          tone={sostitutiviMancanti > 0 ? "danger" : "ok"}
+          source="pratiche aperte senza mezzo sostitutivo assegnato" />
         <KpiCard label="Alert manutenzione" value={alertManutenzione} href="/maintenance?view=alerts"
           tone={alertManutenzione > 0 ? "danger" : "ok"}
           source="scadenzario doppia soglia (AppConfig)" />
