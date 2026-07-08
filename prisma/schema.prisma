@@ -25,7 +25,16 @@ enum VehicleStatus {
   ATTIVO
   IN_OFFICINA
   SOSTITUTIVO
+  UFFICIO // mezzo ad uso ufficio/amministrativo, non in flotta operativa
   DISMESSO
+}
+
+enum ContractType {
+  MT // medio termine
+  LT // lungo termine
+  BT // breve termine / noleggio a breve
+  SOST // contratto di sostituzione temporanea
+  UFFICIO
 }
 
 enum FuelType {
@@ -124,43 +133,48 @@ model Station {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   passwordHash String
   firstName    String
   lastName     String
   role         Role
   stationId    String? // null per ADMIN cluster-wide
-  station      Station?  @relation(fields: [stationId], references: [id])
+  station      Station? @relation(fields: [stationId], references: [id])
   licenseNo    String? // patente, per multe con decurtazione punti
   phone        String?
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
-  assignments       Assignment[]
-  finesAssigned     Fine[]            @relation("fineDriver")
-  damagesReported   Damage[]          @relation("damageReporter")
-  auditLogs         AuditLog[]
-  importJobs        ImportJob[]
+  assignments        Assignment[]
+  finesAssigned      Fine[]            @relation("fineDriver")
+  damagesReported    Damage[]          @relation("damageReporter")
+  auditLogs          AuditLog[]
+  importJobs         ImportJob[]
   transfersRequested StationTransfer[] @relation("transferRequestedBy")
   transfersApproved  StationTransfer[] @relation("transferApprovedBy")
 }
 
 model Vehicle {
-  id                 String        @id @default(cuid())
-  targa              String // unicità parziale su stato != DISMESSO via migrazione SQL
-  modello            String
-  allestimento       String?
-  alimentazione      FuelType
-  hvoCompatibile     Boolean       @default(false) // EN 15940
-  immatricolazione   DateTime
-  stationId          String
-  station            Station       @relation(fields: [stationId], references: [id])
-  stato              VehicleStatus @default(ATTIVO)
-  kmAttuali          Int           @default(0)
-  canoneGiorno       Decimal       @db.Decimal(10, 2) // configurabile, mai hardcoded
-  leasingCompany     String? // ALD / Ayvens / Leasys...
-  contrattoLeasingNo String?
+  id                  String        @id @default(cuid())
+  targa               String // unicità parziale su stato != DISMESSO via migrazione SQL
+  modello             String
+  allestimento        String?
+  alimentazione       FuelType
+  hvoCompatibile      Boolean       @default(false) // EN 15940
+  immatricolazione    DateTime? // data di prima immatricolazione, se nota (distinta dall'inizio contratto)
+  stationId           String
+  station             Station       @relation(fields: [stationId], references: [id])
+  stato               VehicleStatus @default(ATTIVO)
+  kmAttuali           Int           @default(0)
+  canoneMese          Decimal?      @db.Decimal(10, 2) // canone mensile — configurabile, mai hardcoded
+  franchigiaDanni     Decimal?      @db.Decimal(10, 2) // franchigia danni da contratto di noleggio/leasing
+  leasingCompany      String? // ALD / ALD MT / Europcar / Hertz / Arval / Noleggiare / Avis / Torental / Vem...
+  contrattoLeasingNo  String? // N° RA
+  tipoContratto       ContractType? // MT / LT / BT / SOST / UFFICIO
+  contrattoDataInizio DateTime?
+  contrattoDataFine   DateTime?
+  note                String? // note operative libere (spostamenti tra stazioni, riferimenti mezzo sostituito, ecc.)
 
   // scadenzario (doppia soglia: km e data — alert sulla prima che scatta)
   prossimoTagliandoData DateTime?
@@ -197,16 +211,16 @@ model VehicleStationHistory {
 // ---------- Manutenzione ----------
 
 model ServiceRecord {
-  id            String      @id @default(cuid())
-  vehicleId     String
-  vehicle       Vehicle     @relation(fields: [vehicleId], references: [id])
-  tipo          ServiceType
-  officina      String
-  data          DateTime
-  kmIntervento  Int
-  costo         Decimal     @db.Decimal(10, 2)
-  descrizione   String?
-  createdAt     DateTime    @default(now())
+  id           String      @id @default(cuid())
+  vehicleId    String
+  vehicle      Vehicle     @relation(fields: [vehicleId], references: [id])
+  tipo         ServiceType
+  officina     String
+  data         DateTime
+  kmIntervento Int
+  costo        Decimal     @db.Decimal(10, 2)
+  descrizione  String?
+  createdAt    DateTime    @default(now())
 
   @@index([vehicleId, data])
 }
@@ -214,22 +228,22 @@ model ServiceRecord {
 // ---------- Multe ----------
 
 model Fine {
-  id             String     @id @default(cuid())
-  vehicleId      String
-  vehicle        Vehicle    @relation(fields: [vehicleId], references: [id])
-  verbaleNo      String?
+  id                String     @id @default(cuid())
+  vehicleId         String
+  vehicle           Vehicle    @relation(fields: [vehicleId], references: [id])
+  verbaleNo         String?
   dataOraInfrazione DateTime
-  luogo          String
-  tipoViolazione String
-  importo        Decimal    @db.Decimal(10, 2)
-  puntiPatente   Int        @default(0)
-  stato          FineStatus @default(DA_NOTIFICARE)
-  dataNotifica   DateTime?
+  luogo             String
+  tipoViolazione    String
+  importo           Decimal    @db.Decimal(10, 2)
+  puntiPatente      Int        @default(0)
+  stato             FineStatus @default(DA_NOTIFICARE)
+  dataNotifica      DateTime?
 
   // assegnazione conducente: da log movimentazione, mai "a caso".
   // se non c'è check-in/out coerente il campo resta null = "da assegnare"
   driverId          String?
-  driver            User?    @relation("fineDriver", fields: [driverId], references: [id])
+  driver            User?   @relation("fineDriver", fields: [driverId], references: [id])
   assegnazioneFonte String? // es. "check-in 2026-03-12 DML2" oppure "manuale: <motivo>"
 
   // ricorso
@@ -261,14 +275,14 @@ model Assignment {
   stationId String
   station   Station  @relation(fields: [stationId], references: [id])
 
-  checkInAt    DateTime?
-  checkInKm    Int?
-  checkInFoto  String? // path/URL foto stato mezzo
-  checkInNote  String?
-  checkOutAt   DateTime?
-  checkOutKm   Int?
-  checkOutFoto String?
-  checkOutNote String?
+  checkInAt     DateTime?
+  checkInKm     Int?
+  checkInFoto   String? // path/URL foto stato mezzo
+  checkInNote   String?
+  checkOutAt    DateTime?
+  checkOutKm    Int?
+  checkOutFoto  String?
+  checkOutNote  String?
   danniRilevati String?
 
   createdAt DateTime @default(now())
@@ -302,25 +316,25 @@ model StationTransfer {
 // ---------- Mezzi sostitutivi / storno canone ----------
 
 model ReplacementCase {
-  id                   String            @id @default(cuid())
-  vehicleId            String
-  vehicle              Vehicle           @relation("caseVehicle", fields: [vehicleId], references: [id])
-  motivo               ReplacementReason
-  dataIngressoOfficina DateTime          @db.Date
-  centroConvenzionato  String
-  replacementVehicleId String?
-  replacementVehicle   Vehicle?          @relation("caseReplacementVehicle", fields: [replacementVehicleId], references: [id])
-  dataRicezioneSostitutivo DateTime?     @db.Date
-  dataRientroOriginale     DateTime?     @db.Date
+  id                       String            @id @default(cuid())
+  vehicleId                String
+  vehicle                  Vehicle           @relation("caseVehicle", fields: [vehicleId], references: [id])
+  motivo                   ReplacementReason
+  dataIngressoOfficina     DateTime          @db.Date
+  centroConvenzionato      String
+  replacementVehicleId     String?
+  replacementVehicle       Vehicle?          @relation("caseReplacementVehicle", fields: [replacementVehicleId], references: [id])
+  dataRicezioneSostitutivo DateTime?         @db.Date
+  dataRientroOriginale     DateTime?         @db.Date
 
   stato PracticeStatus @default(APERTA)
 
   // lock/versionamento: al passaggio a INVIATA il canone viene fotografato
   // e la pratica non è più modificabile (solo Admin con audit trail)
-  inviataAt            DateTime?
-  canoneGiornoSnapshot Decimal?  @db.Decimal(10, 2)
-  giorniScoperti       Int? // congelati all'invio
-  importoStorno        Decimal?  @db.Decimal(10, 2)
+  inviataAt          DateTime?
+  canoneMeseSnapshot Decimal?  @db.Decimal(10, 2) // canone mensile fotografato all'invio
+  giorniScoperti     Int? // congelati all'invio
+  importoStorno      Decimal?  @db.Decimal(10, 2)
 
   note      String?
   createdAt DateTime @default(now())
@@ -334,21 +348,21 @@ model ReplacementCase {
 // ---------- Danni / sinistri ----------
 
 model Damage {
-  id               String      @id @default(cuid())
-  vehicleId        String
-  vehicle          Vehicle     @relation(fields: [vehicleId], references: [id])
-  tipo             String
-  data             DateTime
-  descrizione      String?
-  fotoUrl          String?
-  centroRiparazione String?
-  responsabilita   LiableParty @default(IGNOTO)
-  reporterId       String?
-  reporter         User?       @relation("damageReporter", fields: [reporterId], references: [id])
+  id                  String      @id @default(cuid())
+  vehicleId           String
+  vehicle             Vehicle     @relation(fields: [vehicleId], references: [id])
+  tipo                String
+  data                DateTime
+  descrizione         String?
+  fotoUrl             String?
+  centroRiparazione   String?
+  responsabilita      LiableParty @default(IGNOTO)
+  reporterId          String?
+  reporter            User?       @relation("damageReporter", fields: [reporterId], references: [id])
   praticaAssicurativa String? // riferimento sinistro assicurazione
-  costoStimato     Decimal?    @db.Decimal(10, 2)
-  chiuso           Boolean     @default(false)
-  createdAt        DateTime    @default(now())
+  costoStimato        Decimal?    @db.Decimal(10, 2)
+  chiuso              Boolean     @default(false)
+  createdAt           DateTime    @default(now())
 
   @@index([vehicleId, data])
 }
@@ -366,31 +380,31 @@ model FuelCard {
 }
 
 model FuelTransaction {
-  id         String   @id @default(cuid())
-  fuelCardId String
-  fuelCard   FuelCard @relation(fields: [fuelCardId], references: [id])
-  data       DateTime
-  litri      Decimal  @db.Decimal(10, 2)
-  importo    Decimal  @db.Decimal(10, 2)
+  id           String     @id @default(cuid())
+  fuelCardId   String
+  fuelCard     FuelCard   @relation(fields: [fuelCardId], references: [id])
+  data         DateTime
+  litri        Decimal    @db.Decimal(10, 2)
+  importo      Decimal    @db.Decimal(10, 2)
   puntoVendita String?
-  prodotto   String? // DIESEL / HVO / ...
-  importJobId String?
-  importJob  ImportJob? @relation(fields: [importJobId], references: [id])
+  prodotto     String? // DIESEL / HVO / ...
+  importJobId  String?
+  importJob    ImportJob? @relation(fields: [importJobId], references: [id])
 
   @@index([fuelCardId, data])
 }
 
 model TollTransaction {
-  id        String   @id @default(cuid())
-  stationId String
-  station   Station  @relation(fields: [stationId], references: [id])
-  deviceCode String? // codice apparato Telepass
-  targa     String?
-  data      DateTime
-  tratta    String?
-  importo   Decimal  @db.Decimal(10, 2)
+  id          String     @id @default(cuid())
+  stationId   String
+  station     Station    @relation(fields: [stationId], references: [id])
+  deviceCode  String? // codice apparato Telepass
+  targa       String?
+  data        DateTime
+  tratta      String?
+  importo     Decimal    @db.Decimal(10, 2)
   importJobId String?
-  importJob ImportJob? @relation(fields: [importJobId], references: [id])
+  importJob   ImportJob? @relation(fields: [importJobId], references: [id])
 
   @@index([stationId, data])
 }

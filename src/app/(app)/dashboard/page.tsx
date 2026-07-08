@@ -28,7 +28,7 @@ export default async function DashboardPage({
   since.setDate(since.getDate() - 30);
   const oggi = new Date();
 
-  const [stations, vehicles, sogliaGiorni, sogliaKm, sogliaStagnante] = await Promise.all([
+  const [stations, vehicles, sogliaGiorni, sogliaKm, sogliaStagnante, giorniConvenzionaliMese] = await Promise.all([
     db.station.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
     db.vehicle.findMany({
       where: { stato: { not: "DISMESSO" }, ...(stationFilter ? { stationId: stationFilter } : {}) },
@@ -37,6 +37,7 @@ export default async function DashboardPage({
     getConfigNumberArray("maint.alert.giorni"),
     getConfigNumberArray("maint.alert.km"),
     getConfigNumber("replacement.alert.giorniSenzaRisposta"),
+    getConfigNumber("replacement.giorniConvenzionaliMese"),
   ]);
 
   const vehicleIds = vehicles.map((v) => v.id);
@@ -86,8 +87,8 @@ export default async function DashboardPage({
       dataRientroOriginale: c.dataRientroOriginale,
       oggi,
     });
-    const canone = Number(c.canoneGiornoSnapshot ?? c.vehicle.canoneGiorno);
-    stornoAttivo += c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone);
+    const canone = Number(c.canoneMeseSnapshot ?? c.vehicle.canoneMese ?? 0);
+    stornoAttivo += c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone, giorniConvenzionaliMese);
     if (isPraticaStagnante({ stato: c.stato, inviataAt: c.inviataAt, oggi, sogliaGiorni: sogliaStagnante })) praticheStagnanti++;
   }
 

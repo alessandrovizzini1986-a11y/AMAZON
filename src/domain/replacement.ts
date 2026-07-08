@@ -31,11 +31,17 @@ export function giorniScoperti(params: {
   return Math.max(0, Math.round((end - start) / MS_DAY));
 }
 
-/** importo storno = giorni scoperti × canone/giorno (arrotondato al centesimo) */
-export function importoStorno(giorni: number, canoneGiorno: number): number {
+/**
+ * importo storno = giorni scoperti × (canone MENSILE ÷ giorni convenzionali del mese),
+ * arrotondato al centesimo. I contratti di leasing/noleggio italiani fatturano un
+ * canone mensile, non giornaliero: il pro-rata usa una base convenzionale
+ * (tipicamente 30) configurabile da Admin, mai hardcoded.
+ */
+export function importoStorno(giorni: number, canoneMese: number, giorniConvenzionaliMese: number = 30): number {
   if (giorni < 0) throw new Error("giorni scoperti negativi");
-  if (canoneGiorno < 0) throw new Error("canone negativo");
-  return Math.round(giorni * canoneGiorno * 100) / 100;
+  if (canoneMese < 0) throw new Error("canone negativo");
+  if (giorniConvenzionaliMese <= 0) throw new Error("giorni convenzionali per mese non valido");
+  return Math.round(giorni * (canoneMese / giorniConvenzionaliMese) * 100) / 100;
 }
 
 /**

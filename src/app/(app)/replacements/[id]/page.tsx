@@ -26,6 +26,7 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
 
   const oggi = new Date();
   const sogliaStagnante = await getConfigNumber("replacement.alert.giorniSenzaRisposta");
+  const giorniConvenzionaliMese = await getConfigNumber("replacement.giorniConvenzionaliMese");
   const isLocked = rc.stato !== "APERTA";
   const isAdmin = user.role === "ADMIN";
 
@@ -36,8 +37,8 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
     oggi,
   });
   const giorni = rc.giorniScoperti ?? giorniLive;
-  const canone = rc.canoneGiornoSnapshot ? Number(rc.canoneGiornoSnapshot) : Number(rc.vehicle.canoneGiorno);
-  const storno = rc.importoStorno ? Number(rc.importoStorno) : importoStorno(giorniLive, canone);
+  const canone = rc.canoneMeseSnapshot ? Number(rc.canoneMeseSnapshot) : Number(rc.vehicle.canoneMese ?? 0);
+  const storno = rc.importoStorno ? Number(rc.importoStorno) : importoStorno(giorniLive, canone, giorniConvenzionaliMese);
   const stagnante = isPraticaStagnante({ stato: rc.stato, inviataAt: rc.inviataAt, oggi, sogliaGiorni: sogliaStagnante });
 
   const substitutes = await db.vehicle.findMany({
@@ -75,7 +76,7 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
           </div>
           <div>
             <div className="text-3xl font-bold">{fmtEur(canone)}</div>
-            <div className="text-xs text-ink-muted">canone/giorno {rc.canoneGiornoSnapshot ? "(congelato all'invio)" : "(corrente)"}</div>
+            <div className="text-xs text-ink-muted">canone/mese {rc.canoneMeseSnapshot ? "(congelato all'invio)" : "(corrente)"}</div>
           </div>
           <div>
             <div className="text-3xl font-bold text-brand">{fmtEur(storno)}</div>
@@ -94,7 +95,7 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
           </div>
         </div>
         <SourceNote>
-          giorni = da ingresso officina a min(ricezione sostitutivo, rientro originale, oggi); importo = giorni × canone {rc.canoneGiornoSnapshot ? "fotografato all'invio" : `corrente del veicolo (${rc.vehicle.leasingCompany ?? "leasing n/d"})`}
+          giorni = da ingresso officina a min(ricezione sostitutivo, rientro originale, oggi); importo = giorni × (canone mensile ÷ {giorniConvenzionaliMese} giorni convenzionali) {rc.canoneMeseSnapshot ? "fotografato all'invio" : `corrente del veicolo (${rc.vehicle.leasingCompany ?? "leasing n/d"})`}
         </SourceNote>
       </div>
 

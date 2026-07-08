@@ -13,6 +13,7 @@ const STATUS_TONE: Record<string, "ok" | "warn" | "danger" | "neutral" | "info">
   ATTIVO: "ok",
   IN_OFFICINA: "warn",
   SOSTITUTIVO: "info",
+  UFFICIO: "neutral",
   DISMESSO: "neutral",
 };
 
@@ -72,7 +73,7 @@ export default async function VehiclesPage({
             <thead>
               <tr>
                 <th>Targa</th><th>Modello</th><th>Alimentazione</th><th>Stazione</th>
-                <th>Stato</th><th>Km</th><th>Canone/g</th><th>Leasing</th>
+                <th>Stato</th><th>Km</th><th>Canone/mese</th><th>Leasing</th>
               </tr>
             </thead>
             <tbody>
@@ -88,7 +89,7 @@ export default async function VehiclesPage({
                   <td>{v.station.code}</td>
                   <td><StatusBadge tone={STATUS_TONE[v.stato]}>{STATUS_LABELS[v.stato]}</StatusBadge></td>
                   <td className="whitespace-nowrap">{fmtKm(v.kmAttuali)}</td>
-                  <td className="whitespace-nowrap">{isAdmin ? fmtEur(Number(v.canoneGiorno)) : "—"}</td>
+                  <td className="whitespace-nowrap">{isAdmin && v.canoneMese ? fmtEur(Number(v.canoneMese)) : "—"}</td>
                   <td>{v.leasingCompany ?? "—"}</td>
                 </tr>
               ))}

@@ -3,14 +3,14 @@ import { autoMapColumns, coerceValue, validateRows, IMPORT_SPECS } from "@/domai
 
 describe("autoMapColumns — mapping flessibile intestazioni", () => {
   it("mappa label esatte, alias e varianti di maiuscole/accenti", () => {
-    const headers = ["TARGA", "Modello", "carburante", "Data Immatricolazione", "Sede", "canone giornaliero"];
+    const headers = ["TARGA", "Modello", "carburante", "Data Immatricolazione", "Sede", "canone mensile"];
     const m = autoMapColumns(headers, IMPORT_SPECS.vehicles);
     expect(m.targa).toBe(0);
     expect(m.modello).toBe(1);
     expect(m.alimentazione).toBe(2); // alias "carburante"
     expect(m.immatricolazione).toBe(3);
     expect(m.stationCode).toBe(4); // alias "sede"
-    expect(m.canoneGiorno).toBe(5); // alias "canone giornaliero"
+    expect(m.canoneMese).toBe(5); // alias "canone mensile"
     expect(m.allestimento).toBeNull(); // assente → da rimappare in UI
   });
 });
@@ -58,7 +58,7 @@ describe("coerceValue — date reali, non testo", () => {
 describe("validateRows — righe valide ed errori con motivo", () => {
   it("separa righe valide da righe con errori", () => {
     const spec = IMPORT_SPECS.leases;
-    const mapping = { targa: 0, canoneGiorno: 1, leasingCompany: 2, contrattoLeasingNo: 3 };
+    const mapping = { targa: 0, canoneMese: 1, leasingCompany: 2, contrattoLeasingNo: 3 };
     const rows = [
       ["GA123BC", "38,50", "Ayvens", "C-001"],
       ["", "40", "Leasys", null], // targa mancante
@@ -66,7 +66,7 @@ describe("validateRows — righe valide ed errori con motivo", () => {
     ];
     const results = validateRows(rows, mapping, spec);
     expect(results[0].ok).toBe(true);
-    expect(results[0].data.canoneGiorno).toBe(38.5);
+    expect(results[0].data.canoneMese).toBe(38.5);
     expect(results[1].ok).toBe(false);
     expect(results[1].errors[0]).toContain("obbligatorio");
     expect(results[2].ok).toBe(false);

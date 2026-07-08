@@ -50,13 +50,18 @@ describe("giorniScoperti — giorni senza mezzo sostitutivo", () => {
 });
 
 describe("importoStorno", () => {
-  it("giorni × canone, arrotondato al centesimo", () => {
-    expect(importoStorno(5, 38.5)).toBe(192.5);
-    expect(importoStorno(3, 33.333)).toBe(100);
+  it("giorni × (canone mensile ÷ giorni convenzionali), arrotondato al centesimo", () => {
+    // canone mensile 900 ÷ 30 = 30€/giorno equivalente
+    expect(importoStorno(5, 900)).toBe(150);
+    expect(importoStorno(10, 415)).toBe(138.33);
+  });
+  it("accetta una base di giorni convenzionali diversa da 30 (configurabile)", () => {
+    expect(importoStorno(5, 930, 31)).toBe(150);
   });
   it("rifiuta input negativi", () => {
     expect(() => importoStorno(-1, 10)).toThrow();
     expect(() => importoStorno(1, -10)).toThrow();
+    expect(() => importoStorno(1, 10, 0)).toThrow();
   });
 });
 
