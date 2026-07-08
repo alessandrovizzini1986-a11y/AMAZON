@@ -8,23 +8,32 @@ import { updateDamageAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function DamagesPage() {
+export default async function DamagesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ station?: string }>;
+}) {
   const user = await requireUser();
+  const params = await searchParams;
   const scope = stationScope(user);
   const canManage = can(user, "vehicle.manage");
+  const stationFilter = scope.stationId ?? (user.role === "ADMIN" ? params.station || null : null);
 
-  const damages = await db.damage.findMany({
-    where: {
-      ...(user.role === "DRIVER"
-        ? { reporterId: user.id }
-        : scope.stationId
-          ? { vehicle: { stationId: scope.stationId } }
-          : {}),
-    },
-    include: { vehicle: { include: { station: true } }, reporter: true },
-    orderBy: { data: "desc" },
-    take: 100,
-  });
+  const [damages, filterStation] = await Promise.all([
+    db.damage.findMany({
+      where: {
+        ...(user.role === "DRIVER"
+          ? { reporterId: user.id }
+          : stationFilter
+            ? { vehicle: { stationId: stationFilter } }
+            : {}),
+      },
+      include: { vehicle: { include: { station: true } }, reporter: true },
+      orderBy: { data: "desc" },
+      take: 100,
+    }),
+    stationFilter && user.role === "ADMIN" ? db.station.findUnique({ where: { id: stationFilter } }) : Promise.resolve(null),
+  ]);
 
   return (
     <div>
@@ -33,6 +42,13 @@ export default async function DamagesPage() {
         subtitle={user.role === "DRIVER" ? "Le tue segnalazioni" : "Segnalazioni, responsabilità e pratiche assicurative"}
         action={<Link href="/damages/new" className="btn-primary">+ Segnala danno</Link>}
       />
+
+      {filterStation && (
+        <p className="mb-4 text-sm text-info bg-info-soft rounded-control px-3 py-2 flex items-center justify-between">
+          <span>Filtro attivo: solo stazione <strong>{filterStation.code} — {filterStation.name}</strong></span>
+          <a href="/damages" className="underline">rimuovi filtro</a>
+        </p>
+      )}
 
       {damages.length === 0 ? (
         <EmptyState message="Nessun danno registrato." />

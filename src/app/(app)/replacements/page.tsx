@@ -20,18 +20,19 @@ const STATO_TONE: Record<string, "ok" | "warn" | "danger" | "info" | "neutral"> 
 export default async function ReplacementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; stato?: string; senzaSostitutivo?: string }>;
+  searchParams: Promise<{ error?: string; stato?: string; senzaSostitutivo?: string; station?: string }>;
 }) {
   const user = await requireUser();
   assertCan(user, "replacement.manage");
   const params = await searchParams;
   const scope = stationScope(user);
   const soloSenzaSostitutivo = params.senzaSostitutivo === "1";
+  const stationFilter = scope.stationId ?? (user.role === "ADMIN" ? params.station || null : null);
 
-  const [cases, vehicles, sogliaStagnante, giorniConvenzionaliMese] = await Promise.all([
+  const [cases, vehicles, sogliaStagnante, giorniConvenzionaliMese, filterStation] = await Promise.all([
     db.replacementCase.findMany({
       where: {
-        ...(scope.stationId ? { vehicle: { stationId: scope.stationId } } : {}),
+        ...(stationFilter ? { vehicle: { stationId: stationFilter } } : {}),
         ...(params.stato ? { stato: params.stato as never } : {}),
         ...(soloSenzaSostitutivo ? { replacementVehicleId: null, stato: { not: "CHIUSA" } } : {}),
       },
@@ -40,12 +41,13 @@ export default async function ReplacementsPage({
       take: 100,
     }),
     db.vehicle.findMany({
-      where: { ...(scope.stationId ? { stationId: scope.stationId } : {}), stato: { not: "DISMESSO" } },
+      where: { ...(stationFilter ? { stationId: stationFilter } : {}), stato: { not: "DISMESSO" } },
       orderBy: { targa: "asc" },
       select: { id: true, targa: true, modello: true },
     }),
     getConfigNumber("replacement.alert.giorniSenzaRisposta"),
     getConfigNumber("replacement.giorniConvenzionaliMese"),
+    stationFilter && user.role === "ADMIN" ? db.station.findUnique({ where: { id: stationFilter } }) : Promise.resolve(null),
   ]);
 
   const oggi = new Date();
@@ -80,7 +82,14 @@ export default async function ReplacementsPage({
       {soloSenzaSostitutivo && (
         <p className="mb-4 text-sm text-warn bg-warn-soft rounded-control px-3 py-2 flex items-center justify-between">
           <span>Filtro attivo: solo pratiche aperte <strong>senza</strong> mezzo sostitutivo assegnato</span>
-          <a href="/replacements" className="underline">rimuovi filtro</a>
+          <a href={stationFilter && user.role === "ADMIN" ? `/replacements?station=${stationFilter}` : "/replacements"} className="underline">rimuovi filtro</a>
+        </p>
+      )}
+
+      {filterStation && (
+        <p className="mb-4 text-sm text-info bg-info-soft rounded-control px-3 py-2 flex items-center justify-between">
+          <span>Filtro attivo: solo stazione <strong>{filterStation.code} — {filterStation.name}</strong></span>
+          <a href={soloSenzaSostitutivo ? "/replacements?senzaSostitutivo=1" : "/replacements"} className="underline">rimuovi filtro</a>
         </p>
       )}
 
@@ -140,7 +149,7 @@ export default async function ReplacementsPage({
           </table>
           <div className="px-3 pb-3">
             <SourceNote>
-              tabella ReplacementCase{scope.stationId ? " (propria stazione)" : " (cluster)"} — giorni/storno congelati all&apos;invio, altrimenti calcolati a oggi ({oggi.toLocaleDateString("it-IT")}) su canone corrente
+              tabella ReplacementCase{stationFilter ? ` (stazione ${filterStation?.code ?? ""})` : " (cluster)"} — giorni/storno congelati all&apos;invio, altrimenti calcolati a oggi ({oggi.toLocaleDateString("it-IT")}) su canone corrente
             </SourceNote>
           </div>
         </div>

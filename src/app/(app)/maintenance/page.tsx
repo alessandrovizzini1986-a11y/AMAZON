@@ -15,21 +15,23 @@ const ORDER: Record<Urgency, number> = { danger: 0, warn: 1, ok: 2 };
 export default async function MaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; station?: string }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
   const scope = stationScope(user);
   const view = params.view ?? "alerts";
+  const stationFilter = scope.stationId ?? (user.role === "ADMIN" ? params.station || null : null);
 
-  const [vehicles, sogliaGiorni, sogliaKm] = await Promise.all([
+  const [vehicles, sogliaGiorni, sogliaKm, filterStation] = await Promise.all([
     db.vehicle.findMany({
-      where: { ...(scope.stationId ? { stationId: scope.stationId } : {}), stato: { not: "DISMESSO" } },
+      where: { ...(stationFilter ? { stationId: stationFilter } : {}), stato: { not: "DISMESSO" } },
       include: { station: true },
       orderBy: { targa: "asc" },
     }),
     getConfigNumberArray("maint.alert.giorni"),
     getConfigNumberArray("maint.alert.km"),
+    stationFilter && user.role === "ADMIN" ? db.station.findUnique({ where: { id: stationFilter } }) : Promise.resolve(null),
   ]);
 
   const oggi = new Date();
@@ -63,12 +65,19 @@ export default async function MaintenancePage({
         action={can(user, "maintenance.manage") ? <Link href="/maintenance/new" className="btn-primary">+ Registra intervento</Link> : undefined}
       />
 
+      {filterStation && (
+        <p className="mb-4 text-sm text-info bg-info-soft rounded-control px-3 py-2 flex items-center justify-between">
+          <span>Filtro attivo: solo stazione <strong>{filterStation.code} — {filterStation.name}</strong></span>
+          <a href="/maintenance" className="underline">rimuovi filtro</a>
+        </p>
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="flex rounded-control border border-line overflow-hidden text-sm font-semibold">
-          <Link href="?view=alerts" className={`px-4 py-2 ${view === "alerts" ? "bg-brand text-ink-inverse" : "bg-surface-raised"}`}>
+          <Link href={`?view=alerts${stationFilter ? `&station=${stationFilter}` : ""}`} className={`px-4 py-2 ${view === "alerts" ? "bg-brand text-ink-inverse" : "bg-surface-raised"}`}>
             Solo alert
           </Link>
-          <Link href="?view=all" className={`px-4 py-2 ${view === "all" ? "bg-brand text-ink-inverse" : "bg-surface-raised"}`}>
+          <Link href={`?view=all${stationFilter ? `&station=${stationFilter}` : ""}`} className={`px-4 py-2 ${view === "all" ? "bg-brand text-ink-inverse" : "bg-surface-raised"}`}>
             Tutti i veicoli
           </Link>
         </div>
@@ -112,7 +121,7 @@ export default async function MaintenancePage({
           </table>
           <div className="px-3 pb-3">
             <SourceNote>
-              tabella Vehicle{scope.stationId ? " (propria stazione)" : " (cluster)"}, soglie da AppConfig (maint.alert.giorni / maint.alert.km), calcolo al {oggi.toLocaleDateString("it-IT")}
+              tabella Vehicle{stationFilter ? ` (stazione ${filterStation?.code ?? ""})` : " (cluster)"}, soglie da AppConfig (maint.alert.giorni / maint.alert.km), calcolo al {oggi.toLocaleDateString("it-IT")}
             </SourceNote>
           </div>
         </div>
