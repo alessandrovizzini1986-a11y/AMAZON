@@ -20,18 +20,20 @@ const STATO_TONE: Record<string, "ok" | "warn" | "danger" | "info" | "neutral"> 
 export default async function ReplacementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; stato?: string }>;
+  searchParams: Promise<{ error?: string; stato?: string; senzaSostitutivo?: string }>;
 }) {
   const user = await requireUser();
   assertCan(user, "replacement.manage");
   const params = await searchParams;
   const scope = stationScope(user);
+  const soloSenzaSostitutivo = params.senzaSostitutivo === "1";
 
   const [cases, vehicles, sogliaStagnante, giorniConvenzionaliMese] = await Promise.all([
     db.replacementCase.findMany({
       where: {
         ...(scope.stationId ? { vehicle: { stationId: scope.stationId } } : {}),
         ...(params.stato ? { stato: params.stato as never } : {}),
+        ...(soloSenzaSostitutivo ? { replacementVehicleId: null, stato: { not: "CHIUSA" } } : {}),
       },
       include: { vehicle: { include: { station: true } }, replacementVehicle: true },
       orderBy: { dataIngressoOfficina: "desc" },
@@ -73,6 +75,13 @@ export default async function ReplacementsPage({
 
       {params.error && (
         <p className="mb-4 text-sm text-danger bg-danger-soft rounded-control px-3 py-2">{params.error}</p>
+      )}
+
+      {soloSenzaSostitutivo && (
+        <p className="mb-4 text-sm text-warn bg-warn-soft rounded-control px-3 py-2 flex items-center justify-between">
+          <span>Filtro attivo: solo pratiche aperte <strong>senza</strong> mezzo sostitutivo assegnato</span>
+          <a href="/replacements" className="underline">rimuovi filtro</a>
+        </p>
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
