@@ -9,6 +9,7 @@ import { checkTagliando, checkRevisione } from "@/domain/maintenance";
 import { getConfigNumberArray } from "@/lib/config";
 import { VehicleForm, STATUS_LABELS, FUEL_LABELS } from "../VehicleForm";
 import { updateVehicleAction } from "../actions";
+import { DamageDiagram } from "../DamageDiagram";
 
 export const dynamic = "force-dynamic";
 
@@ -214,6 +215,10 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
             </ul>
           )}
         </section>
+      </div>
+
+      <div className="mt-6">
+        <DamageDiagram damages={vehicle.damages} />
       </div>
 
       {/* ultime movimentazioni */}
