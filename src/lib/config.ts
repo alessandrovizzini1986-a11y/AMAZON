@@ -51,6 +51,11 @@ export const CONFIG_DEFAULTS: Record<
     type: "number",
     description: "Tolleranza (frazione) oltre il consumo atteso prima di segnalare anomalia",
   },
+  "fine.riaddebito.scadenzaGiorni": {
+    value: "30",
+    type: "number",
+    description: "Giorni dalla notifica oltre i quali, se non è stato assegnato un conducente, la multa diventa automaticamente a carico azienda (non più addebitabile)",
+  },
 };
 
 export async function getConfigRaw(key: string): Promise<string> {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scadenzaRicorso, findDriverForFine, type AssignmentWindow } from "@/domain/fines";
+import { scadenzaRicorso, findDriverForFine, riaddebitoEffettivo, type AssignmentWindow } from "@/domain/fines";
 
 describe("scadenzaRicorso", () => {
   it("aggiunge il termine configurato alla data di notifica", () => {
@@ -45,5 +45,37 @@ describe("findDriverForFine — assegnazione da log movimentazione", () => {
     const r = findDriverForFine(new Date(Date.UTC(2026, 2, 10, 20, 0)), [rossi]);
     expect(r?.driverId).toBe("u1");
     expect(r?.fonte).toContain("assegnazione giornaliera");
+  });
+});
+
+describe("riaddebitoEffettivo — scadenza automatica a carico azienda", () => {
+  const oggi = new Date(Date.UTC(2026, 6, 13));
+
+  it("resta 'da addebitare' entro la soglia senza conducente", () => {
+    const dataNotifica = new Date(Date.UTC(2026, 6, 1)); // 12 giorni fa
+    const r = riaddebitoEffettivo({ riaddebito: "DA_ADDEBITARE", driverId: null, dataNotifica, oggi, sogliaGiorni: 30 });
+    expect(r).toBe("DA_ADDEBITARE");
+  });
+
+  it("diventa 'non previsto' oltre la soglia senza conducente", () => {
+    const dataNotifica = new Date(Date.UTC(2026, 4, 1)); // ~73 giorni fa
+    const r = riaddebitoEffettivo({ riaddebito: "DA_ADDEBITARE", driverId: null, dataNotifica, oggi, sogliaGiorni: 30 });
+    expect(r).toBe("NON_PREVISTO");
+  });
+
+  it("non scade se un conducente è già assegnato", () => {
+    const dataNotifica = new Date(Date.UTC(2026, 4, 1));
+    const r = riaddebitoEffettivo({ riaddebito: "DA_ADDEBITARE", driverId: "u1", dataNotifica, oggi, sogliaGiorni: 30 });
+    expect(r).toBe("DA_ADDEBITARE");
+  });
+
+  it("non tocca stati già decisi manualmente (ADDEBITATO, CONTESTATO, ecc.)", () => {
+    const dataNotifica = new Date(Date.UTC(2026, 4, 1));
+    expect(riaddebitoEffettivo({ riaddebito: "ADDEBITATO", driverId: null, dataNotifica, oggi, sogliaGiorni: 30 })).toBe("ADDEBITATO");
+  });
+
+  it("senza data di notifica il termine non è ancora partito", () => {
+    const r = riaddebitoEffettivo({ riaddebito: "DA_ADDEBITARE", driverId: null, dataNotifica: null, oggi, sogliaGiorni: 30 });
+    expect(r).toBe("DA_ADDEBITARE");
   });
 });

@@ -11,7 +11,7 @@ import {
  * etichette/tabella dettaglio come "relief" (regola del validatore).
  */
 export const SERIES_COLORS = {
-  manutenzione: "#2a78d6",
+  danni: "#2a78d6",
   carburante: "#1baf7a",
   pedaggi: "#eda100",
   multe: "#008300",
@@ -23,7 +23,9 @@ const eur = (v: number) =>
 export type CostRow = {
   station: string; // codice stazione
   stationId: string;
-  manutenzione: number;
+  veicoli: number;
+  canone: number; // impegno mensile corrente, non una spesa "ultimi 30gg" — non entra nel grafico impilato
+  danni: number;
   carburante: number;
   pedaggi: number;
   multe: number;

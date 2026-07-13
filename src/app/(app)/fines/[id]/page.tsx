@@ -5,7 +5,8 @@ import { can } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { PageHeader, StatusBadge, SourceNote } from "@/components/ui";
 import { fmtDate, fmtDateTime, fmtEur } from "@/lib/format";
-import { giorniAllaScadenza } from "@/domain/fines";
+import { giorniAllaScadenza, riaddebitoEffettivo } from "@/domain/fines";
+import { getConfigNumber } from "@/lib/config";
 import { FINE_TONE, RICORSO_LABELS, RIADDEBITO_LABELS } from "../constants";
 import { notifyFineAction, assignFineDriverAction, updateFineStatusAction, chargebackFineAction } from "../actions";
 
@@ -28,6 +29,11 @@ export default async function FineDetailPage({ params }: { params: Promise<{ id:
   const canManage = can(user, "fine.manage");
   const oggi = new Date();
   const giorniRicorso = fine.scadenzaRicorso ? giorniAllaScadenza(fine.scadenzaRicorso, oggi) : null;
+  const sogliaRiaddebito = await getConfigNumber("fine.riaddebito.scadenzaGiorni");
+  const riaddebito = riaddebitoEffettivo({
+    riaddebito: fine.riaddebito, driverId: fine.driverId, dataNotifica: fine.dataNotifica, oggi, sogliaGiorni: sogliaRiaddebito,
+  });
+  const riaddebitoScaduto = riaddebito !== fine.riaddebito;
 
   const drivers = canManage
     ? await db.user.findMany({
@@ -80,7 +86,15 @@ export default async function FineDetailPage({ params }: { params: Promise<{ id:
             </dd>
             <dt className="text-ink-muted">Stato ricorso</dt><dd>{RICORSO_LABELS[fine.statoRicorso]}</dd>
             <dt className="text-ink-muted">Riaddebito driver</dt>
-            <dd>{RIADDEBITO_LABELS[fine.riaddebito]}{fine.importoRiaddebito ? ` · ${fmtEur(Number(fine.importoRiaddebito))}` : ""}</dd>
+            <dd>
+              {RIADDEBITO_LABELS[riaddebito]}{fine.importoRiaddebito ? ` · ${fmtEur(Number(fine.importoRiaddebito))}` : ""}
+              {riaddebitoScaduto && (
+                <div className="text-xs text-warn mt-1">
+                  Termine di {sogliaRiaddebito}gg dalla notifica scaduto senza conducente assegnato — automaticamente a carico azienda.
+                  {canManage && " Conferma qui sotto se vuoi salvare formalmente lo stato."}
+                </div>
+              )}
+            </dd>
           </dl>
           {fine.noteRicorso && <p className="text-xs bg-surface-sunken rounded-control p-2">{fine.noteRicorso}</p>}
         </section>
@@ -154,7 +168,7 @@ export default async function FineDetailPage({ params }: { params: Promise<{ id:
               <h2 className="font-semibold">Riaddebito al driver</h2>
               <p className="text-xs text-ink-muted">Applicabile solo se previsto da contratto/policy. Ogni modifica lascia audit trail.</p>
               <form action={chargebackFineAction.bind(null, fine.id)} className="space-y-2">
-                <select className="input" name="riaddebito" defaultValue={fine.riaddebito}>
+                <select className="input" name="riaddebito" defaultValue={riaddebito}>
                   {Object.entries(RIADDEBITO_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
                 <input className="input" type="number" step="0.01" min={0} name="importoRiaddebito"
