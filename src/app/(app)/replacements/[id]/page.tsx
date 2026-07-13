@@ -58,6 +58,8 @@ export default async function ReplacementDetailPage({ params }: { params: Promis
       <PageHeader
         title={`Pratica sostitutivo — ${rc.vehicle.targa}`}
         subtitle={`${rc.motivo} · ingresso officina ${fmtDate(rc.dataIngressoOfficina)} · ${rc.centroConvenzionato}`}
+        backHref="/replacements"
+        backLabel="Sostitutivi"
         action={
           <div className="flex gap-2">
             <StatusBadge tone={rc.stato === "CONFERMATA" ? "ok" : rc.stato === "CONTESTATA" ? "danger" : rc.stato === "APERTA" ? "warn" : "info"}>{rc.stato}</StatusBadge>
