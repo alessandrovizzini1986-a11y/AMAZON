@@ -210,7 +210,7 @@ async function main() {
       userId: admin?.id ?? null,
       action: "import.multe.2025_2026",
       entity: "Fine",
-      meta: { created, skippedNotInDb, skippedDuplicate, skippedNoDate, skippedNoImporto, targheNonInDb: [...notInDb], puntiAnomalie },
+      meta: JSON.parse(JSON.stringify({ created, skippedNotInDb, skippedDuplicate, skippedNoDate, skippedNoImporto, targheNonInDb: [...notInDb], puntiAnomalie })),
     },
   });
 
