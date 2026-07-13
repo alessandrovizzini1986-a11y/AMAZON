@@ -51,6 +51,8 @@ export default async function FineDetailPage({ params }: { params: Promise<{ id:
         title={`Multa ${fine.verbaleNo ?? ""} — ${fine.vehicle.targa}`}
         subtitle={`${fine.tipoViolazione} · ${fine.luogo}`}
         action={<StatusBadge tone={FINE_TONE[fine.stato]}>{fine.stato.replaceAll("_", " ")}</StatusBadge>}
+        backHref="/fines"
+        backLabel={user.role === "DRIVER" ? "Le mie multe" : "Multe"}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

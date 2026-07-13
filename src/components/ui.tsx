@@ -4,14 +4,26 @@ export function PageHeader({
   title,
   subtitle,
   action,
+  backHref,
+  backLabel = "Indietro",
 }: {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
+  /** Se presente, mostra un link "← backLabel" sopra il titolo — serve soprattutto
+   *  nelle pagine di dettaglio raggiunte da una riga di tabella, dove su mobile
+   *  non c'è un modo ovvio per tornare all'elenco (la bottom nav non ha "indietro"). */
+  backHref?: string;
+  backLabel?: string;
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
+        {backHref && (
+          <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-brand hover:underline mb-2">
+            ← {backLabel}
+          </Link>
+        )}
         <h1 className="text-xl md:text-2xl font-bold">{title}</h1>
         {subtitle && <p className="text-sm text-ink-muted mt-1">{subtitle}</p>}
       </div>

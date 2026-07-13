@@ -2,20 +2,12 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { can, stationScope } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { PageHeader, StatusBadge, EmptyState, SourceNote } from "@/components/ui";
-import { fmtEur, fmtKm } from "@/lib/format";
+import { PageHeader } from "@/components/ui";
 import { STATUS_LABELS, FUEL_LABELS } from "./VehicleForm";
+import { VehicleTable, type VehicleRow } from "./VehicleTable";
 import type { VehicleStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_TONE: Record<string, "ok" | "warn" | "danger" | "neutral" | "info"> = {
-  ATTIVO: "ok",
-  IN_OFFICINA: "warn",
-  SOSTITUTIVO: "info",
-  UFFICIO: "neutral",
-  DISMESSO: "neutral",
-};
 
 export default async function VehiclesPage({
   searchParams,
@@ -37,6 +29,20 @@ export default async function VehiclesPage({
   ]);
 
   const isAdmin = user.role === "ADMIN";
+
+  const rows: VehicleRow[] = vehicles.map((v) => ({
+    id: v.id,
+    targa: v.targa,
+    modello: v.modello,
+    allestimento: v.allestimento,
+    alimentazioneLabel: FUEL_LABELS[v.alimentazione],
+    hvoNote: v.hvoCompatibile && v.alimentazione !== "DIESEL_HVO",
+    stationCode: v.station.code,
+    stato: v.stato,
+    kmAttuali: v.kmAttuali,
+    canoneMese: v.canoneMese ? Number(v.canoneMese) : null,
+    leasingCompany: v.leasingCompany,
+  }));
 
   return (
     <div>
@@ -65,43 +71,7 @@ export default async function VehiclesPage({
         <button className="btn-secondary">Filtra</button>
       </form>
 
-      {vehicles.length === 0 ? (
-        <EmptyState message="Nessun veicolo trovato con questi filtri. Usa Import dati per il caricamento iniziale." />
-      ) : (
-        <div className="card overflow-x-auto">
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th>Targa</th><th>Modello</th><th>Alimentazione</th><th>Stazione</th>
-                <th>Stato</th><th>Km</th><th>Canone/mese</th><th>Leasing</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map((v) => (
-                <tr key={v.id}>
-                  <td>
-                    <Link href={`/vehicles/${v.id}`} className="font-mono font-semibold text-brand hover:underline">
-                      {v.targa}
-                    </Link>
-                  </td>
-                  <td>{v.modello}{v.allestimento ? ` · ${v.allestimento}` : ""}</td>
-                  <td>{FUEL_LABELS[v.alimentazione]}{v.hvoCompatibile && v.alimentazione !== "DIESEL_HVO" ? " (HVO ok)" : ""}</td>
-                  <td>{v.station.code}</td>
-                  <td><StatusBadge tone={STATUS_TONE[v.stato]}>{STATUS_LABELS[v.stato]}</StatusBadge></td>
-                  <td className="whitespace-nowrap">{fmtKm(v.kmAttuali)}</td>
-                  <td className="whitespace-nowrap">{isAdmin && v.canoneMese ? fmtEur(Number(v.canoneMese)) : "—"}</td>
-                  <td>{v.leasingCompany ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-3 pb-3">
-            <SourceNote>
-              tabella Vehicle{scope.stationId ? ", filtro stazione utente" : params.station ? ", filtro stazione selezionata" : ", tutte le stazioni"} — {vehicles.length} veicoli al {new Date().toLocaleDateString("it-IT")}
-            </SourceNote>
-          </div>
-        </div>
-      )}
+      <VehicleTable vehicles={rows} statusLabels={STATUS_LABELS} isAdmin={isAdmin} />
     </div>
   );
 }

@@ -57,6 +57,8 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
         title={`${vehicle.targa} — ${vehicle.modello}`}
         subtitle={`${vehicle.station.code} · ${FUEL_LABELS[vehicle.alimentazione]}${vehicle.immatricolazione ? ` · immatricolato ${fmtDate(vehicle.immatricolazione)}` : ""}`}
         action={<StatusBadge tone={vehicle.stato === "ATTIVO" ? "ok" : vehicle.stato === "DISMESSO" ? "neutral" : "warn"}>{STATUS_LABELS[vehicle.stato]}</StatusBadge>}
+        backHref="/vehicles"
+        backLabel="Flotta"
       />
 
       {/* stato sintetico manutenzione */}
