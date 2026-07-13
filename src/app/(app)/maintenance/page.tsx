@@ -25,7 +25,9 @@ export default async function MaintenancePage({
 
   const [vehicles, sogliaGiorni, sogliaKm, filterStation] = await Promise.all([
     db.vehicle.findMany({
-      where: { ...(stationFilter ? { stationId: stationFilter } : {}), stato: { not: "DISMESSO" } },
+      // gestiamo il tagliandi solo per i veicoli Ayvens/ALD (no ALD MT, no
+      // altri noleggi): per quelli lo scadenzario è a cura del fornitore
+      where: { ...(stationFilter ? { stationId: stationFilter } : {}), stato: { not: "DISMESSO" }, leasingCompany: "ALD" },
       include: { station: true },
       orderBy: { targa: "asc" },
     }),
@@ -61,7 +63,7 @@ export default async function MaintenancePage({
     <div>
       <PageHeader
         title="Scadenzario tagliandi e revisioni"
-        subtitle={`Soglie alert: ${sogliaGiorni.join("/")} giorni · ${sogliaKm.join("/")} km (configurabili da Admin)`}
+        subtitle={`Solo veicoli Ayvens/ALD (no ALD MT) · soglie alert: ${sogliaGiorni.join("/")} giorni · ${sogliaKm.join("/")} km (configurabili da Admin)`}
         action={can(user, "maintenance.manage") ? <Link href="/maintenance/new" className="btn-primary">+ Registra intervento</Link> : undefined}
       />
 

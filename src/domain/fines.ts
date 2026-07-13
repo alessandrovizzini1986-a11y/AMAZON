@@ -56,3 +56,26 @@ export function findDriverForFine(
   // 3) da assegnare
   return null;
 }
+
+export type ChargebackStato = "NON_PREVISTO" | "DA_ADDEBITARE" | "ADDEBITATO" | "CONTESTATO" | "SALDATO";
+
+/**
+ * Una multa "da addebitare" senza conducente assegnato entro la soglia
+ * configurata (dalla notifica) diventa automaticamente a carico azienda:
+ * non è più possibile risalire a chi guidava per addebitargliela. Calcolato
+ * live per la visualizzazione — non muta lo stato salvato finché un admin
+ * non lo conferma esplicitamente (coerente con importoStorno/giorniScoperti).
+ */
+export function riaddebitoEffettivo(params: {
+  riaddebito: ChargebackStato;
+  driverId: string | null;
+  dataNotifica: Date | null;
+  oggi: Date;
+  sogliaGiorni: number;
+}): ChargebackStato {
+  if (params.riaddebito !== "DA_ADDEBITARE") return params.riaddebito;
+  if (params.driverId) return params.riaddebito;
+  if (!params.dataNotifica) return params.riaddebito;
+  const giorni = Math.floor((params.oggi.getTime() - params.dataNotifica.getTime()) / MS_DAY);
+  return giorni >= params.sogliaGiorni ? "NON_PREVISTO" : params.riaddebito;
+}

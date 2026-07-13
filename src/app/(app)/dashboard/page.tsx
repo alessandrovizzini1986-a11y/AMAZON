@@ -4,7 +4,7 @@ import { assertCan } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { getConfigNumber, getConfigNumberArray } from "@/lib/config";
 import { checkTagliando, checkRevisione } from "@/domain/maintenance";
-import { giorniScoperti, importoStorno, isPraticaStagnante } from "@/domain/replacement";
+import { isPraticaStagnante } from "@/domain/replacement";
 import { PageHeader, KpiCard, SourceNote } from "@/components/ui";
 import { fmtEur } from "@/lib/format";
 import { CostByStationChart, FinesTrendChart, type CostRow, type WeekRow } from "./charts";
@@ -30,7 +30,7 @@ export default async function DashboardPage({
   since.setDate(since.getDate() - 30);
   const oggi = new Date();
 
-  const [stations, vehicles, sogliaGiorni, sogliaKm, sogliaStagnante, giorniConvenzionaliMese] = await Promise.all([
+  const [stations, vehicles, sogliaGiorni, sogliaKm, sogliaStagnante] = await Promise.all([
     db.station.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
     db.vehicle.findMany({
       where: { stato: { not: "DISMESSO" }, ...(stationFilter ? { stationId: stationFilter } : {}) },
@@ -39,14 +39,12 @@ export default async function DashboardPage({
     getConfigNumberArray("maint.alert.giorni"),
     getConfigNumberArray("maint.alert.km"),
     getConfigNumber("replacement.alert.giorniSenzaRisposta"),
-    getConfigNumber("replacement.giorniConvenzionaliMese"),
   ]);
 
   const vehicleIds = vehicles.map((v) => v.id);
   const vehicleStation = new Map(vehicles.map((v) => [v.id, v.station.code]));
 
-  const [services, fines, fuelTx, tolls, openCases, damagesOpen, finesDaAssegnare] = await Promise.all([
-    db.serviceRecord.findMany({ where: { data: { gte: since }, vehicleId: { in: vehicleIds } }, select: { vehicleId: true, costo: true } }),
+  const [fines, fuelTx, tolls, damages, openCases, damagesOpen, finesDaAssegnare] = await Promise.all([
     db.fine.findMany({
       where: { dataOraInfrazione: { gte: new Date(oggi.getTime() - 56 * 86400000) }, vehicleId: { in: vehicleIds } },
       select: { vehicleId: true, importo: true, dataOraInfrazione: true },
@@ -59,6 +57,10 @@ export default async function DashboardPage({
       where: { data: { gte: since }, ...(stationFilter ? { stationId: stationFilter } : {}) },
       select: { stationId: true, importo: true },
     }),
+    db.damage.findMany({
+      where: { data: { gte: since }, vehicleId: { in: vehicleIds }, costoStimato: { not: null } },
+      select: { vehicleId: true, costoStimato: true },
+    }),
     db.replacementCase.findMany({
       where: { stato: { in: ["APERTA", "INVIATA", "CONTESTATA"] }, vehicleId: { in: vehicleIds } },
       include: { vehicle: true },
@@ -67,15 +69,17 @@ export default async function DashboardPage({
     db.fine.count({ where: { driverId: null, stato: { not: "ANNULLATA" }, vehicleId: { in: vehicleIds } } }),
   ]);
 
-  // ---- KPI manutenzione (stessa logica del modulo tagliandi: fonte unica) ----
+  // ---- KPI manutenzione (solo veicoli Ayvens/ALD — gestiamo il tagliandi
+  // solo per questi, ALD MT e gli altri noleggi restano fuori dal perimetro) ----
   // checkTagliando/checkRevisione tornano "warn" anche quando manca lo scadenzario
   // (nessuna data/km pianificati) — per il KPI un dato mancante non è un alert
   // reale, altrimenti l'intera flotta senza scadenzario importato risulterebbe
   // "in scadenza" (bug osservato: 513/513, cioè l'intero parco).
+  const veicoliAld = vehicles.filter((v) => v.leasingCompany === "ALD");
   let dangerManutenzione = 0;
   let warnManutenzione = 0;
   let datiMancantiManutenzione = 0;
-  for (const v of vehicles) {
+  for (const v of veicoliAld) {
     const t = checkTagliando({
       oggi, kmAttuali: v.kmAttuali,
       prossimoTagliandoData: v.prossimoTagliandoData, prossimoTagliandoKm: v.prossimoTagliandoKm,
@@ -99,18 +103,8 @@ export default async function DashboardPage({
   }
   const alertManutenzione = dangerManutenzione + warnManutenzione;
 
-  // ---- storno canone attivo ----
-  let stornoAttivo = 0;
   let praticheStagnanti = 0;
   for (const c of openCases) {
-    const giorni = c.giorniScoperti ?? giorniScoperti({
-      dataIngressoOfficina: c.dataIngressoOfficina,
-      dataRicezioneSostitutivo: c.dataRicezioneSostitutivo,
-      dataRientroOriginale: c.dataRientroOriginale,
-      oggi,
-    });
-    const canone = Number(c.canoneMeseSnapshot ?? c.vehicle.canoneMese ?? 0);
-    stornoAttivo += c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone, giorniConvenzionaliMese);
     if (isPraticaStagnante({ stato: c.stato, inviataAt: c.inviataAt, oggi, sogliaGiorni: sogliaStagnante })) praticheStagnanti++;
   }
 
@@ -125,29 +119,41 @@ export default async function DashboardPage({
   const veicoliSostitutivi = vehicles.filter((v) => v.stato === "SOSTITUTIVO").length;
   const sostitutiviMancanti = openCases.filter((c) => !c.replacementVehicleId).length;
 
-  // ---- costi per stazione (mai compensati tra loro) ----
+  // ---- veicoli e costi per stazione (mai compensati tra loro) ----
+  // manutenzione non è una voce a parte: è sempre inclusa nel canone di
+  // noleggio (rete convenzionata) e mostrarla come costo aggiuntivo è
+  // fuorviante. Il canone è un impegno mensile fisso (non una spesa
+  // "ultimi 30gg" come le altre voci) ma è la voce di costo più importante
+  // quindi resta la prima colonna.
   const byStation = new Map<string, CostRow>();
   const stationList = stationFilter ? stations.filter((s) => s.id === stationFilter) : stations;
   for (const s of stationList) {
-    byStation.set(s.code, { station: s.code, stationId: s.id, manutenzione: 0, carburante: 0, pedaggi: 0, multe: 0 });
+    byStation.set(s.code, { station: s.code, stationId: s.id, veicoli: 0, canone: 0, danni: 0, carburante: 0, pedaggi: 0, multe: 0 });
   }
-  const add = (code: string | undefined, key: "manutenzione" | "carburante" | "pedaggi" | "multe", v: number) => {
+  const add = (code: string | undefined, key: "danni" | "carburante" | "pedaggi" | "multe", v: number) => {
     if (!code) return;
     const row = byStation.get(code);
     if (row) row[key] += v;
   };
-  for (const r of services) add(vehicleStation.get(r.vehicleId), "manutenzione", Number(r.costo));
+  for (const v of vehicles) {
+    const row = byStation.get(v.station.code);
+    if (row) { row.veicoli += 1; row.canone += Number(v.canoneMese ?? 0); }
+  }
+  for (const d of damages) add(vehicleStation.get(d.vehicleId), "danni", Number(d.costoStimato ?? 0));
   for (const t of fuelTx) add(t.fuelCard.vehicleId ? vehicleStation.get(t.fuelCard.vehicleId) : undefined, "carburante", Number(t.importo));
   for (const t of tolls) add(stations.find((s) => s.id === t.stationId)?.code, "pedaggi", Number(t.importo));
   for (const f of fines.filter((f) => f.dataOraInfrazione >= since)) add(vehicleStation.get(f.vehicleId), "multe", Number(f.importo));
   const costRows = [...byStation.values()].map((r) => ({
     ...r,
-    manutenzione: Math.round(r.manutenzione),
+    canone: Math.round(r.canone),
+    danni: Math.round(r.danni),
     carburante: Math.round(r.carburante),
     pedaggi: Math.round(r.pedaggi),
     multe: Math.round(r.multe),
   }));
-  const totCosti = costRows.reduce((s, r) => s + r.manutenzione + r.carburante + r.pedaggi + r.multe, 0);
+  const totVeicoli = costRows.reduce((s, r) => s + r.veicoli, 0);
+  const totCanone = costRows.reduce((s, r) => s + r.canone, 0);
+  const totTransazionale = costRows.reduce((s, r) => s + r.danni + r.carburante + r.pedaggi + r.multe, 0);
 
   // ---- trend multe 8 settimane ----
   const weeks: WeekRow[] = [];
@@ -204,9 +210,6 @@ export default async function DashboardPage({
         <KpiCard label="Multe da assegnare" value={finesDaAssegnare} href={withStation("/fines?assegnazione=da_assegnare")}
           tone={finesDaAssegnare > 0 ? "warn" : "ok"}
           source="Fine con driverId nullo" />
-        <KpiCard label="Storno canone attivo" value={fmtEur(stornoAttivo)} href={withStation("/replacements")}
-          tone="neutral"
-          source="pratiche non chiuse, giorni×canone" />
         <KpiCard label="Pratiche senza risposta" value={praticheStagnanti} href={withStation("/replacements")}
           tone={praticheStagnanti > 0 ? "danger" : "ok"}
           source={`inviate da >${sogliaStagnante}gg (AppConfig)`} />
@@ -215,16 +218,43 @@ export default async function DashboardPage({
           source="Damage con chiuso=false" />
       </div>
 
+      {/* veicoli e canone per stazione — prima cosa da vedere, sempre visibile senza scroll */}
+      <section className="card p-5 mb-6">
+        <h2 className="font-semibold mb-3">Veicoli per stazione</h2>
+        <div className="overflow-x-auto">
+          <table className="table-base max-w-2xl">
+            <thead><tr><th>Stazione</th><th>Veicoli</th><th>Canone mensile</th></tr></thead>
+            <tbody>
+              {costRows.map((r) => (
+                <tr key={r.stationId}>
+                  <td>
+                    <Link className="text-brand hover:underline" href={`/vehicles?station=${r.stationId}`}>{r.station}</Link>
+                  </td>
+                  <td className="font-semibold">{r.veicoli}</td>
+                  <td>{fmtEur(r.canone)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-line font-semibold">
+                <td>Totale</td>
+                <td>{totVeicoli}</td>
+                <td>{fmtEur(totCanone)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <SourceNote>tabella Vehicle, non dismessi, per stazione{stationFilter ? ` (${scopeLabel})` : ""} — canone: impegno mensile corrente, non una spesa "ultimi 30gg"</SourceNote>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <section className="card p-5">
           <h2 className="font-semibold">Costi per stazione — ultimi 30 giorni</h2>
           <p className="text-xs text-ink-muted mb-2">
-            Totale {fmtEur(totCosti)} · le stazioni non si compensano mai tra loro · click su una barra per la vista di stazione
+            Totale {fmtEur(totTransazionale)} · le stazioni non si compensano mai tra loro · click su una barra per la vista di stazione
           </p>
 
-          {totCosti === 0 && (
+          {totTransazionale === 0 && (
             <p className="mb-3 text-sm text-ink-muted bg-surface rounded-control px-3 py-2 border border-line">
-              Nessun costo registrato negli ultimi 30 giorni per {scopeLabel}.{" "}
+              Nessun costo (danni/carburante/pedaggi/multe) registrato negli ultimi 30 giorni per {scopeLabel}.{" "}
               <Link href="/import" className="text-brand underline">Carica fatture/transazioni del mese →</Link>
             </p>
           )}
@@ -234,32 +264,42 @@ export default async function DashboardPage({
           <div className="overflow-x-auto mt-3">
             <table className="table-base">
               <thead>
-                <tr><th>Stazione</th><th>Manutenzione</th><th>Carburante</th><th>Pedaggi</th><th>Multe</th><th>Totale</th><th>Dettaglio</th></tr>
+                <tr><th>Stazione</th><th>Danni</th><th>Carburante</th><th>Pedaggi</th><th>Multe</th><th>Totale</th><th>Dettaglio</th></tr>
               </thead>
               <tbody>
                 {costRows.map((r) => {
-                  const rigaAZero = r.manutenzione === 0 && r.carburante === 0 && r.pedaggi === 0 && r.multe === 0;
+                  const rigaAZero = r.danni === 0 && r.carburante === 0 && r.pedaggi === 0 && r.multe === 0;
                   return (
                     <tr key={r.stationId} className={rigaAZero ? "opacity-50" : ""}>
                       <td className="font-semibold">{r.station}</td>
-                      <td>{fmtEur(r.manutenzione)}</td>
+                      <td>{fmtEur(r.danni)}</td>
                       <td>{fmtEur(r.carburante)}</td>
                       <td>{fmtEur(r.pedaggi)}</td>
                       <td>{fmtEur(r.multe)}</td>
-                      <td className="font-semibold">{fmtEur(r.manutenzione + r.carburante + r.pedaggi + r.multe)}</td>
+                      <td className="font-semibold">{fmtEur(r.danni + r.carburante + r.pedaggi + r.multe)}</td>
                       <td className="text-xs whitespace-nowrap">
                         <Link className="text-brand underline" href={`/vehicles?station=${r.stationId}`}>flotta</Link>{" · "}
+                        <Link className="text-brand underline" href={`/damages?station=${r.stationId}`}>danni</Link>{" · "}
                         <Link className="text-brand underline" href={`/fines?station=${r.stationId}`}>multe</Link>{" · "}
                         <Link className="text-brand underline" href={`/fuel?station=${r.stationId}`}>fuel</Link>
                       </td>
                     </tr>
                   );
                 })}
+                <tr className="border-t-2 border-line font-semibold">
+                  <td>Totale</td>
+                  <td>{fmtEur(costRows.reduce((s, r) => s + r.danni, 0))}</td>
+                  <td>{fmtEur(costRows.reduce((s, r) => s + r.carburante, 0))}</td>
+                  <td>{fmtEur(costRows.reduce((s, r) => s + r.pedaggi, 0))}</td>
+                  <td>{fmtEur(costRows.reduce((s, r) => s + r.multe, 0))}</td>
+                  <td>{fmtEur(totTransazionale)}</td>
+                  <td></td>
+                </tr>
               </tbody>
             </table>
           </div>
           <SourceNote>
-            ServiceRecord.costo + FuelTransaction.importo (per PAN→veicolo) + TollTransaction.importo + Fine.importo, dal {since.toLocaleDateString("it-IT")} al {oggi.toLocaleDateString("it-IT")}, aggregati per stazione del veicolo
+            Damage.costoStimato + FuelTransaction.importo (per PAN→veicolo) + TollTransaction.importo + Fine.importo, dal {since.toLocaleDateString("it-IT")} al {oggi.toLocaleDateString("it-IT")}, aggregati per stazione del veicolo — manutenzione non è una voce a parte perché sempre inclusa nel canone (vedi tabella veicoli sopra), canone mensile non incluso qui perché non è una spesa del periodo
           </SourceNote>
         </section>
 

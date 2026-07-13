@@ -15,14 +15,15 @@ export default async function NewServicePage({
   const scope = stationScope(user);
 
   const vehicles = await db.vehicle.findMany({
-    where: { ...(scope.stationId ? { stationId: scope.stationId } : {}), stato: { not: "DISMESSO" } },
+    // solo veicoli Ayvens/ALD: gestiamo il tagliandi solo per questi (no ALD MT)
+    where: { ...(scope.stationId ? { stationId: scope.stationId } : {}), stato: { not: "DISMESSO" }, leasingCompany: "ALD" },
     orderBy: { targa: "asc" },
     select: { id: true, targa: true, modello: true },
   });
 
   return (
     <div>
-      <PageHeader title="Registra intervento" subtitle="Tagliando, revisione o riparazione — aggiorna anche km e prossime scadenze" />
+      <PageHeader title="Registra intervento" subtitle="Solo veicoli Ayvens/ALD · tagliando, revisione o riparazione — aggiorna anche km e prossime scadenze" />
       <form action={createServiceRecordAction} className="card p-5 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl">
         <div>
           <label className="label">Veicolo *</label>

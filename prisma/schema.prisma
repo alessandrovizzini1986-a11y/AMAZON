@@ -251,8 +251,11 @@ model Fine {
   scadenzaRicorso DateTime? // 60gg prefetto / 30gg giudice di pace, calcolata da config
   noteRicorso     String?
 
-  // riaddebito al driver secondo policy
-  riaddebito        ChargebackStatus @default(NON_PREVISTO)
+  // riaddebito al driver secondo policy — parte "da addebitare" (in attesa di
+  // assegnazione conducente); se non assegnata entro la soglia configurata
+  // (fine.riaddebito.scadenzaGiorni) diventa automaticamente "non previsto"
+  // (a carico azienda) — vedi domain/fines.ts riaddebitoEffettivo()
+  riaddebito        ChargebackStatus @default(DA_ADDEBITARE)
   importoRiaddebito Decimal?         @db.Decimal(10, 2)
 
   createdAt DateTime @default(now())

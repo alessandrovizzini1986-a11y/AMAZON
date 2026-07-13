@@ -15,9 +15,17 @@ export const RICORSO_LABELS: Record<string, string> = {
 };
 
 export const RIADDEBITO_LABELS: Record<string, string> = {
-  NON_PREVISTO: "Non previsto",
+  NON_PREVISTO: "A carico azienda",
   DA_ADDEBITARE: "Da addebitare",
   ADDEBITATO: "Addebitato",
   CONTESTATO: "Contestato",
   SALDATO: "Saldato",
+};
+
+export const RIADDEBITO_TONE: Record<string, "ok" | "warn" | "danger" | "info" | "neutral"> = {
+  NON_PREVISTO: "neutral",
+  DA_ADDEBITARE: "warn",
+  ADDEBITATO: "ok",
+  CONTESTATO: "danger",
+  SALDATO: "ok",
 };
