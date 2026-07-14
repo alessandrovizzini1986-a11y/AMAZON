@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { getConfigNumber, getConfigNumberArray } from "@/lib/config";
+import { getConfigNumber, getConfigNumberArray, getConfigStringArray } from "@/lib/config";
 import { checkTagliando, checkRevisione } from "@/domain/maintenance";
 import { isPraticaStagnante } from "@/domain/replacement";
 import { PageHeader, KpiCard, SourceNote } from "@/components/ui";
@@ -12,6 +12,26 @@ import { StationFilter } from "./StationFilter";
 import { ExportExcelButton } from "./ExportExcelButton";
 
 export const dynamic = "force-dynamic";
+
+function CostTableRow({ r }: { r: CostRow }) {
+  const rigaAZero = r.danni === 0 && r.carburante === 0 && r.pedaggi === 0 && r.multe === 0;
+  return (
+    <tr className={rigaAZero ? "opacity-50" : ""}>
+      <td className="font-semibold">{r.station}</td>
+      <td>{fmtEur(r.danni)}</td>
+      <td>{fmtEur(r.carburante)}</td>
+      <td>{fmtEur(r.pedaggi)}</td>
+      <td>{fmtEur(r.multe)}</td>
+      <td className="font-semibold">{fmtEur(r.danni + r.carburante + r.pedaggi + r.multe)}</td>
+      <td className="text-xs whitespace-nowrap">
+        <Link className="text-brand underline" href={`/vehicles?station=${r.stationId}`}>flotta</Link>{" · "}
+        <Link className="text-brand underline" href={`/damages?station=${r.stationId}`}>danni</Link>{" · "}
+        <Link className="text-brand underline" href={`/fines?station=${r.stationId}`}>multe</Link>{" · "}
+        <Link className="text-brand underline" href={`/fuel?station=${r.stationId}`}>fuel</Link>
+      </td>
+    </tr>
+  );
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -30,7 +50,7 @@ export default async function DashboardPage({
   since.setDate(since.getDate() - 30);
   const oggi = new Date();
 
-  const [stations, vehicles, sogliaGiorni, sogliaKm, sogliaStagnante] = await Promise.all([
+  const [stations, vehicles, sogliaGiorni, sogliaKm, sogliaStagnante, stazioniNonAmazon] = await Promise.all([
     db.station.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
     db.vehicle.findMany({
       where: { stato: { not: "DISMESSO" }, ...(stationFilter ? { stationId: stationFilter } : {}) },
@@ -39,7 +59,11 @@ export default async function DashboardPage({
     getConfigNumberArray("maint.alert.giorni"),
     getConfigNumberArray("maint.alert.km"),
     getConfigNumber("replacement.alert.giorniSenzaRisposta"),
+    getConfigStringArray("appalto.nonAmazon.stationCodes"),
   ]);
+  // due appalti distinti (Amazon + eventuali altri, es. GLS): i costi/canoni non
+  // vanno mai sommati come se fosse un unico cliente — sempre riportati distinti
+  const isAmazon = (code: string) => !stazioniNonAmazon.includes(code);
 
   const vehicleIds = vehicles.map((v) => v.id);
   const vehicleStation = new Map(vehicles.map((v) => [v.id, v.station.code]));
@@ -155,6 +179,15 @@ export default async function DashboardPage({
   const totCanone = costRows.reduce((s, r) => s + r.canone, 0);
   const totTransazionale = costRows.reduce((s, r) => s + r.danni + r.carburante + r.pedaggi + r.multe, 0);
 
+  // due appalti distinti: subtotale Amazon separato dal totale complessivo,
+  // mostrato solo quando entrambi gli appalti compaiono nella vista corrente
+  // (non ha senso in una vista già filtrata su una singola stazione)
+  const amazonRows = costRows.filter((r) => isAmazon(r.station));
+  const altriRows = costRows.filter((r) => !isAmazon(r.station));
+  const showAppaltoSplit = amazonRows.length > 0 && altriRows.length > 0;
+  const sumBy = <K extends keyof CostRow>(rows: CostRow[], key: K) =>
+    rows.reduce((s, r) => s + (r[key] as number), 0);
+
   // ---- trend multe 8 settimane ----
   const weeks: WeekRow[] = [];
   for (let w = 7; w >= 0; w--) {
@@ -225,7 +258,23 @@ export default async function DashboardPage({
           <table className="table-base max-w-2xl">
             <thead><tr><th>Stazione</th><th>Veicoli</th><th>Canone mensile</th></tr></thead>
             <tbody>
-              {costRows.map((r) => (
+              {amazonRows.map((r) => (
+                <tr key={r.stationId}>
+                  <td>
+                    <Link className="text-brand hover:underline" href={`/vehicles?station=${r.stationId}`}>{r.station}</Link>
+                  </td>
+                  <td className="font-semibold">{r.veicoli}</td>
+                  <td>{fmtEur(r.canone)}</td>
+                </tr>
+              ))}
+              {showAppaltoSplit && (
+                <tr className="border-t border-line font-semibold bg-surface-sunken">
+                  <td>Subtotale Amazon</td>
+                  <td>{sumBy(amazonRows, "veicoli")}</td>
+                  <td>{fmtEur(sumBy(amazonRows, "canone"))}</td>
+                </tr>
+              )}
+              {altriRows.map((r) => (
                 <tr key={r.stationId}>
                   <td>
                     <Link className="text-brand hover:underline" href={`/vehicles?station=${r.stationId}`}>{r.station}</Link>
@@ -235,13 +284,16 @@ export default async function DashboardPage({
                 </tr>
               ))}
               <tr className="border-t-2 border-line font-semibold">
-                <td>Totale</td>
+                <td>{showAppaltoSplit ? "Totale (tutti gli appalti)" : "Totale"}</td>
                 <td>{totVeicoli}</td>
                 <td>{fmtEur(totCanone)}</td>
               </tr>
             </tbody>
           </table>
-          <SourceNote>tabella Vehicle, non dismessi, per stazione{stationFilter ? ` (${scopeLabel})` : ""} — canone: impegno mensile corrente, non una spesa "ultimi 30gg"</SourceNote>
+          <SourceNote>
+            tabella Vehicle, non dismessi, per stazione{stationFilter ? ` (${scopeLabel})` : ""} — canone: impegno mensile corrente, non una spesa "ultimi 30gg"
+            {showAppaltoSplit ? " · Amazon e altri appalti (es. GLS) sempre distinti, mai sommati come un unico cliente" : ""}
+          </SourceNote>
         </div>
       </section>
 
@@ -267,27 +319,25 @@ export default async function DashboardPage({
                 <tr><th>Stazione</th><th>Danni</th><th>Carburante</th><th>Pedaggi</th><th>Multe</th><th>Totale</th><th>Dettaglio</th></tr>
               </thead>
               <tbody>
-                {costRows.map((r) => {
-                  const rigaAZero = r.danni === 0 && r.carburante === 0 && r.pedaggi === 0 && r.multe === 0;
-                  return (
-                    <tr key={r.stationId} className={rigaAZero ? "opacity-50" : ""}>
-                      <td className="font-semibold">{r.station}</td>
-                      <td>{fmtEur(r.danni)}</td>
-                      <td>{fmtEur(r.carburante)}</td>
-                      <td>{fmtEur(r.pedaggi)}</td>
-                      <td>{fmtEur(r.multe)}</td>
-                      <td className="font-semibold">{fmtEur(r.danni + r.carburante + r.pedaggi + r.multe)}</td>
-                      <td className="text-xs whitespace-nowrap">
-                        <Link className="text-brand underline" href={`/vehicles?station=${r.stationId}`}>flotta</Link>{" · "}
-                        <Link className="text-brand underline" href={`/damages?station=${r.stationId}`}>danni</Link>{" · "}
-                        <Link className="text-brand underline" href={`/fines?station=${r.stationId}`}>multe</Link>{" · "}
-                        <Link className="text-brand underline" href={`/fuel?station=${r.stationId}`}>fuel</Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {amazonRows.map((r) => (
+                  <CostTableRow key={r.stationId} r={r} />
+                ))}
+                {showAppaltoSplit && (
+                  <tr className="border-t border-line font-semibold bg-surface-sunken">
+                    <td>Subtotale Amazon</td>
+                    <td>{fmtEur(sumBy(amazonRows, "danni"))}</td>
+                    <td>{fmtEur(sumBy(amazonRows, "carburante"))}</td>
+                    <td>{fmtEur(sumBy(amazonRows, "pedaggi"))}</td>
+                    <td>{fmtEur(sumBy(amazonRows, "multe"))}</td>
+                    <td>{fmtEur(sumBy(amazonRows, "danni") + sumBy(amazonRows, "carburante") + sumBy(amazonRows, "pedaggi") + sumBy(amazonRows, "multe"))}</td>
+                    <td></td>
+                  </tr>
+                )}
+                {altriRows.map((r) => (
+                  <CostTableRow key={r.stationId} r={r} />
+                ))}
                 <tr className="border-t-2 border-line font-semibold">
-                  <td>Totale</td>
+                  <td>{showAppaltoSplit ? "Totale (tutti gli appalti)" : "Totale"}</td>
                   <td>{fmtEur(costRows.reduce((s, r) => s + r.danni, 0))}</td>
                   <td>{fmtEur(costRows.reduce((s, r) => s + r.carburante, 0))}</td>
                   <td>{fmtEur(costRows.reduce((s, r) => s + r.pedaggi, 0))}</td>
@@ -300,6 +350,7 @@ export default async function DashboardPage({
           </div>
           <SourceNote>
             Damage.costoStimato + FuelTransaction.importo (per PAN→veicolo) + TollTransaction.importo + Fine.importo, dal {since.toLocaleDateString("it-IT")} al {oggi.toLocaleDateString("it-IT")}, aggregati per stazione del veicolo — manutenzione non è una voce a parte perché sempre inclusa nel canone (vedi tabella veicoli sopra), canone mensile non incluso qui perché non è una spesa del periodo
+            {showAppaltoSplit ? " · Amazon e altri appalti (es. GLS) sempre distinti, mai sommati come un unico cliente" : ""}
           </SourceNote>
         </section>
 

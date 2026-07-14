@@ -9,7 +9,7 @@ import { db } from "./db";
  */
 export const CONFIG_DEFAULTS: Record<
   string,
-  { value: string; type: "number" | "number[]" | "string" | "boolean"; description: string }
+  { value: string; type: "number" | "number[]" | "string" | "string[]" | "boolean"; description: string }
 > = {
   "maint.alert.giorni": {
     value: "[30,15,7]",
@@ -56,6 +56,11 @@ export const CONFIG_DEFAULTS: Record<
     type: "number",
     description: "Giorni dalla notifica oltre i quali, se non è stato assegnato un conducente, la multa diventa automaticamente a carico azienda (non più addebitabile)",
   },
+  "appalto.nonAmazon.stationCodes": {
+    value: "[\"GLS\"]",
+    type: "string[]",
+    description: "Codici stazione che appartengono ad appalti diversi da Amazon (es. GLS) — usato per separare i subtotali per appalto in dashboard",
+  },
 };
 
 export async function getConfigRaw(key: string): Promise<string> {
@@ -76,6 +81,14 @@ export async function getConfigNumberArray(key: string): Promise<number[]> {
   const parsed = JSON.parse(await getConfigRaw(key));
   if (!Array.isArray(parsed) || parsed.some((n) => typeof n !== "number")) {
     throw new Error(`Config ${key} non è un array di numeri valido`);
+  }
+  return parsed;
+}
+
+export async function getConfigStringArray(key: string): Promise<string[]> {
+  const parsed = JSON.parse(await getConfigRaw(key));
+  if (!Array.isArray(parsed) || parsed.some((s) => typeof s !== "string")) {
+    throw new Error(`Config ${key} non è un array di stringhe valido`);
   }
   return parsed;
 }
