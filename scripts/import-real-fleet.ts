@@ -161,6 +161,24 @@ async function main() {
   const filePath = fileArgIdx >= 0 ? process.argv[fileArgIdx + 1] : null;
   if (!filePath) throw new Error("Uso: npx tsx scripts/import-real-fleet.ts --file <path.tsv>");
 
+  // guardia anti-cancellazione accidentale: questo script è pensato per la
+  // sostituzione una tantum dei dati demo, non per un rilancio dopo che sono
+  // stati importati dati operativi reali (multe, danni, tagliandi, movimenti)
+  const liveDataCounts = {
+    multe: await db.fine.count(),
+    danni: await db.damage.count(),
+    tagliandi: await db.serviceRecord.count(),
+    movimenti: await db.assignment.count(),
+  };
+  const hasLiveData = Object.values(liveDataCounts).some((n) => n > 0);
+  if (hasLiveData && !process.argv.includes("--confirm-delete-live-data")) {
+    console.error("\n⚠️  Rilevati dati operativi reali già presenti nel database:");
+    console.error(`   multe: ${liveDataCounts.multe}, danni: ${liveDataCounts.danni}, tagliandi: ${liveDataCounts.tagliandi}, movimenti: ${liveDataCounts.movimenti}`);
+    console.error("   Questo script cancella l'intera flotta e tutti i dati transazionali prima di reimportare.");
+    console.error("   Se sei sicuro di voler procedere comunque, rilancia con --confirm-delete-live-data\n");
+    process.exit(1);
+  }
+
   const rows = parseTsv(filePath);
   console.log(`Righe lette: ${rows.length}`);
 
