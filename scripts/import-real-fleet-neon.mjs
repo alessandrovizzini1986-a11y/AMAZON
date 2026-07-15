@@ -102,6 +102,22 @@ async function main() {
   const filePath = fileArgIdx >= 0 ? process.argv[fileArgIdx + 1] : null;
   if (!filePath) throw new Error("Uso: node import-real-fleet-neon.mjs --file <path.tsv>");
 
+  // guardia anti-cancellazione accidentale: questo script è pensato per la
+  // sostituzione una tantum dei dati demo, non per un rilancio dopo che sono
+  // stati importati dati operativi reali (multe, danni, tagliandi, movimenti)
+  const [{ count: multe }] = await sql.query(`SELECT COUNT(*)::int AS count FROM "Fine"`);
+  const [{ count: danni }] = await sql.query(`SELECT COUNT(*)::int AS count FROM "Damage"`);
+  const [{ count: tagliandi }] = await sql.query(`SELECT COUNT(*)::int AS count FROM "ServiceRecord"`);
+  const [{ count: movimenti }] = await sql.query(`SELECT COUNT(*)::int AS count FROM "Assignment"`);
+  const hasLiveData = [multe, danni, tagliandi, movimenti].some((n) => n > 0);
+  if (hasLiveData && !process.argv.includes("--confirm-delete-live-data")) {
+    console.error("\n⚠️  Rilevati dati operativi reali già presenti nel database:");
+    console.error(`   multe: ${multe}, danni: ${danni}, tagliandi: ${tagliandi}, movimenti: ${movimenti}`);
+    console.error("   Questo script cancella l'intera flotta e tutti i dati transazionali prima di reimportare.");
+    console.error("   Se sei sicuro di voler procedere comunque, rilancia con --confirm-delete-live-data\n");
+    process.exit(1);
+  }
+
   const rows = parseTsv(filePath);
   console.log(`Righe lette: ${rows.length}`);
 

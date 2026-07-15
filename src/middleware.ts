@@ -15,7 +15,9 @@ const PUBLIC_PATHS = [
 
 export async function middleware(req: NextRequest) {
   // modalità accesso libero per il pilot in solitaria — vedi src/lib/auth.ts
-  if (process.env.AUTH_BYPASS === "true") return NextResponse.next();
+  // disattivata a livello di codice in produzione: non basta dimenticare di
+  // togliere la variabile, l'app resta protetta comunque
+  if (process.env.AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") return NextResponse.next();
 
   const { pathname } = req.nextUrl;
   if (
