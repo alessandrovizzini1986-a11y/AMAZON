@@ -71,7 +71,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           ))}
         </nav>
         <div className="px-5 py-4 border-t border-white/10">
-          <div className="text-sm font-medium truncate">{user.name}</div>
+          <Link href="/account" className="text-sm font-medium truncate block hover:underline">{user.name}</Link>
           <form action={logoutAction}>
             <button className="text-xs opacity-70 hover:opacity-100 underline mt-1">Esci</button>
           </form>
@@ -84,9 +84,12 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           <div className="h-7 w-7 rounded-control bg-white/15 flex items-center justify-center text-sm">F</div>
           FleetDSP
         </div>
-        <form action={logoutAction}>
-          <button className="text-xs underline opacity-80">Esci</button>
-        </form>
+        <div className="flex items-center gap-3">
+          <Link href="/account" className="text-xs underline opacity-80">Account</Link>
+          <form action={logoutAction}>
+            <button className="text-xs underline opacity-80">Esci</button>
+          </form>
+        </div>
       </div>
 
       <main className={`flex-1 min-w-0 p-4 md:p-8 ${isDriver ? "pb-24 md:pb-8" : ""}`}>{children}</main>
