@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { normalizeModello, normalizeLeasingCompany } from "@/domain/vehicleNames";
 import type { Role, VehicleStatus, FuelType, ServiceType, FineStatus, ReplacementReason, PracticeStatus, ContractType } from "@prisma/client";
 
 /**
@@ -50,7 +51,7 @@ async function commitVehicleRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"
     const v = await db.vehicle.create({
       data: {
         targa,
-        modello: s(row.modello)!,
+        modello: normalizeModello(s(row.modello)!),
         allestimento: s(row.allestimento),
         alimentazione: (row.alimentazione as FuelType) ?? "DIESEL",
         hvoCompatibile: row.hvoCompatibile === true || row.alimentazione === "DIESEL_HVO",
@@ -60,7 +61,7 @@ async function commitVehicleRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"
         kmAttuali: (row.kmAttuali as number) ?? 0,
         canoneMese: (row.canoneMese as number) ?? null,
         franchigiaDanni: (row.franchigiaDanni as number) ?? null,
-        leasingCompany: s(row.leasingCompany),
+        leasingCompany: normalizeLeasingCompany(s(row.leasingCompany)),
         contrattoLeasingNo: s(row.contrattoLeasingNo),
         tipoContratto: (row.tipoContratto as ContractType) ?? null,
         contrattoDataInizio: (row.contrattoDataInizio as Date) ?? null,
@@ -176,7 +177,7 @@ async function commitLeaseRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] 
       where: { id: vehicleId },
       data: {
         canoneMese: row.canoneMese as number,
-        leasingCompany: s(row.leasingCompany),
+        leasingCompany: normalizeLeasingCompany(s(row.leasingCompany)),
         contrattoLeasingNo: s(row.contrattoLeasingNo),
         franchigiaDanni: (row.franchigiaDanni as number) ?? undefined,
       },
