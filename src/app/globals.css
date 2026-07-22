@@ -12,22 +12,26 @@
   /* brand */
   --color-brand: #0f4c81;        /* blu flotta */
   --color-brand-dark: #0a3a63;
-  --color-brand-light: #e8f0f8;
+  --color-brand-light: #eaf1f8;
 
   /* superfici e testo */
-  --color-surface: #f6f7f9;
+  --color-surface: #f5f6f8;
   --color-surface-raised: #ffffff;
-  --color-surface-sunken: #eceef1;
-  --color-ink: #1a202c;
+  --color-surface-sunken: #eceef2;
+  --color-ink: #16202e;
   --color-ink-muted: #5a6472;
-  --color-ink-faint: #98a1ad;
+  --color-ink-faint: #94a0ae;
   --color-ink-inverse: #ffffff;
-  --color-line: #dde1e6;
+  --color-line: #e3e7ec;
+
+  /* sidebar (navy profondo, con glow gestito da .sidebar-surface) */
+  --color-sidebar-top: #0d2038;
+  --color-sidebar-bottom: #081527;
 
   /* stati semantici (verde=ok, giallo=in scadenza, rosso=scaduto/bloccato) */
-  --color-ok: #1e7f4f;
-  --color-ok-soft: #e2f3ea;
-  --color-warn: #b26a00;
+  --color-ok: #17754a;
+  --color-ok-soft: #e3f4ea;
+  --color-warn: #a86300;
   --color-warn-soft: #fdf1dc;
   --color-danger: #b3261e;
   --color-danger-soft: #fbe9e7;
@@ -40,9 +44,10 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* geometria */
-  --radius-card: 0.75rem;
+  --radius-card: 0.875rem;
   --radius-control: 0.5rem;
-  --shadow-card: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.05);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px -4px rgb(15 23 42 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.05), 0 12px 28px -8px rgb(15 23 42 / 0.16);
 }
 
 body {
@@ -54,28 +59,65 @@ body {
   .card {
     @apply bg-surface-raised rounded-card shadow-card border border-line;
   }
+
+  /* sfondo sidebar/header: navy con glow blu in alto */
+  .sidebar-surface {
+    background:
+      radial-gradient(120% 50% at 50% 0%, rgb(56 132 255 / 0.16), transparent 65%),
+      linear-gradient(180deg, var(--color-sidebar-top) 0%, var(--color-sidebar-bottom) 100%);
+  }
+  /* logo mark: quadrato brand con gradiente e bagliore */
+  .brand-mark {
+    color: #fff;
+    background: linear-gradient(145deg, #2d7dd2 0%, #0f4c81 60%, #0a3a63 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.25),
+      0 4px 12px -2px rgb(45 125 210 / 0.5);
+  }
+  /* fondale pagina di login: navy con doppio glow */
+  .auth-backdrop {
+    background:
+      radial-gradient(70% 60% at 75% 10%, rgb(45 125 210 / 0.30), transparent 60%),
+      radial-gradient(50% 45% at 15% 90%, rgb(23 117 74 / 0.14), transparent 60%),
+      linear-gradient(180deg, var(--color-sidebar-top) 0%, var(--color-sidebar-bottom) 100%);
+  }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-control bg-brand text-ink-inverse
-      px-4 py-2.5 text-sm font-semibold hover:bg-brand-dark transition-colors
-      disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-control text-ink-inverse
+      px-4 py-2.5 text-sm font-semibold transition-all
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2
+      active:translate-y-px disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(180deg, #14639f 0%, var(--color-brand) 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(2 6 23 / 0.24);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, #115a92 0%, var(--color-brand-dark) 100%);
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-control bg-surface-raised text-ink
-      border border-line px-4 py-2.5 text-sm font-semibold hover:bg-surface-sunken transition-colors;
+      border border-line px-4 py-2.5 text-sm font-semibold shadow-sm transition-all
+      hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand
+      focus-visible:ring-offset-2 active:translate-y-px;
   }
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-control bg-danger text-ink-inverse
-      px-4 py-2.5 text-sm font-semibold hover:opacity-90 transition-colors;
+      px-4 py-2.5 text-sm font-semibold transition-all hover:opacity-90
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2
+      active:translate-y-px;
   }
   .input {
-    @apply w-full rounded-control border border-line bg-surface-raised px-3 py-2 text-sm
+    @apply w-full rounded-control border border-line bg-surface-raised px-3 py-2 text-sm shadow-sm
+      transition-colors placeholder:text-ink-faint
       focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand;
   }
   .label {
     @apply block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1;
   }
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-dot {
+    @apply h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-70;
   }
   .badge-ok { @apply badge bg-ok-soft text-ok; }
   .badge-warn { @apply badge bg-warn-soft text-warn; }
@@ -86,13 +128,19 @@ body {
     @apply w-full text-sm border-collapse;
   }
   .table-base th {
-    @apply text-left text-xs font-semibold text-ink-muted uppercase tracking-wide
-      px-3 py-2 border-b border-line whitespace-nowrap;
+    @apply text-left text-[11px] font-semibold text-ink-muted uppercase tracking-wider
+      px-3 py-2.5 border-b border-line whitespace-nowrap;
   }
   .table-base td {
-    @apply px-3 py-2 border-b border-line align-top;
+    @apply px-3 py-2.5 border-b border-line align-top tabular-nums;
+  }
+  .table-base tbody tr {
+    @apply transition-colors;
   }
   .table-base tbody tr:hover {
     @apply bg-brand-light;
+  }
+  .table-base tbody tr:last-child td {
+    @apply border-b-0;
   }
 }

@@ -40,6 +40,7 @@ const config: Config = {
       },
       boxShadow: {
         card: "var(--shadow-card)",
+        lift: "var(--shadow-lift)",
       },
     },
   },

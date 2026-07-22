@@ -230,8 +230,8 @@ export default async function DashboardPage({
         }
       />
 
-      {/* KPI row — ogni card dichiara la fonte e porta al drill-down */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+      {/* KPI row — ogni card dichiara la fonte e porta al drill-down (8 card: 2 righe da 4 su desktop) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <KpiCard label="Veicoli in flotta" value={veicoliFlotta.length} href={withStation("/vehicles")}
           source="Vehicle, non dismessi e non sostitutivi (i sostitutivi coprono un guasto già conteggiato, non sono capacità in più)" />
         <KpiCard label="Veicoli guasti" value={veicoliGuasti} href={withStation("/replacements")}
