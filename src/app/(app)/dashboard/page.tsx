@@ -143,6 +143,12 @@ export default async function DashboardPage({
   const veicoliSostitutivi = vehicles.filter((v) => v.stato === "SOSTITUTIVO").length;
   const sostitutiviMancanti = openCases.filter((c) => !c.replacementVehicleId).length;
 
+  // un sostitutivo copre temporaneamente un veicolo guasto già conteggiato:
+  // non è capacità aggiuntiva, quindi va escluso dal conteggio della flotta
+  // (altrimenti un guasto+il suo sostitutivo verrebbero contati come 2 mezzi
+  // invece di 1) — resta comunque visibile a sé nel KPI "Veicoli sostitutivi"
+  const veicoliFlotta = vehicles.filter((v) => v.stato !== "SOSTITUTIVO");
+
   // ---- veicoli e costi per stazione (mai compensati tra loro) ----
   // manutenzione non è una voce a parte: è sempre inclusa nel canone di
   // noleggio (rete convenzionata) e mostrarla come costo aggiuntivo è
@@ -159,7 +165,7 @@ export default async function DashboardPage({
     const row = byStation.get(code);
     if (row) row[key] += v;
   };
-  for (const v of vehicles) {
+  for (const v of veicoliFlotta) {
     const row = byStation.get(v.station.code);
     if (row) { row.veicoli += 1; row.canone += Number(v.canoneMese ?? 0); }
   }
@@ -226,8 +232,8 @@ export default async function DashboardPage({
 
       {/* KPI row — ogni card dichiara la fonte e porta al drill-down */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
-        <KpiCard label="Veicoli in flotta" value={vehicles.length} href={withStation("/vehicles")}
-          source="Vehicle, non dismessi" />
+        <KpiCard label="Veicoli in flotta" value={veicoliFlotta.length} href={withStation("/vehicles")}
+          source="Vehicle, non dismessi e non sostitutivi (i sostitutivi coprono un guasto già conteggiato, non sono capacità in più)" />
         <KpiCard label="Veicoli guasti" value={veicoliGuasti} href={withStation("/replacements")}
           tone={veicoliGuasti > 0 ? "warn" : "ok"}
           source="pratica sostitutivo aperta o stato IN_OFFICINA" />
@@ -291,7 +297,7 @@ export default async function DashboardPage({
             </tbody>
           </table>
           <SourceNote>
-            tabella Vehicle, non dismessi, per stazione{stationFilter ? ` (${scopeLabel})` : ""} — canone: impegno mensile corrente, non una spesa "ultimi 30gg"
+            tabella Vehicle, non dismessi e non sostitutivi, per stazione{stationFilter ? ` (${scopeLabel})` : ""} — canone: impegno mensile corrente, non una spesa "ultimi 30gg"; i sostitutivi coprono un guasto già conteggiato (vedi KPI "Veicoli sostitutivi"), non sono capacità in più
             {showAppaltoSplit ? " · Amazon e altri appalti (es. GLS) sempre distinti, mai sommati come un unico cliente" : ""}
           </SourceNote>
         </div>
