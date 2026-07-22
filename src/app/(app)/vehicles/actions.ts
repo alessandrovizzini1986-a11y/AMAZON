@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { assertCan, stationScope } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
+import { normalizeModello, normalizeLeasingCompany } from "@/domain/vehicleNames";
 
 const vehicleSchema = z.object({
   targa: z.string().min(5).transform((v) => v.toUpperCase().replace(/\s/g, "")),
@@ -37,7 +38,10 @@ function parseVehicleForm(formData: FormData) {
   for (const [k, v] of Object.entries(raw)) {
     clean[k] = v === "" ? undefined : v;
   }
-  return vehicleSchema.parse(clean);
+  const data = vehicleSchema.parse(clean);
+  data.modello = normalizeModello(data.modello);
+  data.leasingCompany = normalizeLeasingCompany(data.leasingCompany) ?? undefined;
+  return data;
 }
 
 export async function createVehicleAction(formData: FormData) {
