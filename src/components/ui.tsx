@@ -20,17 +20,24 @@ export function PageHeader({
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
         {backHref && (
-          <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-brand hover:underline mb-2">
+          <Link href={backHref} className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">
             ← {backLabel}
           </Link>
         )}
-        <h1 className="text-xl md:text-2xl font-bold">{title}</h1>
-        {subtitle && <p className="text-sm text-ink-muted mt-1">{subtitle}</p>}
+        <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">{title}</h1>
+        {subtitle && <p className="mt-1 max-w-3xl text-sm text-ink-muted">{subtitle}</p>}
       </div>
       {action}
     </div>
   );
 }
+
+const KPI_ACCENT: Record<"neutral" | "ok" | "warn" | "danger", string> = {
+  neutral: "bg-line",
+  ok: "bg-ok",
+  warn: "bg-warn",
+  danger: "bg-danger",
+};
 
 /**
  * KPI dive-deep: ogni numero è cliccabile e porta al dettaglio filtrato.
@@ -56,10 +63,15 @@ export function KpiCard({
     danger: "text-danger",
   }[tone];
   return (
-    <Link href={href} className="card p-4 block hover:border-brand transition-colors group" title={`Fonte: ${source}`}>
-      <div className="text-xs font-semibold text-ink-muted uppercase tracking-wide">{label}</div>
-      <div className={`text-2xl md:text-3xl font-bold mt-1 ${toneClass}`}>{value}</div>
-      <div className="text-[11px] text-ink-faint mt-2 truncate group-hover:text-brand">
+    <Link
+      href={href}
+      className="card group relative block overflow-hidden p-4 pl-5 transition-all hover:-translate-y-0.5 hover:border-brand hover:shadow-lift"
+      title={`Fonte: ${source}`}
+    >
+      <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${KPI_ACCENT[tone]}`} />
+      <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</div>
+      <div className={`mt-1 text-2xl font-bold tabular-nums tracking-tight md:text-3xl ${toneClass}`}>{value}</div>
+      <div className="mt-2 truncate text-[11px] text-ink-faint transition-colors group-hover:text-brand">
         {source} →
       </div>
     </Link>
@@ -74,16 +86,35 @@ export function StatusBadge({ tone, children }: { tone: "ok" | "warn" | "danger"
     info: "badge-info",
     neutral: "badge-neutral",
   }[tone];
-  return <span className={cls}>{children}</span>;
+  return (
+    <span className={cls}>
+      <span aria-hidden className="badge-dot" />
+      {children}
+    </span>
+  );
 }
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="card p-10 text-center text-ink-muted text-sm">{message}</div>
+    <div className="card flex flex-col items-center gap-3 p-12 text-center">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-8 w-8 text-ink-faint"
+        aria-hidden="true"
+      >
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+      <p className="max-w-md text-sm text-ink-muted">{message}</p>
+    </div>
   );
 }
 
 /** Nota di tracciabilità sotto tabelle/grafici: fonte, filtro, data estrazione. */
 export function SourceNote({ children }: { children: React.ReactNode }) {
-  return <p className="text-[11px] text-ink-faint mt-2">Fonte dati: {children}</p>;
+  return <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">Fonte dati: {children}</p>;
 }
