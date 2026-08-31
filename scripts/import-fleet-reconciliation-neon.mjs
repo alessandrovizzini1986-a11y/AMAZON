@@ -12,6 +12,7 @@ import ExcelJS from "exceljs";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import dotenv from "dotenv";
+import { normalizeModello, normalizeLeasingCompany } from "./lib/vehicleNames.mjs";
 
 if (process.env.HTTPS_PROXY) setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
 
@@ -30,39 +31,6 @@ function extractStationCode(raw) {
   const s = String(raw ?? "").trim().toUpperCase();
   const code = s.split(/\s*-\s*/)[0];
   return code && STATION_CODES.includes(code) ? code : null;
-}
-
-const BRAND_FIX = {
-  PEOUGET: "Peugeot", PEUGEUT: "Peugeot", PEUGEOT: "Peugeot", PEUGET: "Peugeot",
-  VOLSWAGEN: "Volkswagen", VOLKSWAGEN: "Volkswagen", WOLSVAGEN: "Volkswagen",
-  IVECO: "Iveco", FORD: "Ford", FIAT: "Fiat", OPEL: "Opel",
-  RENAULT: "Renault", CITROEN: "Citroen", TOYOTA: "Toyota",
-  MAXUS: "Maxus", RAP: "Rap",
-};
-function fixBrand(raw) {
-  const s = String(raw ?? "").trim();
-  if (!s) return "N/D";
-  const key = s.toUpperCase();
-  return BRAND_FIX[key] ?? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-}
-
-const COMPANY_FIX = {
-  HERZ: "Hertz", HERTZ: "Hertz",
-  EUROPCAR: "Europcar",
-  AVIS: "Avis",
-  ARVAL: "Arval", "ARVAL FINE NOLEGGIO": "Arval", "ARVAL BT": "Arval",
-  NOLEGGIARE: "Noleggiare", AUTOVIA: "Autovia", LOCAUTO: "Locauto",
-  SIXT: "Sixt", MAGGIORE: "Maggiore", LEASEPLAN: "LeasePlan",
-  DRIVALIA: "Drivalia", LEASYS: "Leasys",
-  TORENTAL: "Torental", VEM: "Vem",
-};
-function fixCompany(raw) {
-  const s = String(raw ?? "").trim();
-  if (!s) return null;
-  const key = s.toUpperCase();
-  if (COMPANY_FIX[key]) return COMPANY_FIX[key];
-  if (key === "ALD" || key === "ALD MT") return key;
-  return s;
 }
 
 const TIPO_MAP = {
@@ -109,13 +77,14 @@ function readAttivi(ws) {
     const targa = String(row.getCell(1).value ?? "").trim().toUpperCase();
     const dsRaw = row.getCell(2).value;
     if (!targa || !dsRaw) return;
+    const marcaRaw = String(row.getCell(3).value ?? "").trim();
+    const modelloRaw = String(row.getCell(4).value ?? "").trim();
     rows.push({
       targa,
       dsCode: extractStationCode(dsRaw),
-      marca: fixBrand(row.getCell(3).value),
-      modello: String(row.getCell(4).value ?? "").trim(),
+      modello: normalizeModello(`${marcaRaw} ${modelloRaw}`.trim()),
       statoRaw: String(row.getCell(5).value ?? "").trim().toUpperCase(),
-      societa: fixCompany(row.getCell(6).value),
+      societa: normalizeLeasingCompany(String(row.getCell(6).value ?? "")),
       tipo: mapTipo(row.getCell(7).value),
       ra: String(row.getCell(8).value ?? "").trim() || null,
       dataInizio: asDate(row.getCell(9).value),
@@ -134,12 +103,13 @@ function readCessati(ws) {
     const targa = String(row.getCell(1).value ?? "").trim().toUpperCase();
     const dataInizio = asDate(row.getCell(9).value);
     if (!targa || !dataInizio) return;
+    const marcaRaw = String(row.getCell(3).value ?? "").trim();
+    const modelloRaw = String(row.getCell(4).value ?? "").trim();
     events.push({
       targa,
       dsCode: extractStationCode(row.getCell(2).value),
-      marca: fixBrand(row.getCell(3).value),
-      modello: String(row.getCell(4).value ?? "").trim(),
-      societa: fixCompany(row.getCell(6).value),
+      modello: normalizeModello(`${marcaRaw} ${modelloRaw}`.trim()),
+      societa: normalizeLeasingCompany(String(row.getCell(6).value ?? "")),
       tipo: mapTipo(row.getCell(7).value),
       ra: String(row.getCell(8).value ?? "").trim() || null,
       dataInizio,
@@ -242,7 +212,7 @@ async function main() {
         (id, targa, modello, alimentazione, "stationId", stato, "leasingCompany", "contrattoLeasingNo",
          "tipoContratto", "contrattoDataInizio", "canoneMese", note, "kmAttuali", "createdAt", "updatedAt")
        VALUES ($1,$2,$3,'DIESEL',$4,$5,$6,$7,$8,$9,$10,$11,0,now(),now())`,
-      [id, targa, `${r.marca} ${r.modello}`.trim(), stationId, stato, r.societa, r.ra, r.tipo, r.dataInizio, r.tariffa, r.note]
+      [id, targa, r.modello, stationId, stato, r.societa, r.ra, r.tipo, r.dataInizio, r.tariffa, r.note]
     );
     await sql.query(
       `INSERT INTO "VehicleStationHistory" (id, "vehicleId", "stationId", "fromDate", note)
@@ -250,7 +220,7 @@ async function main() {
       [crypto.randomUUID(), id, stationId, r.dataInizio ?? new Date().toISOString().slice(0, 10)]
     );
     createdVehicleIdByTarga.set(targa, id);
-    dbByTarga.set(targa, { id, targa, stato, modello: `${r.marca} ${r.modello}`.trim() });
+    dbByTarga.set(targa, { id, targa, stato, modello: r.modello });
     inseriti++;
   }
   console.log(`Veicoli creati: ${inseriti}`);
@@ -301,9 +271,9 @@ async function main() {
           (id, targa, modello, alimentazione, "stationId", stato, "leasingCompany", "contrattoLeasingNo",
            "tipoContratto", "contrattoDataInizio", "contrattoDataFine", note, "kmAttuali", "createdAt", "updatedAt")
          VALUES ($1,$2,$3,'DIESEL',$4,'DISMESSO',$5,$6,$7,$8,$9,'Veicolo storico — da ricognizione flotta (foglio Cessati)',0,now(),now())`,
-        [id, targa, `${latest.marca} ${latest.modello}`.trim(), stationId, latest.societa, latest.ra, latest.tipo, latest.dataInizio, latest.dataFine]
+        [id, targa, latest.modello, stationId, latest.societa, latest.ra, latest.tipo, latest.dataInizio, latest.dataFine]
       );
-      vehicle = { id, targa, stato: "DISMESSO", modello: `${latest.marca} ${latest.modello}`.trim() };
+      vehicle = { id, targa, stato: "DISMESSO", modello: latest.modello };
       dbByTarga.set(targa, vehicle);
       veicoliStoriciCreati++;
     } else if (vehicle.modello?.startsWith("Veicolo storico (dati non disponibili")) {
@@ -312,7 +282,7 @@ async function main() {
         `UPDATE "Vehicle" SET modello=$1, "leasingCompany"=$2, "contrattoLeasingNo"=$3, "tipoContratto"=$4,
           "contrattoDataInizio"=$5, "contrattoDataFine"=$6, "stationId"=COALESCE($7,"stationId"), "updatedAt"=now()
          WHERE id=$8`,
-        [`${latest.marca} ${latest.modello}`.trim(), latest.societa, latest.ra, latest.tipo, latest.dataInizio, latest.dataFine, stationId ?? null, vehicle.id]
+        [latest.modello, latest.societa, latest.ra, latest.tipo, latest.dataInizio, latest.dataFine, stationId ?? null, vehicle.id]
       );
       arricchiti++;
     }

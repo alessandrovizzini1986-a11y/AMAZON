@@ -21,6 +21,7 @@
  */
 import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
+import { normalizeModello, normalizeLeasingCompany } from "../src/domain/vehicleNames";
 
 const prisma = new PrismaClient();
 
@@ -35,39 +36,6 @@ function extractStationCode(raw: unknown): string | null {
   const s = String(raw ?? "").trim().toUpperCase();
   const code = s.split(/\s*-\s*/)[0];
   return code && STATION_CODES.includes(code) ? code : null;
-}
-
-const BRAND_FIX: Record<string, string> = {
-  PEOUGET: "Peugeot", PEUGEUT: "Peugeot", PEUGEOT: "Peugeot", PEUGET: "Peugeot",
-  VOLSWAGEN: "Volkswagen", VOLKSWAGEN: "Volkswagen", WOLSVAGEN: "Volkswagen",
-  IVECO: "Iveco", FORD: "Ford", FIAT: "Fiat", OPEL: "Opel",
-  RENAULT: "Renault", CITROEN: "Citroen", TOYOTA: "Toyota",
-  MAXUS: "Maxus", RAP: "Rap",
-};
-function fixBrand(raw: unknown): string {
-  const s = String(raw ?? "").trim();
-  if (!s) return "N/D";
-  const key = s.toUpperCase();
-  return BRAND_FIX[key] ?? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-}
-
-const COMPANY_FIX: Record<string, string> = {
-  HERZ: "Hertz", HERTZ: "Hertz",
-  EUROPCAR: "Europcar",
-  AVIS: "Avis",
-  ARVAL: "Arval", "ARVAL FINE NOLEGGIO": "Arval", "ARVAL BT": "Arval",
-  NOLEGGIARE: "Noleggiare", AUTOVIA: "Autovia", LOCAUTO: "Locauto",
-  SIXT: "Sixt", MAGGIORE: "Maggiore", LEASEPLAN: "LeasePlan",
-  DRIVALIA: "Drivalia", LEASYS: "Leasys",
-  TORENTAL: "Torental", VEM: "Vem",
-};
-function fixCompany(raw: unknown): string | null {
-  const s = String(raw ?? "").trim();
-  if (!s) return null;
-  const key = s.toUpperCase();
-  if (COMPANY_FIX[key]) return COMPANY_FIX[key];
-  if (key === "ALD" || key === "ALD MT") return key; // canali commerciali distinti, mantenuti verbatim
-  return s;
 }
 
 const TIPO_MAP: Record<string, "MT" | "LT" | "BT" | "SOST" | "UFFICIO"> = {
@@ -114,7 +82,7 @@ function extractPlateRef(note: string): string | null {
 }
 
 type AttiviRow = {
-  targa: string; dsCode: string | null; marca: string; modello: string;
+  targa: string; dsCode: string | null; modello: string;
   statoRaw: string; societa: string | null; tipo: ReturnType<typeof mapTipo>;
   ra: string | null; dataInizio: Date | null; dataFine: Date | null;
   note: string | null; tariffa: number | null;
@@ -127,13 +95,14 @@ function readAttivi(ws: ExcelJS.Worksheet): AttiviRow[] {
     const targa = String(row.getCell(1).value ?? "").trim().toUpperCase();
     const dsRaw = row.getCell(2).value;
     if (!targa || !dsRaw) return; // scarta le righe "fantasma" solo-targa in fondo al foglio
+    const marcaRaw = String(row.getCell(3).value ?? "").trim();
+    const modelloRaw = String(row.getCell(4).value ?? "").trim();
     rows.push({
       targa,
       dsCode: extractStationCode(dsRaw),
-      marca: fixBrand(row.getCell(3).value),
-      modello: String(row.getCell(4).value ?? "").trim(),
+      modello: normalizeModello(`${marcaRaw} ${modelloRaw}`.trim()),
       statoRaw: String(row.getCell(5).value ?? "").trim().toUpperCase(),
-      societa: fixCompany(row.getCell(6).value),
+      societa: normalizeLeasingCompany(String(row.getCell(6).value ?? "")),
       tipo: mapTipo(row.getCell(7).value),
       ra: String(row.getCell(8).value ?? "").trim() || null,
       dataInizio: asDate(row.getCell(9).value),
@@ -146,7 +115,7 @@ function readAttivi(ws: ExcelJS.Worksheet): AttiviRow[] {
 }
 
 type CessatoEvent = {
-  targa: string; dsCode: string | null; marca: string; modello: string;
+  targa: string; dsCode: string | null; modello: string;
   societa: string | null; tipo: ReturnType<typeof mapTipo>; ra: string | null;
   dataInizio: Date; dataFine: Date | null; note: string | null;
 };
@@ -159,12 +128,13 @@ function readCessati(ws: ExcelJS.Worksheet): CessatoEvent[] {
     const dataInizio = asDate(row.getCell(9).value);
     if (!targa || !dataInizio) return;
     const dataFine = asDate(row.getCell(10).value);
+    const marcaRaw = String(row.getCell(3).value ?? "").trim();
+    const modelloRaw = String(row.getCell(4).value ?? "").trim();
     events.push({
       targa,
       dsCode: extractStationCode(row.getCell(2).value),
-      marca: fixBrand(row.getCell(3).value),
-      modello: String(row.getCell(4).value ?? "").trim(),
-      societa: fixCompany(row.getCell(6).value),
+      modello: normalizeModello(`${marcaRaw} ${modelloRaw}`.trim()),
+      societa: normalizeLeasingCompany(String(row.getCell(6).value ?? "")),
       tipo: mapTipo(row.getCell(7).value),
       ra: String(row.getCell(8).value ?? "").trim() || null,
       dataInizio,
@@ -276,7 +246,7 @@ async function main() {
     const v = await prisma.vehicle.create({
       data: {
         targa,
-        modello: `${r.marca} ${r.modello}`.trim(),
+        modello: r.modello,
         alimentazione: "DIESEL",
         stationId,
         stato,
@@ -339,7 +309,7 @@ async function main() {
       const created = await prisma.vehicle.create({
         data: {
           targa,
-          modello: `${latest.marca} ${latest.modello}`.trim(),
+          modello: latest.modello,
           alimentazione: "DIESEL",
           stationId,
           stato: "DISMESSO",
@@ -360,7 +330,7 @@ async function main() {
       await prisma.vehicle.update({
         where: { id: vehicle.id },
         data: {
-          modello: `${latest.marca} ${latest.modello}`.trim(),
+          modello: latest.modello,
           leasingCompany: latest.societa,
           contrattoLeasingNo: latest.ra,
           tipoContratto: latest.tipo,
