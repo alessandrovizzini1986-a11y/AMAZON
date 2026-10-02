@@ -10,21 +10,13 @@ type NavSection = { title?: string; items: NavItem[] };
 const OPERATIVO: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/vehicles", label: "Flotta", icon: "fleet" },
-  { href: "/maintenance", label: "Tagliandi", icon: "wrench" },
-  { href: "/fines", label: "Multe", icon: "receipt" },
-  { href: "/movements", label: "Movimentazione", icon: "swap" },
-  { href: "/replacements", label: "Sostitutivi", icon: "refresh" },
-  { href: "/damages", label: "Danni", icon: "alert" },
-  { href: "/fuel", label: "Fuel & Pedaggi", icon: "fuel" },
 ];
 
 const NAV_BY_ROLE: Record<SessionUser["role"], NavSection[]> = {
   DRIVER: [
     {
       items: [
-        { href: "/driver", label: "Il mio mezzo", icon: "fleet" },
-        { href: "/fines", label: "Le mie multe", icon: "receipt" },
-        { href: "/damages/new", label: "Segnala danno", icon: "alert" },
+        { href: "/vehicles", label: "Flotta", icon: "fleet" },
       ],
     },
   ],
@@ -42,6 +34,7 @@ const NAV_BY_ROLE: Record<SessionUser["role"], NavSection[]> = {
     },
   ],
 };
+
 
 const ROLE_LABEL: Record<SessionUser["role"], string> = {
   ADMIN: "Fleet Manager",

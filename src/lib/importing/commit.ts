@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { normalizeModello, normalizeLeasingCompany } from "@/domain/vehicleNames";
-import type { Role, VehicleStatus, FuelType, ServiceType, FineStatus, ReplacementReason, PracticeStatus, ContractType } from "@prisma/client";
+import type { Role, VehicleStatus, FuelType, ContractType } from "@prisma/client";
 
 /**
  * Risoluzione FK + controllo duplicati + inserimento per ogni entità di import.
@@ -108,67 +108,6 @@ async function commitDriverRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"]
   return "ok";
 }
 
-async function commitServiceRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] | string> {
-  const vehicleId = ctx.vehicleByTarga.get(up(row.targa)!);
-  if (!vehicleId) return `veicolo con targa ${row.targa} inesistente`;
-  if (vehicleId !== "dry-run") {
-    const dup = await db.serviceRecord.findFirst({
-      where: { vehicleId, data: row.data as Date, tipo: row.tipo as ServiceType },
-    });
-    if (dup) return `intervento ${row.tipo} del ${(row.data as Date).toLocaleDateString("it-IT")} già presente per ${row.targa}`;
-  }
-  if (!ctx.dryRun) {
-    await db.serviceRecord.create({
-      data: {
-        vehicleId,
-        tipo: row.tipo as ServiceType,
-        officina: s(row.officina)!,
-        data: row.data as Date,
-        kmIntervento: row.kmIntervento as number,
-        costo: row.costo as number,
-        descrizione: s(row.descrizione),
-      },
-    });
-  }
-  return "ok";
-}
-
-async function commitFineRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] | string> {
-  const vehicleId = ctx.vehicleByTarga.get(up(row.targa)!);
-  if (!vehicleId) return `veicolo con targa ${row.targa} inesistente`;
-  let driverId: string | null = null;
-  if (row.driverEmail) {
-    driverId = ctx.userByEmail.get(s(row.driverEmail)!.toLowerCase()) ?? null;
-    if (!driverId) return `conducente ${row.driverEmail} inesistente`;
-  }
-  if (vehicleId !== "dry-run") {
-    const dup = await db.fine.findFirst({
-      where: row.verbaleNo
-        ? { verbaleNo: s(row.verbaleNo) }
-        : { vehicleId, dataOraInfrazione: row.dataOraInfrazione as Date },
-    });
-    if (dup) return `multa già presente (${row.verbaleNo ? `verbale ${row.verbaleNo}` : "stessa targa e data/ora"})`;
-  }
-  if (!ctx.dryRun) {
-    await db.fine.create({
-      data: {
-        vehicleId,
-        verbaleNo: s(row.verbaleNo),
-        dataOraInfrazione: row.dataOraInfrazione as Date,
-        luogo: s(row.luogo)!,
-        tipoViolazione: s(row.tipoViolazione)!,
-        importo: row.importo as number,
-        puntiPatente: (row.puntiPatente as number) ?? 0,
-        stato: (row.stato as FineStatus) ?? "DA_NOTIFICARE",
-        dataNotifica: (row.dataNotifica as Date) ?? null,
-        driverId,
-        assegnazioneFonte: driverId ? "import storico" : null,
-      },
-    });
-  }
-  return "ok";
-}
-
 async function commitLeaseRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] | string> {
   const vehicleId = ctx.vehicleByTarga.get(up(row.targa)!);
   if (!vehicleId) return `veicolo con targa ${row.targa} inesistente`;
@@ -180,121 +119,6 @@ async function commitLeaseRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] 
         leasingCompany: normalizeLeasingCompany(s(row.leasingCompany)),
         contrattoLeasingNo: s(row.contrattoLeasingNo),
         franchigiaDanni: (row.franchigiaDanni as number) ?? undefined,
-      },
-    });
-  }
-  return "ok";
-}
-
-async function commitMovementRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] | string> {
-  const vehicleId = ctx.vehicleByTarga.get(up(row.targa)!);
-  if (!vehicleId) return `veicolo con targa ${row.targa} inesistente`;
-  const driverId = ctx.userByEmail.get(s(row.driverEmail)!.toLowerCase());
-  if (!driverId) return `driver ${row.driverEmail} inesistente`;
-  const stationId = ctx.stationByCode.get(up(row.stationCode)!);
-  if (!stationId) return `stazione "${row.stationCode}" inesistente`;
-  if (vehicleId !== "dry-run") {
-    const dup = await db.assignment.findFirst({ where: { vehicleId, date: row.date as Date } });
-    if (dup) return `assegnazione per ${row.targa} in data ${(row.date as Date).toLocaleDateString("it-IT")} già presente`;
-  }
-  if (!ctx.dryRun && driverId !== "dry-run") {
-    await db.assignment.create({
-      data: {
-        date: row.date as Date,
-        vehicleId,
-        driverId,
-        stationId,
-        checkInKm: (row.checkInKm as number) ?? null,
-        checkOutKm: (row.checkOutKm as number) ?? null,
-      },
-    });
-  }
-  return "ok";
-}
-
-async function commitReplacementRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"] | string> {
-  const vehicleId = ctx.vehicleByTarga.get(up(row.targa)!);
-  if (!vehicleId) return `veicolo con targa ${row.targa} inesistente`;
-  const replacementVehicleId = row.targaSostitutivo
-    ? ctx.vehicleByTarga.get(up(row.targaSostitutivo)!) ?? null
-    : null;
-  if (row.targaSostitutivo && !replacementVehicleId) return `mezzo sostitutivo ${row.targaSostitutivo} inesistente`;
-  if (vehicleId !== "dry-run") {
-    const dup = await db.replacementCase.findFirst({
-      where: { vehicleId, dataIngressoOfficina: row.dataIngressoOfficina as Date },
-    });
-    if (dup) return `pratica già presente per ${row.targa} con ingresso ${(row.dataIngressoOfficina as Date).toLocaleDateString("it-IT")} — storno duplicato non ammesso`;
-  }
-  if (!ctx.dryRun) {
-    await db.replacementCase.create({
-      data: {
-        vehicleId,
-        motivo: row.motivo as ReplacementReason,
-        dataIngressoOfficina: row.dataIngressoOfficina as Date,
-        centroConvenzionato: s(row.centroConvenzionato)!,
-        replacementVehicleId: replacementVehicleId === "dry-run" ? null : replacementVehicleId,
-        dataRicezioneSostitutivo: (row.dataRicezioneSostitutivo as Date) ?? null,
-        dataRientroOriginale: (row.dataRientroOriginale as Date) ?? null,
-        stato: (row.stato as PracticeStatus) ?? "APERTA",
-        note: s(row.note),
-      },
-    });
-  }
-  return "ok";
-}
-
-async function commitFuelRow(row: Row, ctx: Ctx, importJobId: string | null): Promise<RowOutcome["status"] | string> {
-  const pan = s(row.pan)!;
-  if (!ctx.dryRun) {
-    const card = await db.fuelCard.upsert({
-      where: { pan },
-      update: {},
-      create: { pan }, // carta non ancora associata a un veicolo: si associa in /fuel
-    });
-    const dup = await db.fuelTransaction.findFirst({
-      where: { fuelCardId: card.id, data: row.data as Date, importo: row.importo as number },
-    });
-    if (dup) return `transazione già presente (PAN ${pan}, ${(row.data as Date).toLocaleString("it-IT")})`;
-    await db.fuelTransaction.create({
-      data: {
-        fuelCardId: card.id,
-        data: row.data as Date,
-        litri: row.litri as number,
-        importo: row.importo as number,
-        puntoVendita: s(row.puntoVendita),
-        prodotto: s(row.prodotto),
-        importJobId,
-      },
-    });
-  } else {
-    const card = await db.fuelCard.findUnique({ where: { pan } });
-    if (card) {
-      const dup = await db.fuelTransaction.findFirst({
-        where: { fuelCardId: card.id, data: row.data as Date, importo: row.importo as number },
-      });
-      if (dup) return `transazione già presente (PAN ${pan}, ${(row.data as Date).toLocaleString("it-IT")})`;
-    }
-  }
-  return "ok";
-}
-
-async function commitTollRow(row: Row, ctx: Ctx, importJobId: string | null): Promise<RowOutcome["status"] | string> {
-  const stationId = ctx.stationByCode.get(up(row.stationCode)!);
-  if (!stationId) return `stazione "${row.stationCode}" inesistente`;
-  const dup = await db.tollTransaction.findFirst({
-    where: { stationId, data: row.data as Date, importo: row.importo as number, targa: up(row.targa) },
-  });
-  if (dup) return `pedaggio già presente (${row.stationCode}, ${(row.data as Date).toLocaleString("it-IT")})`;
-  if (!ctx.dryRun) {
-    await db.tollTransaction.create({
-      data: {
-        stationId,
-        deviceCode: s(row.deviceCode),
-        targa: up(row.targa),
-        data: row.data as Date,
-        tratta: s(row.tratta),
-        importo: row.importo as number,
-        importJobId,
       },
     });
   }
@@ -315,13 +139,7 @@ export async function processRows(params: {
         switch (params.entity) {
           case "vehicles": return commitVehicleRow(data, ctx);
           case "drivers": return commitDriverRow(data, ctx);
-          case "services": return commitServiceRow(data, ctx);
-          case "fines": return commitFineRow(data, ctx);
           case "leases": return commitLeaseRow(data, ctx);
-          case "movements": return commitMovementRow(data, ctx);
-          case "replacements": return commitReplacementRow(data, ctx);
-          case "fuel": return commitFuelRow(data, ctx, params.importJobId ?? null);
-          case "tolls": return commitTollRow(data, ctx, params.importJobId ?? null);
           default: throw new Error(`Entità sconosciuta: ${params.entity}`);
         }
       })();
