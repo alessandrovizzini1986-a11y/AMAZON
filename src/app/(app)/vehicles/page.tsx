@@ -38,17 +38,59 @@ export default async function VehiclesPage({
     alimentazioneLabel: FUEL_LABELS[v.alimentazione],
     hvoNote: v.hvoCompatibile && v.alimentazione !== "DIESEL_HVO",
     stationCode: v.station.code,
+    stationName: v.station.name,
     stato: v.stato,
     kmAttuali: v.kmAttuali,
     canoneMese: v.canoneMese ? Number(v.canoneMese) : null,
     leasingCompany: v.leasingCompany,
   }));
 
+  // chip stazione: link GET che preservano il filtro stato
+  const stationHref = (stationId?: string) => {
+    const q = new URLSearchParams();
+    if (stationId) q.set("station", stationId);
+    if (params.stato) q.set("stato", params.stato);
+    const qs = q.toString();
+    return qs ? `/vehicles?${qs}` : "/vehicles";
+  };
+  const chip = (active: boolean) =>
+    `inline-flex h-10 items-center rounded-full border px-3.5 text-sm font-semibold transition-colors ${
+      active ? "border-brand bg-brand text-white" : "border-[#d5dbe3] bg-surface-raised text-ink hover:border-brand hover:text-brand"
+    }`;
+
+  const filters = (
+    <div className="flex flex-wrap items-center gap-2">
+      {isAdmin && (
+        <>
+          <Link href={stationHref()} className={chip(!params.station)}>Tutte</Link>
+          {stations.map((s) => (
+            <Link key={s.id} href={stationHref(s.id)} className={chip(params.station === s.id)} title={s.name}>
+              {s.code}
+            </Link>
+          ))}
+        </>
+      )}
+      <form method="get" className="ml-auto">
+        {params.station && <input type="hidden" name="station" value={params.station} />}
+        <select
+          className="input h-10 w-auto"
+          name="stato"
+          defaultValue={params.stato ?? ""}
+          aria-label="Filtra per stato"
+        >
+          <option value="">Non dismessi</option>
+          {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <button className="btn-secondary ml-2 h-10">Applica</button>
+      </form>
+    </div>
+  );
+
   return (
     <div>
       <PageHeader
-        title="Flotta"
-        subtitle={scope.stationId ? "Veicoli della tua stazione" : "Tutte le stazioni del cluster"}
+        eyebrow="Flotta"
+        title={scope.stationId ? "Le targhe della tua stazione" : "Dove si trova ogni targa"}
         action={can(user, "vehicle.manage") ? <Link href="/vehicles/new" className="btn-primary">+ Nuovo veicolo</Link> : undefined}
       />
 
@@ -56,22 +98,7 @@ export default async function VehiclesPage({
         <p className="mb-4 text-sm text-danger bg-danger-soft rounded-control px-3 py-2">{params.error}</p>
       )}
 
-      {/* filtri */}
-      <form className="mb-4 flex flex-wrap gap-2" method="get">
-        {isAdmin && (
-          <select className="input max-w-56" name="station" defaultValue={params.station ?? ""}>
-            <option value="">Tutte le stazioni</option>
-            {stations.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
-          </select>
-        )}
-        <select className="input max-w-48" name="stato" defaultValue={params.stato ?? ""}>
-          <option value="">Non dismessi</option>
-          {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <button className="btn-secondary">Filtra</button>
-      </form>
-
-      <VehicleTable vehicles={rows} statusLabels={STATUS_LABELS} isAdmin={isAdmin} />
+      <VehicleTable vehicles={rows} statusLabels={STATUS_LABELS} isAdmin={isAdmin} filters={filters} />
     </div>
   );
 }

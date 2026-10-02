@@ -1,40 +1,28 @@
 import Link from "next/link";
 import type { SessionUser } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
-import { SideNavLink, BottomNavLink } from "./NavLink";
+import { TopNavLink, BottomNavLink } from "./NavLink";
 import { NavIcon, type IconName } from "./icons";
 
 type NavItem = { href: string; label: string; icon: IconName };
-type NavSection = { title?: string; items: NavItem[] };
 
 const OPERATIVO: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/vehicles", label: "Flotta", icon: "fleet" },
 ];
 
-const NAV_BY_ROLE: Record<SessionUser["role"], NavSection[]> = {
-  DRIVER: [
-    {
-      items: [
-        { href: "/vehicles", label: "Flotta", icon: "fleet" },
-      ],
-    },
-  ],
-  RESP_MEZZI: [{ items: OPERATIVO }],
-  ADMIN: [
-    { title: "Operativo", items: OPERATIVO },
-    {
-      title: "Gestione",
-      items: [
-        { href: "/import", label: "Import dati", icon: "import" },
-        { href: "/users", label: "Utenti", icon: "users" },
-        { href: "/config", label: "Configurazione", icon: "settings" },
-        { href: "/audit", label: "Audit trail", icon: "audit" },
-      ],
-    },
-  ],
-};
+const GESTIONE: NavItem[] = [
+  { href: "/import", label: "Import", icon: "import" },
+  { href: "/users", label: "Utenti", icon: "users" },
+  { href: "/config", label: "Configurazione", icon: "settings" },
+  { href: "/audit", label: "Audit", icon: "audit" },
+];
 
+const NAV_BY_ROLE: Record<SessionUser["role"], { main: NavItem[]; admin: NavItem[] }> = {
+  DRIVER: { main: [{ href: "/vehicles", label: "Flotta", icon: "fleet" }], admin: [] },
+  RESP_MEZZI: { main: OPERATIVO, admin: [] },
+  ADMIN: { main: OPERATIVO, admin: GESTIONE },
+};
 
 const ROLE_LABEL: Record<SessionUser["role"], string> = {
   ADMIN: "Fleet Manager",
@@ -47,55 +35,46 @@ function initials(name: string): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "U";
 }
 
+/**
+ * Guscio dell'app: barra in alto (bianca, istituzionale) con le voci di menu,
+ * su mobile header compatto + bottom nav. Le voci di gestione (solo admin)
+ * stanno a destra, separate da quelle operative.
+ */
 export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
-  const sections = NAV_BY_ROLE[user.role];
-  const bottomNav = sections.flatMap((s) => s.items).slice(0, 4);
+  const nav = NAV_BY_ROLE[user.role];
+  const bottomNav = [...nav.main, ...nav.admin].slice(0, 4);
 
   return (
-    <div className="min-h-screen md:flex">
-      {/* sidebar desktop */}
-      <aside className="sidebar-surface hidden shrink-0 text-white md:sticky md:top-0 md:flex md:max-h-screen md:min-h-screen md:w-64 md:flex-col">
-        <div className="flex items-center gap-3 px-6 py-6">
-          <div className="brand-mark flex h-10 w-10 items-center justify-center rounded-xl text-base font-bold">F</div>
-          <div>
-            <div className="text-[15px] font-bold leading-tight tracking-tight">FleetDSP</div>
-            <div className="text-xs text-slate-400">{ROLE_LABEL[user.role]}</div>
-          </div>
-        </div>
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-20 border-b border-line bg-surface-raised">
+        <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-6 px-4 md:h-[68px] md:gap-10 md:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="brand-mark flex h-8 w-8 items-center justify-center rounded-lg text-[15px] font-bold md:h-9 md:w-9 md:text-[17px]">F</div>
+            <div className="text-[17px] font-bold tracking-tight md:text-lg">FleetDSP</div>
+          </Link>
 
-        <nav className="flex-1 space-y-6 overflow-y-auto pb-4 pt-1">
-          {sections.map((section, i) => (
-            <div key={i} className="space-y-0.5">
-              {section.title && (
-                <div className="px-6 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  {section.title}
-                </div>
-              )}
-              {section.items.map((item) => (
-                <SideNavLink key={item.href} {...item} />
-              ))}
-            </div>
-          ))}
-        </nav>
+          <nav className="hidden flex-1 items-center gap-1 md:flex" aria-label="Menu principale">
+            {nav.main.map((item) => (
+              <TopNavLink key={item.href} {...item} />
+            ))}
+            {nav.admin.length > 0 && <span aria-hidden className="mx-2 h-6 w-px bg-line" />}
+            {nav.admin.map((item) => (
+              <TopNavLink key={item.href} {...item} />
+            ))}
+          </nav>
 
-        <div className="border-t border-white/10 px-4 py-4">
-          <div className="flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 md:ml-0">
             <Link
               href="/account"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-slate-100 transition-colors hover:bg-white/20"
-              title="Il mio account"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#d5dbe3] text-xs font-semibold text-ink transition-colors hover:border-brand hover:text-brand md:h-10 md:w-10 md:text-sm"
+              title={`${user.name} · ${ROLE_LABEL[user.role]}`}
+              aria-label={`Account di ${user.name}`}
             >
               {initials(user.name)}
             </Link>
-            <div className="min-w-0 flex-1">
-              <Link href="/account" className="block truncate text-sm font-medium text-slate-100 hover:underline">
-                {user.name}
-              </Link>
-              <div className="truncate text-[11px] text-slate-400">{user.email}</div>
-            </div>
             <form action={logoutAction}>
               <button
-                className="flex h-8 w-8 items-center justify-center rounded-control text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-control text-ink-muted transition-colors hover:bg-surface hover:text-ink"
                 title="Esci"
                 aria-label="Esci"
               >
@@ -104,39 +83,12 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
             </form>
           </div>
         </div>
-      </aside>
+      </header>
 
-      {/* header mobile */}
-      <div className="sidebar-surface sticky top-0 z-20 flex items-center justify-between px-4 py-3 text-white md:hidden">
-        <div className="flex items-center gap-2.5 font-bold tracking-tight">
-          <div className="brand-mark flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold">F</div>
-          FleetDSP
-        </div>
-        <div className="flex items-center gap-1">
-          <Link
-            href="/account"
-            className="flex h-8 w-8 items-center justify-center rounded-control text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
-            title="Il mio account"
-            aria-label="Il mio account"
-          >
-            <NavIcon name="user" className="h-4 w-4" />
-          </Link>
-          <form action={logoutAction}>
-            <button
-              className="flex h-8 w-8 items-center justify-center rounded-control text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
-              title="Esci"
-              aria-label="Esci"
-            >
-              <NavIcon name="logout" className="h-4 w-4" />
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <main className="min-w-0 flex-1 p-4 pb-24 md:p-8 md:pb-8">{children}</main>
+      <main className="mx-auto max-w-[1240px] px-4 pb-24 pt-6 md:px-8 md:pb-16 md:pt-10">{children}</main>
 
       {/* bottom nav mobile */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgb(15_23_42/0.06)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden">
         {bottomNav.map((item) => (
           <BottomNavLink key={item.href} {...item} />
         ))}

@@ -30,3 +30,10 @@ export function fmtNum(v: number | null | undefined, digits = 0): string {
   if (v === null || v === undefined) return "—";
   return new Intl.NumberFormat("it-IT", { maximumFractionDigits: digits }).format(v);
 }
+
+/** Euro senza decimali (es. "285.721 €") — per KPI e grafici, dove i centesimi sono rumore. */
+export function fmtEurInt(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "—";
+  // separatore delle migliaia anche a 4 cifre ("2.355 €"): it-IT di default lo omette
+  return `${String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ".")} €`;
+}
