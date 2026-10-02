@@ -9,20 +9,8 @@ import type { SessionUser } from "./auth";
 export type Action =
   | "vehicle.view"
   | "vehicle.manage"
-  | "damage.report"
-  | "checkinout.perform"
-  | "fine.viewOwn"
-  | "fine.viewStation"
-  | "fine.viewAll"
-  | "fine.manage"
-  | "maintenance.view"
-  | "maintenance.manage"
-  | "replacement.manage"
-  | "transfer.request"
-  | "transfer.approve"
   | "dashboard.station"
   | "dashboard.cluster"
-  | "fuel.manage"
   | "users.manage"
   | "config.manage"
   | "import.run"
@@ -32,43 +20,17 @@ export type Action =
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
     "vehicle.view",
-    "damage.report",
-    "checkinout.perform",
-    "fine.viewOwn",
-    "maintenance.view",
   ],
   RESP_MEZZI: [
     "vehicle.view",
     "vehicle.manage",
-    "damage.report",
-    "checkinout.perform",
-    "fine.viewOwn",
-    "fine.viewStation",
-    "fine.manage",
-    "maintenance.view",
-    "maintenance.manage",
-    "replacement.manage",
-    "transfer.request",
     "dashboard.station",
-    "fuel.manage",
   ],
   ADMIN: [
     "vehicle.view",
     "vehicle.manage",
-    "damage.report",
-    "checkinout.perform",
-    "fine.viewOwn",
-    "fine.viewStation",
-    "fine.viewAll",
-    "fine.manage",
-    "maintenance.view",
-    "maintenance.manage",
-    "replacement.manage",
-    "transfer.request",
-    "transfer.approve",
     "dashboard.station",
     "dashboard.cluster",
-    "fuel.manage",
     "users.manage",
     "config.manage",
     "import.run",

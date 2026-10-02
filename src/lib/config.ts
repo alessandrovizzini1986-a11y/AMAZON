@@ -11,51 +11,6 @@ export const CONFIG_DEFAULTS: Record<
   string,
   { value: string; type: "number" | "number[]" | "string" | "string[]" | "boolean"; description: string }
 > = {
-  "maint.alert.giorni": {
-    value: "[30,15,7]",
-    type: "number[]",
-    description: "Soglie alert tagliando/revisione in giorni prima della scadenza",
-  },
-  "maint.alert.km": {
-    value: "[1000,500,100]",
-    type: "number[]",
-    description: "Soglie alert tagliando in km prima della soglia",
-  },
-  "fine.ricorso.prefetto.giorni": {
-    value: "60",
-    type: "number",
-    description: "Giorni dalla notifica per ricorso al Prefetto",
-  },
-  "fine.ricorso.gdp.giorni": {
-    value: "30",
-    type: "number",
-    description: "Giorni dalla notifica per ricorso al Giudice di Pace",
-  },
-  "replacement.alert.giorniSenzaRisposta": {
-    value: "15",
-    type: "number",
-    description: "Giorni oltre i quali una pratica sostitutivo inviata senza risposta va in alert",
-  },
-  "replacement.giorniConvenzionaliMese": {
-    value: "30",
-    type: "number",
-    description: "Base giorni convenzionale per il pro-rata del canone mensile nello storno (giorni scoperti × canone/mese ÷ questa base)",
-  },
-  "fuel.consumo.atteso.l100km": {
-    value: "11",
-    type: "number",
-    description: "Consumo atteso di riferimento (litri/100km) per la riconciliazione carburante",
-  },
-  "fuel.consumo.tolleranza": {
-    value: "0.25",
-    type: "number",
-    description: "Tolleranza (frazione) oltre il consumo atteso prima di segnalare anomalia",
-  },
-  "fine.riaddebito.scadenzaGiorni": {
-    value: "30",
-    type: "number",
-    description: "Giorni dalla notifica oltre i quali, se non è stato assegnato un conducente, la multa diventa automaticamente a carico azienda (non più addebitabile)",
-  },
   "appalto.nonAmazon.stationCodes": {
     value: "[\"GLS\"]",
     type: "string[]",

@@ -4,8 +4,6 @@ import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { giorniScoperti, importoStorno } from "@/domain/replacement";
-import { getConfigNumber } from "@/lib/config";
 
 /**
  * Export Excel per la revisione mensile con manager/Amazon.
@@ -27,16 +25,13 @@ export async function GET(req: NextRequest) {
   const vids = vehicles.map((v) => v.id);
   const vByI = new Map(vehicles.map((v) => [v.id, v]));
 
-  const [services, fines, cases, fuel, tolls, stations] = await Promise.all([
-    db.serviceRecord.findMany({ where: { vehicleId: { in: vids }, data: { gte: since } }, orderBy: { data: "asc" } }),
+  const [fines, fuel, tolls, stations] = await Promise.all([
     db.fine.findMany({ where: { vehicleId: { in: vids }, dataOraInfrazione: { gte: since } }, include: { driver: true }, orderBy: { dataOraInfrazione: "asc" } }),
-    db.replacementCase.findMany({ where: { vehicleId: { in: vids } }, include: { vehicle: true }, orderBy: { dataIngressoOfficina: "desc" } }),
     db.fuelTransaction.findMany({ where: { data: { gte: since }, fuelCard: { vehicleId: { in: vids } } }, include: { fuelCard: true }, orderBy: { data: "asc" } }),
     db.tollTransaction.findMany({ where: { data: { gte: since }, ...(stationId ? { stationId } : {}) }, orderBy: { data: "asc" } }),
     db.station.findMany(),
   ]);
   const stCode = (id: string) => stations.find((s) => s.id === id)?.code ?? id;
-  const giorniConvenzionaliMese = await getConfigNumber("replacement.giorniConvenzionaliMese");
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "FleetDSP";
@@ -45,18 +40,6 @@ export async function GET(req: NextRequest) {
     ws.getRow(1).font = { bold: true };
     ws.columns.forEach((c) => (c.width = Math.max(14, String(c.header ?? "").length + 4)));
   };
-
-  const wsInterventi = wb.addWorksheet("Interventi 30gg");
-  wsInterventi.columns = [
-    { header: "Data", key: "data" }, { header: "Targa", key: "targa" }, { header: "Stazione", key: "st" },
-    { header: "Tipo", key: "tipo" }, { header: "Officina", key: "off" }, { header: "Km", key: "km" },
-    { header: "Costo €", key: "costo" },
-  ];
-  for (const r of services) {
-    const v = vByI.get(r.vehicleId)!;
-    wsInterventi.addRow({ data: r.data, targa: v.targa, st: v.station.code, tipo: r.tipo, off: r.officina, km: r.kmIntervento, costo: Number(r.costo) });
-  }
-  style(wsInterventi);
 
   const wsMulte = wb.addWorksheet("Multe 30gg");
   wsMulte.columns = [
@@ -73,29 +56,6 @@ export async function GET(req: NextRequest) {
     });
   }
   style(wsMulte);
-
-  const wsStorni = wb.addWorksheet("Storni canone");
-  wsStorni.columns = [
-    { header: "Targa", key: "t" }, { header: "Stazione", key: "s" }, { header: "Motivo", key: "m" },
-    { header: "Ingresso officina", key: "in" }, { header: "Ricezione sostitutivo", key: "ric" },
-    { header: "Rientro originale", key: "rie" }, { header: "Giorni scoperti", key: "g" },
-    { header: "Canone €/mese", key: "c" }, { header: "Storno €", key: "st" }, { header: "Stato", key: "stato" },
-  ];
-  for (const c of cases) {
-    const giorni = c.giorniScoperti ?? giorniScoperti({
-      dataIngressoOfficina: c.dataIngressoOfficina,
-      dataRicezioneSostitutivo: c.dataRicezioneSostitutivo,
-      dataRientroOriginale: c.dataRientroOriginale,
-      oggi,
-    });
-    const canone = Number(c.canoneMeseSnapshot ?? c.vehicle.canoneMese ?? 0);
-    wsStorni.addRow({
-      t: c.vehicle.targa, s: stCode(c.vehicle.stationId), m: c.motivo,
-      in: c.dataIngressoOfficina, ric: c.dataRicezioneSostitutivo ?? "", rie: c.dataRientroOriginale ?? "",
-      g: giorni, c: canone, st: c.importoStorno ? Number(c.importoStorno) : importoStorno(giorni, canone, giorniConvenzionaliMese), stato: c.stato,
-    });
-  }
-  style(wsStorni);
 
   const wsFuel = wb.addWorksheet("Carburante 30gg");
   wsFuel.columns = [
@@ -125,7 +85,7 @@ export async function GET(req: NextRequest) {
     userId: user.id,
     action: "export.monthly",
     entity: "Export",
-    meta: { stationId, righe: { interventi: services.length, multe: fines.length, storni: cases.length } },
+    meta: { stationId, righe: { multe: fines.length } },
   });
 
   const buf = Buffer.from(await wb.xlsx.writeBuffer());

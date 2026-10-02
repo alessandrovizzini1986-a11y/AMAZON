@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
 /**
@@ -62,27 +62,6 @@ export function CostByStationChart({ data }: { data: CostRow[] }) {
             }}
           />
         ))}
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-export type WeekRow = { settimana: string; multe: number; importo: number };
-
-export function FinesTrendChart({ data }: { data: WeekRow[] }) {
-  return (
-    <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={data} margin={{ top: 16, right: 8, left: 8, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke="var(--color-line)" />
-        <XAxis dataKey="settimana" tick={{ fontSize: 11, fill: "var(--color-ink-muted)" }} axisLine={false} tickLine={false} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--color-ink-muted)" }} axisLine={false} tickLine={false} width={30} />
-        <Tooltip
-          formatter={(value: number, name: string) => (name === "importo" ? [eur(value), "Importo"] : [value, "Multe"])}
-          contentStyle={{ borderRadius: 8, border: "1px solid var(--color-line)", fontSize: 12 }}
-        />
-        <Bar dataKey="multe" name="Multe" fill="#2a78d6" radius={[4, 4, 0, 0]} maxBarSize={44}>
-          <LabelList dataKey="multe" position="top" style={{ fontSize: 11, fill: "var(--color-ink-muted)" }} />
-        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

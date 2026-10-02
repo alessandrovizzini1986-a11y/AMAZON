@@ -92,13 +92,7 @@ async function main() {
 
   console.log("Seed: configurazione…");
   const configs = [
-    { key: "maint.alert.giorni", value: "[30,15,7]", type: "number[]", description: "Soglie alert tagliando/revisione in giorni prima della scadenza" },
-    { key: "maint.alert.km", value: "[1000,500,100]", type: "number[]", description: "Soglie alert tagliando in km prima della soglia" },
-    { key: "fine.ricorso.prefetto.giorni", value: "60", type: "number", description: "Giorni dalla notifica per ricorso al Prefetto" },
-    { key: "fine.ricorso.gdp.giorni", value: "30", type: "number", description: "Giorni dalla notifica per ricorso al Giudice di Pace" },
-    { key: "replacement.alert.giorniSenzaRisposta", value: "15", type: "number", description: "Giorni oltre i quali una pratica sostitutivo inviata senza risposta va in alert" },
-    { key: "fuel.consumo.atteso.l100km", value: "11", type: "number", description: "Consumo atteso di riferimento (litri/100km) per la riconciliazione carburante" },
-    { key: "fuel.consumo.tolleranza", value: "0.25", type: "number", description: "Tolleranza (frazione) oltre il consumo atteso prima di segnalare anomalia" },
+    { key: "appalto.nonAmazon.stationCodes", value: "[\"GLS\"]", type: "string[]", description: "Codici stazione che appartengono ad appalti diversi da Amazon (es. GLS) — usato per separare i subtotali per appalto in dashboard" },
   ];
   for (const c of configs) await db.appConfig.create({ data: c });
 
