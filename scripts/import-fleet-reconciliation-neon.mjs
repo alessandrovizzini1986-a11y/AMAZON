@@ -25,6 +25,8 @@ function arg(name) {
 const envFileIdx = process.argv.indexOf("--env-file");
 const envVars = envFileIdx >= 0 ? dotenv.parse(fs.readFileSync(process.argv[envFileIdx + 1], "utf-8")) : process.env;
 const sql = neon(envVars.NEON_URL || envVars.DATABASE_URL);
+const DRY_RUN = process.argv.includes("--dry-run");
+const write = (q, params) => (DRY_RUN ? Promise.resolve([]) : sql.query(q, params));
 
 const STATION_CODES = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1", "GLS"];
 function extractStationCode(raw) {
@@ -62,12 +64,6 @@ function asDate(v) {
 function cellNote(v) {
   if (typeof v === "string") return v.trim() || null;
   return null;
-}
-
-const PLATE_RE = /^[A-Z0-9]{5,8}$/;
-function extractPlateRef(note) {
-  const first = note.trim().split(/[\s,\-–]/)[0]?.toUpperCase();
-  return first && PLATE_RE.test(first) && /\d/.test(first) ? first : null;
 }
 
 function readAttivi(ws) {
@@ -134,6 +130,7 @@ function dedupeCessati(events) {
 
 async function main() {
   const filePath = arg("file");
+  if (DRY_RUN) console.log("*** DRY-RUN: nessuna scrittura sul database, solo conteggi ***\n");
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(filePath);
 
@@ -157,7 +154,7 @@ async function main() {
   const stationRows = await sql.query(`SELECT id, code FROM "Station"`);
   const stationIdByCode = new Map(stationRows.map((s) => [s.code, s.id]));
 
-  const dbVehicleRows = await sql.query(`SELECT id, targa, stato, modello FROM "Vehicle"`);
+  const dbVehicleRows = await sql.query(`SELECT id, targa, stato, modello, "stationId" FROM "Vehicle"`);
   const dbByTarga = new Map(dbVehicleRows.map((v) => [v.targa.toUpperCase(), v]));
 
   // ---------------------------------------------------------------
@@ -172,7 +169,7 @@ async function main() {
   for (const v of onlyInDbNonDismesso) {
     const targa = v.targa.toUpperCase();
     if (!cessatiByTarga.has(targa)) { dismesseNonConfermate.push(targa); continue; }
-    await sql.query(`UPDATE "Vehicle" SET stato='DISMESSO', "updatedAt"=now() WHERE id=$1`, [v.id]);
+    await write(`UPDATE "Vehicle" SET stato='DISMESSO', "updatedAt"=now() WHERE id=$1`, [v.id]);
     dismesse++;
   }
   console.log(`Marcati DISMESSO (confermati dal foglio Cessati): ${dismesse}`);
@@ -180,26 +177,46 @@ async function main() {
 
   console.log(`\n== Riattivazioni (targhe Attivi ma DISMESSO nel DB) ==`);
   let riattivate = 0;
+  const riattivateSet = new Set();
   for (const [targa, r] of attiviByTarga) {
     const v = dbByTarga.get(targa);
     if (!v || v.stato !== "DISMESSO") continue;
     const stationId = r.dsCode ? stationIdByCode.get(r.dsCode) : undefined;
     const stato = r.statoRaw === "SOSTITUTIVO" ? "SOSTITUTIVO" : r.statoRaw === "UFFICIO" ? "UFFICIO" : "ATTIVO";
-    await sql.query(
-      `UPDATE "Vehicle" SET stato=$1, "stationId"=COALESCE($2,"stationId"), "leasingCompany"=$3,
+    await write(`UPDATE "Vehicle" SET stato=$1, "stationId"=COALESCE($2,"stationId"), "leasingCompany"=$3,
         "contrattoLeasingNo"=$4, "tipoContratto"=$5, "contrattoDataInizio"=$6, "contrattoDataFine"=$7,
         note=$8, "updatedAt"=now()
        WHERE id=$9`,
       [stato, stationId ?? null, r.societa, r.ra, r.tipo, r.dataInizio, r.dataFine, r.note, v.id]
     );
     v.stato = stato;
+    riattivateSet.add(targa);
     riattivate++;
   }
   console.log(`Veicoli riattivati: ${riattivate}`);
 
+  // cambio stazione: il foglio Attivi è la fonte di verità su "dove sta ogni targa"
+  console.log(`\n== Cambi stazione ==`);
+  let cambiStazione = 0;
+  const oggi = new Date().toISOString().slice(0, 10);
+  for (const [targa, r] of attiviByTarga) {
+    const v = dbByTarga.get(targa);
+    if (!v || riattivateSet.has(targa) || v.stato === "DISMESSO") continue;
+    const nuovaStazione = r.dsCode ? stationIdByCode.get(r.dsCode) : undefined;
+    if (!nuovaStazione || nuovaStazione === v.stationId) continue;
+    await write(`UPDATE "VehicleStationHistory" SET "toDate"=$1 WHERE "vehicleId"=$2 AND "toDate" IS NULL`, [oggi, v.id]);
+    await write(
+      `INSERT INTO "VehicleStationHistory" (id, "vehicleId", "stationId", "fromDate", note)
+       VALUES ($1,$2,$3,$4,'cambio stazione da ricognizione flotta')`,
+      [crypto.randomUUID(), v.id, nuovaStazione, oggi]
+    );
+    await write(`UPDATE "Vehicle" SET "stationId"=$1, "updatedAt"=now() WHERE id=$2`, [nuovaStazione, v.id]);
+    cambiStazione++;
+  }
+  console.log(`Veicoli spostati di stazione: ${cambiStazione}`);
+
   console.log(`\n== Inserimenti nuovi veicoli attivi (${onlyInAttivi.length}) ==`);
   let inseriti = 0;
-  const createdVehicleIdByTarga = new Map();
   const saltatiSenzaStazione = [];
   for (const targa of onlyInAttivi) {
     const r = attiviByTarga.get(targa);
@@ -207,51 +224,21 @@ async function main() {
     if (!stationId) { saltatiSenzaStazione.push(targa); continue; }
     const stato = r.statoRaw === "SOSTITUTIVO" ? "SOSTITUTIVO" : r.statoRaw === "UFFICIO" ? "UFFICIO" : "ATTIVO";
     const id = crypto.randomUUID();
-    await sql.query(
-      `INSERT INTO "Vehicle"
+    await write(`INSERT INTO "Vehicle"
         (id, targa, modello, alimentazione, "stationId", stato, "leasingCompany", "contrattoLeasingNo",
          "tipoContratto", "contrattoDataInizio", "canoneMese", note, "kmAttuali", "createdAt", "updatedAt")
        VALUES ($1,$2,$3,'DIESEL',$4,$5,$6,$7,$8,$9,$10,$11,0,now(),now())`,
       [id, targa, r.modello, stationId, stato, r.societa, r.ra, r.tipo, r.dataInizio, r.tariffa, r.note]
     );
-    await sql.query(
-      `INSERT INTO "VehicleStationHistory" (id, "vehicleId", "stationId", "fromDate", note)
+    await write(`INSERT INTO "VehicleStationHistory" (id, "vehicleId", "stationId", "fromDate", note)
        VALUES ($1,$2,$3,$4,'import ricognizione flotta')`,
       [crypto.randomUUID(), id, stationId, r.dataInizio ?? new Date().toISOString().slice(0, 10)]
     );
-    createdVehicleIdByTarga.set(targa, id);
     dbByTarga.set(targa, { id, targa, stato, modello: r.modello });
     inseriti++;
   }
   console.log(`Veicoli creati: ${inseriti}`);
   if (saltatiSenzaStazione.length) console.log(`Saltati (stazione non riconosciuta):`, saltatiSenzaStazione);
-
-  console.log(`\n== Pratiche sostitutivo da inserimenti (nota con targa originale) ==`);
-  let casiCreati = 0, casiSaltatiOriginaleNonInFlotta = 0;
-  for (const targa of onlyInAttivi) {
-    const r = attiviByTarga.get(targa);
-    if (r.statoRaw !== "SOSTITUTIVO" || !r.note) continue;
-    const originalPlate = extractPlateRef(r.note);
-    if (!originalPlate) continue;
-    const originalVehicle = dbByTarga.get(originalPlate);
-    if (!originalVehicle) { casiSaltatiOriginaleNonInFlotta++; continue; }
-    const substituteId = createdVehicleIdByTarga.get(targa) ?? null;
-    const dataIngresso = r.dataInizio ?? new Date().toISOString().slice(0, 10);
-    const existing = await sql.query(
-      `SELECT id FROM "ReplacementCase" WHERE "vehicleId"=$1 AND "dataIngressoOfficina"=$2`,
-      [originalVehicle.id, dataIngresso]
-    );
-    if (existing.length) continue;
-    await sql.query(
-      `INSERT INTO "ReplacementCase"
-        (id, "vehicleId", motivo, "dataIngressoOfficina", "centroConvenzionato", "replacementVehicleId", stato, note, "createdAt", "updatedAt")
-       VALUES ($1,$2,'GUASTO',$3,$4,$5,'APERTA',$6,now(),now())`,
-      [crypto.randomUUID(), originalVehicle.id, dataIngresso, r.societa ?? "N/D", substituteId,
-       `Importato da ricognizione flotta — sostitutivo ${targa}. Motivo effettivo da verificare (non presente nella fonte).`]
-    );
-    casiCreati++;
-  }
-  console.log(`Pratiche sostitutivo create: ${casiCreati} (${casiSaltatiOriginaleNonInFlotta} scartate: targa originale non in flotta)`);
 
   // ---------------------------------------------------------------
   // 2) CESSATI: veicoli storici + arricchimento + storico stazioni
@@ -266,8 +253,7 @@ async function main() {
       const stationId = latest.dsCode ? stationIdByCode.get(latest.dsCode) : undefined;
       if (!stationId) { senzaStazione.push(targa); continue; }
       const id = crypto.randomUUID();
-      await sql.query(
-        `INSERT INTO "Vehicle"
+      await write(`INSERT INTO "Vehicle"
           (id, targa, modello, alimentazione, "stationId", stato, "leasingCompany", "contrattoLeasingNo",
            "tipoContratto", "contrattoDataInizio", "contrattoDataFine", note, "kmAttuali", "createdAt", "updatedAt")
          VALUES ($1,$2,$3,'DIESEL',$4,'DISMESSO',$5,$6,$7,$8,$9,'Veicolo storico — da ricognizione flotta (foglio Cessati)',0,now(),now())`,
@@ -278,8 +264,7 @@ async function main() {
       veicoliStoriciCreati++;
     } else if (vehicle.modello?.startsWith("Veicolo storico (dati non disponibili")) {
       const stationId = latest.dsCode ? stationIdByCode.get(latest.dsCode) : undefined;
-      await sql.query(
-        `UPDATE "Vehicle" SET modello=$1, "leasingCompany"=$2, "contrattoLeasingNo"=$3, "tipoContratto"=$4,
+      await write(`UPDATE "Vehicle" SET modello=$1, "leasingCompany"=$2, "contrattoLeasingNo"=$3, "tipoContratto"=$4,
           "contrattoDataInizio"=$5, "contrattoDataFine"=$6, "stationId"=COALESCE($7,"stationId"), "updatedAt"=now()
          WHERE id=$8`,
         [latest.modello, latest.societa, latest.ra, latest.tipo, latest.dataInizio, latest.dataFine, stationId ?? null, vehicle.id]
@@ -295,8 +280,7 @@ async function main() {
         [vehicle.id, stationId, e.dataInizio]
       );
       if (dup.length) continue;
-      await sql.query(
-        `INSERT INTO "VehicleStationHistory" (id, "vehicleId", "stationId", "fromDate", "toDate", note)
+      await write(`INSERT INTO "VehicleStationHistory" (id, "vehicleId", "stationId", "fromDate", "toDate", note)
          VALUES ($1,$2,$3,$4,$5,$6)`,
         [crypto.randomUUID(), vehicle.id, stationId, e.dataInizio, e.dataFine, e.note]
       );
@@ -308,6 +292,7 @@ async function main() {
   console.log(`Righe storico stazioni create: ${historyCreate}`);
   if (senzaStazione.length) console.log(`Targhe Cessati senza stazione riconoscibile (nessun veicolo creato):`, senzaStazione);
 
+  if (DRY_RUN) return;
   console.log("\n== Riepilogo finale ==");
   const [{ count: veicoli }] = await sql.query(`SELECT count(*) FROM "Vehicle"`);
   const [{ count: attivi }] = await sql.query(`SELECT count(*) FROM "Vehicle" WHERE stato='ATTIVO'`);
