@@ -1,12 +1,15 @@
 import Link from "next/link";
 
 export function PageHeader({
+  eyebrow,
   title,
   subtitle,
   action,
   backHref,
   backLabel = "Indietro",
 }: {
+  /** Etichetta piccola maiuscola sopra il titolo (es. "Situazione flotta"). */
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
@@ -17,14 +20,17 @@ export function PageHeader({
   backLabel?: string;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
       <div>
         {backHref && (
           <Link href={backHref} className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline">
             ← {backLabel}
           </Link>
         )}
-        <h1 className="text-2xl font-bold tracking-tight md:text-[28px]">{title}</h1>
+        {eyebrow && (
+          <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-muted">{eyebrow}</div>
+        )}
+        <h1 className={`text-[26px] font-bold tracking-[-0.02em] md:text-[34px] ${eyebrow ? "mt-1.5" : ""}`}>{title}</h1>
         {subtitle && <p className="mt-1 max-w-3xl text-sm text-ink-muted">{subtitle}</p>}
       </div>
       {action}

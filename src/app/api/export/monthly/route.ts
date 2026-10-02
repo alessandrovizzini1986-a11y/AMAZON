@@ -4,96 +4,111 @@ import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { getConfigStringArray } from "@/lib/config";
+
+const STATO_LABEL: Record<string, string> = {
+  ATTIVO: "Attivo",
+  IN_OFFICINA: "In officina",
+  SOSTITUTIVO: "Sostitutivo",
+  UFFICIO: "Ufficio",
+  DISMESSO: "Dismesso",
+};
 
 /**
- * Export Excel per la revisione mensile con manager/Amazon.
- * Ogni foglio riporta le righe sorgente (dive-deep, non solo aggregati).
+ * Export Excel della flotta: riepilogo per stazione (veicoli + canone mensile,
+ * Amazon e altri appalti distinti) e l'elenco delle targhe non dismesse.
  */
 export async function GET(req: NextRequest) {
   const user = await requireUser();
   assertCan(user, "export.full");
 
   const stationId = req.nextUrl.searchParams.get("station") || null;
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
   const oggi = new Date();
 
-  const vehicles = await db.vehicle.findMany({
-    where: { ...(stationId ? { stationId } : {}) },
-    include: { station: true },
-  });
-  const vids = vehicles.map((v) => v.id);
-  const vByI = new Map(vehicles.map((v) => [v.id, v]));
-
-  const [fines, fuel, tolls, stations] = await Promise.all([
-    db.fine.findMany({ where: { vehicleId: { in: vids }, dataOraInfrazione: { gte: since } }, include: { driver: true }, orderBy: { dataOraInfrazione: "asc" } }),
-    db.fuelTransaction.findMany({ where: { data: { gte: since }, fuelCard: { vehicleId: { in: vids } } }, include: { fuelCard: true }, orderBy: { data: "asc" } }),
-    db.tollTransaction.findMany({ where: { data: { gte: since }, ...(stationId ? { stationId } : {}) }, orderBy: { data: "asc" } }),
-    db.station.findMany(),
+  const [vehicles, stations, stazioniNonAmazon] = await Promise.all([
+    db.vehicle.findMany({
+      where: { stato: { not: "DISMESSO" }, ...(stationId ? { stationId } : {}) },
+      include: { station: true },
+      orderBy: [{ station: { code: "asc" } }, { targa: "asc" }],
+    }),
+    db.station.findMany({ where: { active: true }, orderBy: { code: "asc" } }),
+    getConfigStringArray("appalto.nonAmazon.stationCodes"),
   ]);
-  const stCode = (id: string) => stations.find((s) => s.id === id)?.code ?? id;
+  const appalto = (code: string) => (stazioniNonAmazon.includes(code) ? code : "Amazon");
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "FleetDSP";
-
-  const style = (ws: ExcelJS.Worksheet) => {
+  const header = (ws: ExcelJS.Worksheet) => {
     ws.getRow(1).font = { bold: true };
-    ws.columns.forEach((c) => (c.width = Math.max(14, String(c.header ?? "").length + 4)));
+    ws.views = [{ state: "frozen", ySplit: 1 }];
   };
+  const EUR = '#,##0.00 "€"';
 
-  const wsMulte = wb.addWorksheet("Multe 30gg");
-  wsMulte.columns = [
-    { header: "Data/ora", key: "d" }, { header: "Targa", key: "t" }, { header: "Stazione", key: "s" },
-    { header: "Violazione", key: "v" }, { header: "Importo €", key: "i" }, { header: "Punti", key: "p" },
-    { header: "Conducente", key: "c" }, { header: "Fonte assegnazione", key: "f" }, { header: "Stato", key: "st" },
+  // ---- riepilogo per stazione (sostitutivi esclusi: coprono un guasto già conteggiato) ----
+  const wsSum = wb.addWorksheet("Riepilogo stazioni");
+  wsSum.columns = [
+    { header: "Stazione", key: "code", width: 12 },
+    { header: "Nome", key: "name", width: 24 },
+    { header: "Appalto", key: "appalto", width: 12 },
+    { header: "Veicoli in flotta", key: "veicoli", width: 18 },
+    { header: "Canone mensile €", key: "canone", width: 18, style: { numFmt: EUR } },
   ];
-  for (const f of fines) {
-    const v = vByI.get(f.vehicleId)!;
-    wsMulte.addRow({
-      d: f.dataOraInfrazione, t: v.targa, s: v.station.code, v: f.tipoViolazione, i: Number(f.importo),
-      p: f.puntiPatente, c: f.driver ? `${f.driver.firstName} ${f.driver.lastName}` : "DA ASSEGNARE",
-      f: f.assegnazioneFonte ?? "", st: f.stato,
+  const inFlotta = vehicles.filter((v) => v.stato !== "SOSTITUTIVO");
+  const stationList = stationId ? stations.filter((s) => s.id === stationId) : stations;
+  let totV = 0, totC = 0;
+  for (const s of stationList) {
+    const vs = inFlotta.filter((v) => v.stationId === s.id);
+    const canone = vs.reduce((t, v) => t + Number(v.canoneMese ?? 0), 0);
+    totV += vs.length; totC += canone;
+    wsSum.addRow({ code: s.code, name: s.name, appalto: appalto(s.code), veicoli: vs.length, canone });
+  }
+  wsSum.addRow({ code: "Totale", veicoli: totV, canone: totC }).font = { bold: true };
+  header(wsSum);
+
+  // ---- elenco veicoli ----
+  const wsV = wb.addWorksheet("Veicoli");
+  wsV.columns = [
+    { header: "Targa", key: "targa", width: 12 },
+    { header: "Stazione", key: "stazione", width: 10 },
+    { header: "Appalto", key: "appalto", width: 10 },
+    { header: "Modello", key: "modello", width: 22 },
+    { header: "Stato", key: "stato", width: 13 },
+    { header: "Noleggio", key: "noleggio", width: 14 },
+    { header: "N° contratto", key: "contratto", width: 16 },
+    { header: "Inizio contratto", key: "inizio", width: 16, style: { numFmt: "dd/mm/yyyy" } },
+    { header: "Fine contratto", key: "fine", width: 16, style: { numFmt: "dd/mm/yyyy" } },
+    { header: "Canone mensile €", key: "canone", width: 18, style: { numFmt: EUR } },
+  ];
+  for (const v of vehicles) {
+    wsV.addRow({
+      targa: v.targa,
+      stazione: v.station.code,
+      appalto: appalto(v.station.code),
+      modello: v.modello,
+      stato: STATO_LABEL[v.stato] ?? v.stato,
+      noleggio: v.leasingCompany ?? "",
+      contratto: v.contrattoLeasingNo ?? "",
+      inizio: v.contrattoDataInizio ?? null,
+      fine: v.contrattoDataFine ?? null,
+      canone: v.canoneMese !== null ? Number(v.canoneMese) : null,
     });
   }
-  style(wsMulte);
-
-  const wsFuel = wb.addWorksheet("Carburante 30gg");
-  wsFuel.columns = [
-    { header: "Data", key: "d" }, { header: "PAN", key: "p" }, { header: "Targa", key: "t" },
-    { header: "Litri", key: "l" }, { header: "Importo €", key: "i" }, { header: "Punto vendita", key: "pv" },
-  ];
-  for (const t of fuel) {
-    wsFuel.addRow({
-      d: t.data, p: t.fuelCard.pan,
-      t: t.fuelCard.vehicleId ? vByI.get(t.fuelCard.vehicleId)?.targa ?? "" : "non associata",
-      l: Number(t.litri), i: Number(t.importo), pv: t.puntoVendita ?? "",
-    });
-  }
-  style(wsFuel);
-
-  const wsTolls = wb.addWorksheet("Pedaggi 30gg");
-  wsTolls.columns = [
-    { header: "Data", key: "d" }, { header: "Stazione", key: "s" }, { header: "Targa", key: "t" },
-    { header: "Tratta", key: "tr" }, { header: "Importo €", key: "i" },
-  ];
-  for (const t of tolls) {
-    wsTolls.addRow({ d: t.data, s: stCode(t.stationId), t: t.targa ?? "", tr: t.tratta ?? "", i: Number(t.importo) });
-  }
-  style(wsTolls);
+  header(wsV);
+  wsV.autoFilter = { from: "A1", to: "J1" };
 
   await audit({
     userId: user.id,
     action: "export.monthly",
     entity: "Export",
-    meta: { stationId, righe: { multe: fines.length } },
+    meta: { stationId, righe: { veicoli: vehicles.length } },
   });
 
   const buf = Buffer.from(await wb.xlsx.writeBuffer());
-  const label = stationId ? stCode(stationId) : "cluster";
+  const label = stationId ? stations.find((s) => s.id === stationId)?.code ?? "stazione" : "cluster";
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="fleetdsp_report_${label}_${oggi.toISOString().slice(0, 10)}.xlsx"`,
+      "Content-Disposition": `attachment; filename="fleetdsp_flotta_${label}_${oggi.toISOString().slice(0, 10)}.xlsx"`,
     },
   });
 }

@@ -15,14 +15,14 @@ export function StationFilter({ stations, value }: { stations: StationOption[]; 
   const router = useRouter();
   return (
     <select
-      className="input"
+      className="input h-11 min-w-[200px] text-[15px] font-normal normal-case tracking-normal text-ink"
       value={value}
       onChange={(e) => {
         const v = e.target.value;
         router.push(v ? `/dashboard?station=${v}` : "/dashboard");
       }}
     >
-      <option value="">Vista cluster</option>
+      <option value="">Tutte le stazioni</option>
       {stations.map((s) => (
         <option key={s.id} value={s.id}>
           {s.code} — {s.name}

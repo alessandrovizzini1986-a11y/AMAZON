@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 /**
- * L'export genera un Excel multi-foglio lato server (può richiedere qualche
+ * L'export genera un Excel (veicoli + riepilogo per stazione) lato server (può richiedere qualche
  * secondo su cluster grandi): usiamo fetch+blob invece di un semplice <a href>
  * così il bottone riflette il tempo reale di generazione, non solo il click.
  */
@@ -19,7 +19,7 @@ export function ExportExcelButton({ stationId }: { stationId: string | null }) {
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") ?? "";
       const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match?.[1] ?? "fleetdsp_report.xlsx";
+      const filename = match?.[1] ?? "fleetdsp_flotta.xlsx";
 
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -40,7 +40,7 @@ export function ExportExcelButton({ stationId }: { stationId: string | null }) {
     <button
       onClick={handleClick}
       disabled={loading}
-      className="btn-secondary whitespace-nowrap disabled:opacity-60 disabled:cursor-wait"
+      className="btn-primary h-11 whitespace-nowrap px-[18px] text-[15px] disabled:opacity-60 disabled:cursor-wait"
     >
       {loading ? (
         <span className="inline-flex items-center gap-2">
@@ -48,7 +48,7 @@ export function ExportExcelButton({ stationId }: { stationId: string | null }) {
           Generazione…
         </span>
       ) : (
-        "⬇ Export Excel"
+        "Scarica Excel"
       )}
     </button>
   );

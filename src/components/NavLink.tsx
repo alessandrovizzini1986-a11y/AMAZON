@@ -8,26 +8,17 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Voce della sidebar desktop con stato attivo evidenziato (barra d'accento + pill). */
-export function SideNavLink({ href, label, icon }: { href: string; label: string; icon: IconName }) {
+/** Voce della barra in alto (desktop) con stato attivo a pill blu chiaro. */
+export function TopNavLink({ href, label }: { href: string; label: string; icon?: IconName }) {
   const active = isActive(usePathname(), href);
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`group relative mx-3 flex items-center gap-3 rounded-control px-3 py-2 text-sm transition-colors ${
-        active
-          ? "bg-white/10 font-semibold text-white"
-          : "text-slate-300/80 hover:bg-white/5 hover:text-white"
+      className={`rounded-control px-3.5 py-2.5 text-[15px] transition-colors ${
+        active ? "bg-brand-light font-semibold text-brand" : "font-medium text-[#3c4a5c] hover:bg-surface hover:text-ink"
       }`}
     >
-      <span
-        aria-hidden
-        className={`absolute -left-3 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-sky-400 transition-opacity ${
-          active ? "opacity-100" : "opacity-0"
-        }`}
-      />
-      <NavIcon name={icon} className={`h-[18px] w-[18px] ${active ? "text-sky-300" : "text-slate-400 group-hover:text-slate-200"}`} />
       {label}
     </Link>
   );
