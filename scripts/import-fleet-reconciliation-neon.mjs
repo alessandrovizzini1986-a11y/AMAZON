@@ -138,6 +138,13 @@ async function main() {
   const attiviByTarga = new Map(attiviRows.map((r) => [r.targa, r]));
   console.log(`Attivi: ${attiviRows.length} targhe reali lette`);
 
+  // per confermare una dismissione basta che la targa compaia nei Cessati,
+  // anche su righe senza "Data inizio" (scartate invece per lo storico)
+  const targheInCessati = new Set();
+  wb.getWorksheet("Cessati").eachRow({ includeEmpty: false }, (row, n) => {
+    const t = String(row.getCell(1).value ?? "").trim().toUpperCase();
+    if (n > 1 && t) targheInCessati.add(t);
+  });
   const cessatiRaw = readCessati(wb.getWorksheet("Cessati"));
   const cessati = dedupeCessati(cessatiRaw);
   console.log(`Cessati: ${cessatiRaw.length} righe lette, ${cessatiRaw.length - cessati.length} duplicati esatti scartati, ${cessati.length} eventi validi`);
@@ -168,7 +175,7 @@ async function main() {
   const dismesseNonConfermate = [];
   for (const v of onlyInDbNonDismesso) {
     const targa = v.targa.toUpperCase();
-    if (!cessatiByTarga.has(targa)) { dismesseNonConfermate.push(targa); continue; }
+    if (!targheInCessati.has(targa)) { dismesseNonConfermate.push(targa); continue; }
     await write(`UPDATE "Vehicle" SET stato='DISMESSO', "updatedAt"=now() WHERE id=$1`, [v.id]);
     dismesse++;
   }
