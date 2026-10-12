@@ -457,3 +457,26 @@ model ImportJob {
 
   @@index([createdAt])
 }
+
+// Ordini di veicoli nuovi presso il noleggiatore (es. Ayvens per l'appalto GLS),
+// caricati dall'export "Lista Ordini" del fornitore. Chiave: numero ordine.
+model FleetOrder {
+  id               String    @id @default(cuid())
+  fornitore        String // es. AYVENS
+  appalto          String // es. GLS
+  refOrdine        String
+  targa            String?
+  statoFornitore   String // stato così come scritto dal fornitore (Vettura Prodotta, Da ritirare, …)
+  previstaConsegna DateTime?
+  dataRitiro       DateTime? // data di ritiro concordata/avvenuta
+  marchio          String?
+  modello          String?
+  puntoRitiro      String?
+  indirizzoRitiro  String?
+  telaio           String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([fornitore, refOrdine])
+  @@index([appalto])
+}
