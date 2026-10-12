@@ -13,6 +13,7 @@ export type IconName =
   | "alert"
   | "fuel"
   | "import"
+  | "orders"
   | "users"
   | "settings"
   | "audit"
@@ -20,6 +21,15 @@ export type IconName =
   | "logout";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  orders: (
+    <>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M3 10h18" />
+      <path d="m9 16 2 2 4-4" />
+    </>
+  ),
   dashboard: (
     <>
       <path d="M3 3v18h18" />

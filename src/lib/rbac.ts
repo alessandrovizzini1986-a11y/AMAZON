@@ -15,7 +15,8 @@ export type Action =
   | "config.manage"
   | "import.run"
   | "audit.viewFull"
-  | "export.full";
+  | "export.full"
+  | "orders.view";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -36,6 +37,7 @@ const MATRIX: Record<Role, Action[]> = {
     "import.run",
     "audit.viewFull",
     "export.full",
+    "orders.view",
   ],
 };
 
