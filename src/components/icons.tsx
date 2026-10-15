@@ -14,6 +14,7 @@ export type IconName =
   | "fuel"
   | "import"
   | "orders"
+  | "book"
   | "users"
   | "settings"
   | "audit"
@@ -21,6 +22,13 @@ export type IconName =
   | "logout";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  book: (
+    <>
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+      <path d="M8 7h8" />
+      <path d="M8 11h6" />
+    </>
+  ),
   orders: (
     <>
       <path d="M8 2v4" />

@@ -134,3 +134,104 @@ body {
     @apply border-b-0;
   }
 }
+
+/* ============================================================
+   VADEMECUM — testo markdown renderizzato (src/lib/vademecum.ts)
+   ============================================================ */
+@layer components {
+  .vd-prose {
+    @apply text-[15px] leading-relaxed text-ink;
+    overflow-wrap: anywhere;
+  }
+  .vd-prose > * + * {
+    @apply mt-4;
+  }
+  .vd-prose h2 {
+    @apply mt-10 scroll-mt-28 text-[22px] font-bold tracking-[-0.01em];
+  }
+  .vd-prose h3 {
+    @apply mt-8 scroll-mt-28 border-t border-line pt-6 text-[19px] font-semibold;
+  }
+  .vd-prose .vd-label {
+    @apply mt-7 scroll-mt-28 text-base;
+  }
+  .vd-prose .vd-label strong {
+    @apply font-semibold text-brand;
+  }
+  .vd-prose a {
+    @apply font-medium text-brand underline underline-offset-2;
+  }
+  .vd-prose ul {
+    @apply list-disc space-y-1 pl-6;
+  }
+  .vd-prose ol {
+    @apply list-decimal space-y-1 pl-6;
+  }
+  .vd-prose code {
+    @apply rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-[0.88em] text-ink;
+  }
+  /* nelle tabelle le celle non vanno a capo a metà parola: scorre la tabella */
+  .vd-prose .vd-table {
+    overflow-wrap: normal;
+  }
+  .vd-prose td code {
+    @apply whitespace-nowrap;
+  }
+  .vd-prose blockquote {
+    @apply rounded-r-control border-l-4 border-brand bg-brand-light px-4 py-3 text-[#2b3a50];
+  }
+  .vd-prose blockquote > * + * {
+    @apply mt-3;
+  }
+  .vd-prose hr {
+    @apply my-8 border-line;
+  }
+  /* tabelle larghe: scorrono in orizzontale, mai spezzate */
+  .vd-prose .vd-table {
+    @apply overflow-x-auto rounded-card border border-line bg-surface-raised;
+  }
+  .vd-prose table {
+    @apply w-full border-collapse text-sm;
+  }
+  .vd-prose th {
+    @apply whitespace-nowrap border-b border-line bg-[#f9fafb] px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.04em] text-ink-muted;
+  }
+  .vd-prose td {
+    @apply min-w-[8rem] border-b border-[#eef1f4] px-3 py-2.5 align-top;
+  }
+  .vd-prose td:first-child {
+    @apply min-w-[6rem] font-medium;
+  }
+  .vd-prose tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .vd-prose tbody tr:hover {
+    @apply bg-[#f6f9fc];
+  }
+  .vd-prose :target {
+    @apply rounded bg-[#fdf1dc] outline outline-4 outline-[#fdf1dc];
+  }
+}
+
+@media print {
+  .vd-prose {
+    font-size: 10.5pt;
+  }
+  .vd-prose .vd-table {
+    overflow: visible;
+    border-radius: 0;
+  }
+  .vd-prose td,
+  .vd-prose th {
+    min-width: 0;
+  }
+  .vd-prose h2,
+  .vd-prose h3,
+  .vd-prose .vd-label {
+    break-after: avoid;
+  }
+  .vd-prose tr,
+  .vd-prose blockquote {
+    break-inside: avoid;
+  }
+}
