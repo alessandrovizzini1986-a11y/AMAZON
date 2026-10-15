@@ -16,7 +16,8 @@ export type Action =
   | "import.run"
   | "audit.viewFull"
   | "export.full"
-  | "orders.view";
+  | "orders.view"
+  | "vademecum.view";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -26,6 +27,7 @@ const MATRIX: Record<Role, Action[]> = {
     "vehicle.view",
     "vehicle.manage",
     "dashboard.station",
+    "vademecum.view",
   ],
   ADMIN: [
     "vehicle.view",
@@ -38,6 +40,7 @@ const MATRIX: Record<Role, Action[]> = {
     "audit.viewFull",
     "export.full",
     "orders.view",
+    "vademecum.view",
   ],
 };
 

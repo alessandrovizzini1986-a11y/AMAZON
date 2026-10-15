@@ -9,6 +9,7 @@ type NavItem = { href: string; label: string; icon: IconName };
 const OPERATIVO: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/vehicles", label: "Flotta", icon: "fleet" },
+  { href: "/vademecum", label: "Vademecum", icon: "book" },
 ];
 
 const GESTIONE: NavItem[] = [
@@ -46,7 +47,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-line bg-surface-raised">
+      <header className="sticky top-0 z-20 border-b border-line bg-surface-raised print:hidden">
         <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-6 px-4 md:h-[68px] md:gap-10 md:px-8">
           <Link href="/" className="flex items-center gap-3">
             <div className="brand-mark flex h-8 w-8 items-center justify-center rounded-lg text-[15px] font-bold md:h-9 md:w-9 md:text-[17px]">F</div>
@@ -85,10 +86,10 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1240px] px-4 pb-24 pt-6 md:px-8 md:pb-16 md:pt-10">{children}</main>
+      <main className="mx-auto max-w-[1240px] px-4 pb-24 pt-6 md:px-8 md:pb-16 md:pt-10 print:max-w-none print:p-0">{children}</main>
 
       {/* bottom nav mobile */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
         {bottomNav.map((item) => (
           <BottomNavLink key={item.href} {...item} />
         ))}
