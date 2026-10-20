@@ -2,7 +2,7 @@
 title: "Lista attività completa del ruolo"
 order: 11
 category: "Riferimenti"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Elenco di tutte le attività seguite dal team Business Analysis (da `Lista attività.xlsx`). Le attività con sezione indicata sono quelle della stagista; le altre restano in carico ad Alessandro finché non viene detto diversamente.

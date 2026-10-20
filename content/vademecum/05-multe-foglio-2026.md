@@ -2,7 +2,7 @@
 title: "Multe: compilazione del foglio 2026"
 order: 5
 category: "Multe"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Una riga per verbale, inserita il giorno stesso in cui arriva la mail. Le colonne in grassetto sono obbligatorie già al primo inserimento; le altre si completano alla risposta della station.
@@ -23,6 +23,8 @@ Una riga per verbale, inserita il giorno stesso in cui arriva la mail. Le colonn
 | Tipo Contratto | testo | Risposta station | CTI, SIC, STD, MOG (elenco a discesa) |
 | Metodo di pagamento | testo | Deriva dal contratto | `SI - TRATTENUTA IN BUSTA` oppure `NO - Costo Aziendale` |
 | PEC PUNTI | testo | Verbale: decurtazione punti? | SI / NO |
+| DATA RICHIESTA MODULO | data | Giorno in cui chiedi al driver il modulo dati conducente | nuova colonna |
+| DATA INVIO PEC | data | Giorno in cui mandi il Template G a Servizi Generali | nuova colonna; se > 5 giorni dalla richiesta, avvisa Alessandro |
 | punti | testo | Verbale | numero, oppure NO |
 | **Importo** | numero | Verbale, importo entro 5 giorni | in euro con decimali |
 | TRATTENUTA IN BUSTA | testo | | IMPUTABILE / Non imputabile |

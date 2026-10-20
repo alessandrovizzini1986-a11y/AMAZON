@@ -2,7 +2,7 @@
 title: "Fatture Amazon: compilazione di fatt_2026"
 order: 6
 category: "Fatture"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Ogni riga della sezione **"Dettagli fattura"** del PDF diventa una riga del foglio `fatt_2026`. Non si usa mai il "Riepilogo" in testa alla fattura: è aggregato per descrizione, non per giorno.
