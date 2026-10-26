@@ -10,6 +10,7 @@ const OPERATIVO: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/vehicles", label: "Flotta", icon: "fleet" },
   { href: "/vademecum", label: "Vademecum", icon: "book" },
+  { href: "/officine", label: "Officine", icon: "wrench" },
 ];
 
 const GESTIONE: NavItem[] = [

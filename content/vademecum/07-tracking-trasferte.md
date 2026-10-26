@@ -2,7 +2,7 @@
 title: "Controllo tracking e trasferte"
 order: 7
 category: "Personale"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 I file di tracking sono la base di tutto il costo del personale: le ore che ci sono lì finiscono in busta paga e nella stima costi. Un errore nel tracking è un errore in busta.
@@ -29,7 +29,7 @@ I file di tracking sono la base di tutto il costo del personale: le ore che ci s
 |---|---|
 | Trigger | Settimanale, dopo il controllo tracking |
 | Input | Format controllo trasferte della station; export Harmony (rotte e pacchi per driver e giorno); tracking |
-| Passi | 1. Nel foglio `AMAZON harmony` incolla l'export della settimana (una colonna per giorno: nome, ID addetto, pacchi consegnati). 2. Nel foglio `TRASFERTE da tracking` inserisci 1/0 per driver e giorno in base alla trasferta dichiarata nel tracking. 3. Il foglio `VERIFICA` confronta: trasferta dichiarata (1) senza rotta Harmony (0 pacchi) = anomalia; rotta fatta senza trasferta = trasferta mancante. 4. Segnala le differenze alla station nella stessa mail delle anomalie tracking. |
+| Passi | 1. Nel foglio `AMAZON harmony` incolla l'export della settimana (una colonna per giorno: nome, ID addetto, pacchi consegnati). 2. Nel foglio `TRASFERTE da tracking` inserisci 1/0 per driver e giorno in base alla trasferta dichiarata nel tracking. 3. Il foglio `VERIFICA` confronta: trasferta dichiarata (1) senza rotta Harmony (0 pacchi) = anomalia, **salvo rotta annullata con driver impiegato in rescue** (Accordo art. 8: rotta annullata = giornata pagata senza trasferta; rescue = trasferta dovuta); rotta fatta senza trasferta = trasferta mancante. 4. Segnala le differenze alla station nella stessa mail delle anomalie tracking. |
 | Output | `VERIFICA` senza anomalie aperte |
 | Check finale | Numero trasferte da tracking = numero giorni con rotta in Harmony, per ogni driver; le differenze residue hanno una nota con il motivo |
 

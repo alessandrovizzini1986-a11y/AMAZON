@@ -2,7 +2,7 @@
 title: "Multe: albero decisionale e template mail"
 order: 4
 category: "Multe"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Il tipo di contratto decide a chi scrivi e se alleghi il verbale. Prima di inviare, controlla la riga della tabella: destinatari e allegato devono coincidere.
@@ -128,7 +128,7 @@ Oggetto: `Richiesta invio PEC – Comunicazione dati conducente verbale n. <nume
 >
 > Grazie per il supporto.
 
-La comunicazione dei dati del conducente va fatta entro 60 giorni dalla notifica: se il modulo non arriva dal driver entro 10 giorni dalla tua richiesta, sollecita il responsabile station e avvisa Alessandro.
+Regola contrattuale (Accordo Amazon art. 19): il driver deve dimostrare **entro 5 giorni** di aver avviato la pratica di comunicazione dei dati, altrimenti gli si addebitano anche i costi accessori. Per evitarlo la pratica la facciamo noi: appena il driver consegna il modulo firmato, invii il Template G a Servizi Generali con il testo pronto e la PEC dell'organo accertatore indicata sul verbale. Segna nel foglio `2026` la data di richiesta del modulo e la data di invio a Servizi Generali: se tra le due passano più di 5 giorni, avvisa Alessandro.
 
 ### 4c. Mancati pagamenti pedaggio (RMPP)
 

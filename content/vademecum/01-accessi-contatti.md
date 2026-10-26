@@ -2,7 +2,7 @@
 title: "Accessi e contatti"
 order: 1
 category: "Base"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Le password non stanno in questo documento: le chiedi ad Alessandro il primo giorno e le salvi nel gestore password aziendale.

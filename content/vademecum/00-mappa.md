@@ -2,7 +2,7 @@
 title: "Mappa"
 order: 0
 category: "Base"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Professional Solutions (Adecco Group) gestisce per Amazon Italia Transport le consegne last mile come DSP su 7 station. Il team Business Analysis segue costi, flotta, DPI, multe e fatturazione.

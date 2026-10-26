@@ -2,7 +2,7 @@
 title: "Stima costi: parziale e totale"
 order: 8
 category: "Personale"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Due momenti, due file, stessa logica: ore per categoria × costo orario = costo del mese. La parziale serve ad Annalisa per la stima; la totale chiude il mese.
@@ -20,15 +20,16 @@ Due momenti, due file, stessa logica: ore per categoria × costo orario = costo 
 | Categoria | Da dove nel tracking |
 |---|---|
 | STANDARD | Riga `Standard` |
-| MAGGIORAZIONE 50 | Sabato, oppure domenica lavorata come quinto giorno (maggiorazione 50%) |
-| SUPPLEMENTARI 18 | Riga `Supplementare`: ore fatte da un part time in un giorno che non ha da contratto (es. PT24 lun-mar-mer che lavora giovedì e venerdì), entro il quinto giorno |
-| SUPPLEMENTARI 65 | Riga `Supplementare` di domenica come sesto giorno (maggiorazione 65%) |
-| STRAORDINARI SET | Riga `Straordinario`: sesto giorno lavorato in settimana o di sabato, oltre le 39 ore (maggiorazione 50%) |
-| STRAORDINARI DOM | Riga `Straordinario` di domenica come sesto giorno (maggiorazione 65%) |
-
-Regola in una frase: le ore nei giorni **non previsti dal contratto** sono supplementari; il **sesto giorno** della settimana (oltre le 39 ore) è straordinario; sabato = 50%, domenica = 65% se sesto giorno, 50% se quinto giorno. Prima stima da fare con Alessandro accanto per verificare l'attribuzione.
+| MAGGIORAZIONE 50 | Domenica lavorata entro l'orario ordinario e festività infrasettimanali (+50%, Accordo art. 22f, CCNL art. 12) |
+| SUPPLEMENTARI 18 | Riga `Supplementare`: ore di un part time in un giorno non previsto dal contratto (es. PT24 lun-mar-mer che lavora giovedì e venerdì), feriale o sabato (+18%, CCNL art. 56 c.16) |
+| SUPPLEMENTARI 65 | Riga `Supplementare` di domenica (+65%, Accordo art. 22f) |
+| STRAORDINARI SET (STR 30%) | Riga `Straordinario`: ore oltre l'orario ordinario in giorno feriale o di sabato, incluso il sesto giorno (+30%, CCNL art. 13 c.6 personale viaggiante) |
+| STRAORDINARI DOM (STR 65%) | Riga `Straordinario` di domenica, oltre l'orario ordinario (+65%, Accordo art. 22f) |
+| SUPP 40% | Supplementare oltre il 30% annuo della prestazione concordata (+40%, CCNL art. 56 c.17): oggi non tracciato, serve il contatore annuo per driver |
 | TRASFERTE ORD / TRASFERTE DOM | Giorni con trasferta, feriali / domenica (dal controllo trasferte, sezione 7) |
 | FERIE, ROL, ExFe / Malattie / Infortuni / Eventi mat. | Righe FERIE, ROL, EXF e assenze (ore o teste, come indicato nella riga) |
+
+Regola in una frase: le ore nei giorni **non previsti dal contratto** sono supplementari; le ore **oltre l'orario ordinario** (42 h/settimana, 8h24/giorno per i driver in regime di discontinuità, Accordo art. 4) sono straordinario; feriale e sabato = 30%, domenica = 50% entro l'orario e 65% oltre. Base full time = quella dell'Accordo, 42 h/settimana: non si usano altre basi. Prima stima da fare con Alessandro accanto per verificare l'attribuzione.
 
 | Scheda: stima parziale | |
 |---|---|

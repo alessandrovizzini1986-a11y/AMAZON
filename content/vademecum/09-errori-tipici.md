@@ -2,7 +2,7 @@
 title: "Errori tipici e cose da non fare"
 order: 9
 category: "Riferimenti"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 | Procedura | Non fare | Fai invece |
@@ -15,6 +15,9 @@ updated: "2026-10-15"
 | Multe | Scrivere un motivo non presente in `MACROAREE_VERBALI` | Aggiungilo lì prima |
 | Multe | Lasciare Driver vuoto oltre 5 giorni | Sollecito alla station con lo stesso oggetto mail |
 | Multe | Promettere o valutare un ricorso | Passa ad Alessandro entro il giorno stesso |
+| Multe | Lasciare passare più di 5 giorni tra modulo richiesto e PEC inviata | Costi accessori a carico del driver: tieni le due date nel foglio |
+| Tracking | Segnalare come anomalia la trasferta di un driver in rescue su rotta annullata | Rescue = trasferta dovuta (Accordo art. 8) |
+| Stima costi | Mettere il sabato al 50% | Sabato oltre orario = STR 30% |
 | Multe | Addebitare l'importo pieno del verbale | Importo scontato (pagato dalla tesoreria entro 5 giorni) |
 | Multe | Addebitare a un driver GLS una sosta/doppia fila | Verifica l'accordo Franchigie, poi costo aziendale |
 | Multe | Addebitare un RMPP a un driver | Gli RMPP si pagano e basta, file RMPP del mese |

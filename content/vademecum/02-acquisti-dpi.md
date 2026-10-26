@@ -2,7 +2,7 @@
 title: "Acquisti DPI"
 order: 2
 category: "Acquisti"
-updated: "2026-10-15"
+updated: "2026-10-20"
 ---
 
 Regola unica: **ogni ordine, su qualsiasi portale, diventa righe nel foglio `Ordini_bis` di Query_DPI.xlsx prima di chiudere la giornata.** Un ordine non registrato non esiste.

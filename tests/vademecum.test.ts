@@ -6,8 +6,8 @@ import { MINISEARCH_OPTIONS, tokenize, snippet } from "@/domain/vademecumSearch"
 const docs = getAllDocs();
 
 describe("contenuti del vademecum", () => {
-  it("carica index + 12 pagine", () => {
-    expect(docs.length).toBe(13);
+  it("carica index + 13 pagine", () => {
+    expect(docs.length).toBe(14);
     expect(docs.some((d) => d.slug === "index")).toBe(true);
   });
 
@@ -31,6 +31,13 @@ describe("contenuti del vademecum", () => {
       const html = renderMarkdown(d.content);
       expect(html, d.slug).toContain("<table>");
       expect(html, d.slug).toContain('<div class="vd-table"><table>');
+    }
+  });
+
+  it("nessuna riga di tabella finisce dentro un paragrafo (tabella spezzata)", () => {
+    for (const d of docs) {
+      const paragraphs = renderMarkdown(d.content).match(/<p[^>]*>[\s\S]*?<\/p>/g) ?? [];
+      for (const p of paragraphs) expect(p, d.slug).not.toMatch(/\|[^|<]+\|[^|<]+\|/);
     }
   });
 
