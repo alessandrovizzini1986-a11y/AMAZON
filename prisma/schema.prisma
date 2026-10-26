@@ -480,3 +480,23 @@ model FleetOrder {
   @@unique([fornitore, refOrdine])
   @@index([appalto])
 }
+
+// Centri autorizzati Ayvens per veicoli commerciali (file "Lista Centri" di Ayvens).
+// Una riga per centro e marchio, come nel file; ogni caricamento sostituisce l'elenco intero.
+model ServiceCenter {
+  id             String   @id @default(cuid())
+  ragioneSociale String
+  regione        String
+  localita       String
+  provincia      String
+  indirizzo      String
+  officina       Boolean
+  carrozzeria    Boolean
+  rete           String // marchio della rete ufficiale oppure "Nessuno"
+  tuttiBrand     Boolean
+  transit        Boolean // Transit Center (Ford)
+  fonte          String // nome del file caricato
+  createdAt      DateTime @default(now())
+
+  @@index([regione, provincia])
+}
