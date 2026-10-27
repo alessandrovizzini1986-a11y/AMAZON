@@ -91,6 +91,7 @@ function plain(md: string): string {
     .replace(/\\$/gm, "")
     .replace(/`([^`]*)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/^\s*>\s?/gm, "")
     .replace(/^#+\s*/gm, "")
@@ -129,23 +130,56 @@ function lexWithAnchors(md: string): Token[] {
   return tokens;
 }
 
+const IMG_DIR = path.join(CONTENT_DIR, "img");
+/** Nomi immagine ammessi (file in content/vademecum/img/). */
+export const IMAGE_NAME = /^[A-Za-z0-9_.-]+\.(png|jpe?g|webp)$/;
+
+/** Larghezza/altezza di un PNG dall'intestazione IHDR (per evitare salti di layout). */
+function imageSize(name: string): { width: number; height: number } | null {
+  try {
+    const buf = fs.readFileSync(path.join(IMG_DIR, name));
+    if (buf.length > 24 && buf.toString("ascii", 1, 4) === "PNG") return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  } catch {
+    /* immagine mancante: niente dimensioni */
+  }
+  return null;
+}
+
+/** "img/nome.png" del markdown → URL servito dietro login. Altri percorsi non ammessi. */
+function imageSrc(href: string): string | null {
+  const m = href.trim().match(/^(?:\.\/)?img\/(.+)$/);
+  return m && IMAGE_NAME.test(m[1]) ? `/vademecum/img/${m[1]}` : null;
+}
+
+const escapeAttr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 const SANITIZE: sanitizeHtml.IOptions = {
   allowedTags: [
     "h1", "h2", "h3", "h4", "p", "br", "hr", "strong", "em", "del", "code", "pre", "blockquote",
     "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td", "a", "div", "span",
+    "figure", "figcaption", "img",
   ],
   allowedAttributes: {
     "*": ["id", "class"],
     a: ["href", "title"],
-    th: ["align", "style"],
-    td: ["align", "style"],
+    th: ["align", "style", "data-label"],
+    td: ["align", "style", "data-label"],
     ol: ["start"],
+    img: ["src", "alt", "width", "height", "loading", "decoding"],
   },
   allowedStyles: { "*": { "text-align": [/^(left|right|center)$/] } },
   allowedSchemes: ["http", "https", "mailto"],
+  allowedSchemesByTag: { img: [] }, // solo percorsi relativi del sito
+  allowProtocolRelative: false,
+  // immagini ammesse solo dalla cartella del vademecum (niente <img> scritti a mano nel markdown)
+  exclusiveFilter: (frame) => frame.tag === "img" && !/^\/vademecum\/img\/[A-Za-z0-9_.-]+$/.test(frame.attribs.src ?? ""),
 };
 
-/** Markdown → HTML sanificato, con ancore su h2/h3 e sui titoletti in grassetto e tabelle scorrevoli. */
+/**
+ * Markdown → HTML sanificato, con ancore su h2/h3 e sui titoletti in grassetto,
+ * tabelle scorrevoli (le "Scheda" a due colonne diventano blocchi su mobile) e
+ * immagini a larghezza piena con didascalia.
+ */
 export function renderMarkdown(md: string): string {
   const marked = new Marked({ gfm: true, breaks: false });
   marked.use({
@@ -156,17 +190,41 @@ export function renderMarkdown(md: string): string {
         return `<h${token.depth}${id ? ` id="${id}"` : ""}>${inner}</h${token.depth}>\n`;
       },
       paragraph(token: Tokens.Paragraph) {
+        const only = token.tokens.filter((t) => !(t.type === "text" && !t.raw.trim()));
+        if (only.length === 1 && only[0].type === "image") {
+          const img = only[0] as Tokens.Image;
+          const src = imageSrc(img.href);
+          if (!src) return "";
+          const size = imageSize(src.split("/").pop()!);
+          const alt = escapeAttr(img.text);
+          const dims = size ? ` width="${size.width}" height="${size.height}"` : "";
+          return `<figure class="vd-figure"><img src="${src}" alt="${alt}"${dims} loading="lazy" decoding="async"><figcaption>${alt}</figcaption></figure>\n`;
+        }
         const inner = this.parser.parseInline(token.tokens);
         const id = (token as Tokens.Paragraph & Anchored).vdAnchor;
         return id ? `<p id="${id}" class="vd-label">${inner}</p>\n` : `<p>${inner}</p>\n`;
       },
+      image(token: Tokens.Image) {
+        const src = imageSrc(token.href);
+        return src ? `<img src="${src}" alt="${escapeAttr(token.text)}" loading="lazy" decoding="async">` : escapeAttr(token.text);
+      },
+      table(token: Tokens.Table) {
+        const scheda = token.header.length === 2 && /^scheda/i.test(token.header[0].text.trim());
+        const labels = token.header.map((h) => escapeAttr(plain(h.text)));
+        const cell = (c: Tokens.TableCell, tag: "th" | "td", i: number) =>
+          `<${tag}${c.align ? ` align="${c.align}"` : ""}${tag === "td" && labels[i] ? ` data-label="${labels[i]}"` : ""}>${this.parser.parseInline(c.tokens)}</${tag}>`;
+        const head = `<tr>${token.header.map((c, i) => cell(c, "th", i)).join("")}</tr>`;
+        const body = token.rows.map((r) => `<tr>${r.map((c, i) => cell(c, "td", i)).join("")}</tr>`).join("\n");
+        return `<div class="vd-table-wrap${scheda ? " vd-scheda" : ""}"><div class="vd-table"><table><thead>${head}</thead><tbody>${body}</tbody></table></div></div>\n`;
+      },
     },
   });
-  const html = marked
-    .parser(lexWithAnchors(md))
-    .replace(/<table>/g, '<div class="vd-table"><table>')
-    .replace(/<\/table>/g, "</table></div>");
-  return sanitizeHtml(html, SANITIZE);
+  return sanitizeHtml(marked.parser(lexWithAnchors(md)), SANITIZE);
+}
+
+/** Percorso di un'immagine del vademecum su disco, o null se il nome non è ammesso. */
+export function imagePath(name: string): string | null {
+  return IMAGE_NAME.test(name) ? path.join(IMG_DIR, name) : null;
 }
 
 /** Testo semplice di un blocco markdown (tabelle comprese, celle separate da " · "). */

@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     "/vademecum": ["./content/vademecum/**"],
     "/vademecum/[slug]": ["./content/vademecum/**"],
     "/api/vademecum/search-index": ["./content/vademecum/**"],
+    "/vademecum/img/[name]": ["./content/vademecum/img/**"],
   },
   experimental: {
     serverActions: {

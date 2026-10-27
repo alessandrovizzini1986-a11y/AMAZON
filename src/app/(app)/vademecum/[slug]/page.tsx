@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui";
 import { getDoc, getPages, renderMarkdown } from "@/lib/vademecum";
+import { VademecumContent } from "../VademecumContent";
 
 export function generateStaticParams() {
   return getPages().map((d) => ({ slug: d.slug }));
@@ -31,7 +32,7 @@ export default async function VademecumPage({ params }: { params: Promise<{ slug
     <article>
       <PageHeader eyebrow={`Vademecum · ${doc.category}`} title={doc.title} subtitle={`Aggiornato il ${fmtUpdated(doc.updated)}`} />
       {/* HTML prodotto da renderMarkdown, già sanificato con whitelist */}
-      <div className="vd-prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(doc.content) }} />
+      <VademecumContent html={renderMarkdown(doc.content)} />
       <nav className="mt-12 flex flex-wrap justify-between gap-3 border-t border-line pt-6 print:hidden" aria-label="Pagine vicine">
         {prev ? (
           <Link href={`/vademecum/${prev.slug}`} className="btn-secondary">← {prev.title}</Link>
