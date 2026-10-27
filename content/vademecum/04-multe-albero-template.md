@@ -2,7 +2,7 @@
 title: "Multe: albero decisionale e template mail"
 order: 4
 category: "Multe"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Il tipo di contratto decide a chi scrivi e se alleghi il verbale. Prima di inviare, controlla la riga della tabella: destinatari e allegato devono coincidere.
@@ -140,6 +140,8 @@ Insieme ai verbali possono arrivare a casa del driver lettere di mancato pagamen
 | Passi | 1. Chiedi il pagamento all'Ufficio Tesoreria (stessa forma del Template D, oggetto `RMPP <n. rapporto> targa <targa> RICHIESTA PAGAMENTO`). 2. Inserisci la riga nel file `RMPP_<MESE>_26.xlsx` del mese (cartella `015_Telepass Business`), foglio del mese. 3. Nessuna riga nel file Multe, nessuna mail di addebito. |
 | Output | Riga in RMPP del mese; pagamento richiesto |
 | Check finale | `IMPORTO DOVUTO` = IMPORTO + SPESE FISSE + SPESE VISURA − IMPORTO VERSATO; targa presente in Lista Targhe; DS compilata |
+
+![Anteprima: RMPP_OTTOBRE_26](img/rmpp.png)
 
 **Colonne del file RMPP**
 
