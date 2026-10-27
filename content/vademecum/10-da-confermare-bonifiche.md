@@ -2,7 +2,7 @@
 title: "Bonifiche e controlli automatici"
 order: 10
 category: "Riferimenti"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 **Da confermare con Alessandro prima di consegnare il vademecum**

@@ -26,6 +26,23 @@ describe("contenuti del vademecum", () => {
     for (const s of slugs) expect(s).toBe(slugify(s));
   });
 
+  it("ogni immagine citata nei file esiste in content/vademecum/img", async () => {
+    const { existsSync } = await import("node:fs");
+    const { imagePath } = await import("@/lib/vademecum");
+    for (const d of docs) {
+      for (const m of d.content.matchAll(/!\[[^\]]*\]\(img\/([^)]+)\)/g)) {
+        const p = imagePath(m[1]);
+        expect(p && existsSync(p), `${d.slug}: img/${m[1]}`).toBe(true);
+      }
+    }
+  });
+
+  it("le tabelle Scheda a due colonne sono marcate per la vista a blocchi su mobile", () => {
+    const html = renderMarkdown(docs.find((d) => d.slug === "02-acquisti-dpi")!.content);
+    expect(html).toContain('<div class="vd-table-wrap vd-scheda">');
+    expect(html).toContain('data-label="Scheda"');
+  });
+
   it("ogni file con una tabella GFM produce almeno una <table> scorrevole", () => {
     for (const d of docs.filter((x) => x.content.includes("|---|"))) {
       const html = renderMarkdown(d.content);
@@ -55,6 +72,13 @@ describe("sanificazione", () => {
   it("toglie script e attributi pericolosi", () => {
     const html = renderMarkdown('ciao <script>alert(1)</script> <img src=x onerror="alert(1)"> [x](javascript:alert(1))');
     expect(html).not.toMatch(/<script|onerror|<img|javascript:/);
+  });
+
+  it("ammette solo immagini della cartella img del vademecum, con didascalia", () => {
+    const html = renderMarkdown("![Anteprima](img/multe_2026.png)\n\n![fuori](https://x.y/a.png)\n\n![su](../segreto.png)");
+    expect(html).toContain('<figure class="vd-figure"><img src="/vademecum/img/multe_2026.png" alt="Anteprima"');
+    expect(html).toContain("<figcaption>Anteprima</figcaption>");
+    expect(html).not.toMatch(/x\.y|segreto/);
   });
 });
 
