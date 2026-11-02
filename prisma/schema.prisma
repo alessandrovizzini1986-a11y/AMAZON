@@ -500,3 +500,64 @@ model ServiceCenter {
 
   @@index([regione, provincia])
 }
+
+// ---------- Modulo presenze (controlli tracking vs Amazon / Zucchetti) ----------
+// Sul server solo metadati e risultati: i file originali restano sul PC.
+
+// File caricati nell'archivio (un CSV Amazon unito genera una riga per station e giorno)
+model PresenzeFile {
+  id           String   @id @default(cuid())
+  tipo         String // TRACKING_SIC | TRACKING_STD | FLEX_CSV | ZUCCHETTI
+  station      String
+  anno         Int
+  mese         Int
+  giorno       Int      @default(0) // solo FLEX_CSV (1..31), altrimenti 0
+  nomeFile     String
+  hashSha256   String
+  righe        Int
+  caricatoDaId String
+  caricatoDa   String // nome di chi l'ha caricato
+  caricatoIl   DateTime @default(now())
+
+  @@unique([tipo, hashSha256, station, anno, mese, giorno])
+  @@index([anno, mese])
+}
+
+// Esecuzione salvata di un controllo
+model PresenzeRun {
+  id            String              @id @default(cuid())
+  tipo          String // SETTIMANALE | FINE_MESE
+  station       String? // null = tutte
+  periodoDa     DateTime
+  periodoA      DateTime
+  eseguitoDaId  String
+  eseguitoDa    String
+  eseguitoIl    DateTime            @default(now())
+  riepilogoJson Json
+  nAlert        Int
+  risultati     PresenzeRisultato[]
+
+  @@index([tipo, eseguitoIl])
+}
+
+// Una riga per driver e categoria di anomalia; la stagista ne segna l'esito dopo la risposta Ops
+model PresenzeRisultato {
+  id           String      @id @default(cuid())
+  runId        String
+  run          PresenzeRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  station      String
+  tipo         String // SIC | STD | STD+SIC | AMAZON
+  driver       String
+  driverId     String
+  categoria    String // +1 | -1 | H | A | DELTA | NON_ABBINATO | 6+DOM | CONSECUTIVI
+  giorni       Json // elenco giorni (AAAA-MM-GG) con dettaglio
+  oreTracking  Float       @default(0)
+  trasferte    Int         @default(0)
+  rotte        Int         @default(0)
+  nota         String      @default("")
+  esitoOps     String      @default("aperto") // aperto | chiuso | giustificato
+  notaOps      String?
+  aggiornatoIl DateTime?
+
+  @@index([runId])
+}

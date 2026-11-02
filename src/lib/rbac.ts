@@ -18,7 +18,9 @@ export type Action =
   | "export.full"
   | "orders.view"
   | "vademecum.view"
-  | "officine.view";
+  | "officine.view"
+  | "presenze.view"
+  | "presenze.run";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -44,6 +46,8 @@ const MATRIX: Record<Role, Action[]> = {
     "orders.view",
     "vademecum.view",
     "officine.view",
+    "presenze.view",
+    "presenze.run",
   ],
 };
 

@@ -35,7 +35,7 @@ const xmlDecode = (t: string) =>
  * Lettore minimo su XML: i file attesi hanno tabelle scritte da openpyxl che
  * ExcelJS non riesce a leggere. Le date restano numeri seriali Excel.
  */
-export async function readSheet(file: string, sheet: string): Promise<Record<string, unknown>[]> {
+export async function readRows(file: string, sheet: string): Promise<unknown[][]> {
   const zip = await JSZip.loadAsync(fs.readFileSync(file));
   const wbXml = await zip.file("xl/workbook.xml")!.async("string");
   const rels = await zip.file("xl/_rels/workbook.xml.rels")!.async("string");
@@ -66,8 +66,14 @@ export async function readSheet(file: string, sheet: string): Promise<Record<str
     }
     rows[Number(rm[1]) - 1] = r;
   }
+  return Array.from(rows, (r) => Array.from(r ?? [], (v) => v ?? null));
+}
+
+/** Foglio con intestazione in riga 1 → righe oggetto. */
+export async function readSheet(file: string, sheet: string): Promise<Record<string, unknown>[]> {
+  const rows = await readRows(file, sheet);
   const hdr = (rows[0] ?? []).map((v) => String(v ?? ""));
-  return rows.slice(1).filter(Boolean).map((r) => Object.fromEntries(hdr.map((h, i) => [h, r[i] ?? null])));
+  return rows.slice(1).filter((r) => r.some((v) => v !== null)).map((r) => Object.fromEntries(hdr.map((h, i) => [h, r[i] ?? null])));
 }
 
 /** Data di un file atteso (Date o seriale Excel) → AAAA-MM-GG */

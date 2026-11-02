@@ -23,7 +23,10 @@ const GESTIONE: NavItem[] = [
 const NAV_BY_ROLE: Record<SessionUser["role"], { main: NavItem[]; admin: NavItem[] }> = {
   DRIVER: { main: [{ href: "/vehicles", label: "Flotta", icon: "fleet" }], admin: [] },
   RESP_MEZZI: { main: OPERATIVO, admin: [] },
-  ADMIN: { main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }], admin: GESTIONE },
+  ADMIN: {
+    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }],
+    admin: GESTIONE,
+  },
 };
 
 const ROLE_LABEL: Record<SessionUser["role"], string> = {
