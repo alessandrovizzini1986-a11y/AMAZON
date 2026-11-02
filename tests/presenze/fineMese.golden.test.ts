@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import fs from "node:fs";
+import os from "node:os";
+import JSZip from "jszip";
 import path from "node:path";
 import { controlloFineMese, isZucchettiName, stationFromZucchettiName, type EsitoFineMese } from "@/domain/presenze/controlloFineMese";
 import { stationFromName, type Station } from "@/domain/presenze/regole";
 import { tipoFromName } from "@/domain/presenze/tracking";
 import type { SheetGrid } from "@/domain/presenze/grid";
 import { workbookToGrids } from "@/lib/presenze/excelGrid";
+import { excelFineMese } from "@/lib/presenze/excelFineMese";
 import { hasKit, iso, KIT, readRows, readSheet } from "./kit";
 
 describe.skipIf(!hasKit)("controllo fine mese — golden settembre 2026", () => {
@@ -71,4 +74,28 @@ describe.skipIf(!hasKit)("controllo fine mese — golden settembre 2026", () => 
     expect(nostri).toEqual(attesi);
     expect(e.consecutivi).toEqual([]);
   });
+
+  it("Excel generato: stessi fogli dell'atteso (+ Alert_consecutivi), stesse intestazioni e stessi valori", async () => {
+    const out = path.join(os.tmpdir(), "Controllo_fine_mese_2026-09.xlsx");
+    fs.writeFileSync(out, Buffer.from(await excelFineMese(e).xlsx.writeBuffer()));
+    const nomi = async (f: string) => {
+      const xml = await (await JSZip.loadAsync(fs.readFileSync(f))).file("xl/workbook.xml")!.async("string");
+      return [...xml.matchAll(/<sheet [^>]*name="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, "&"));
+    };
+    const attesi = await nomi(atteso);
+    expect(await nomi(out)).toEqual([...attesi, "Alert_consecutivi"]);
+    for (const sh of ["Riepilogo", "Delta_giorni", "Non_abbinati"]) expect((await readRows(out, sh))[0]).toEqual((await readRows(atteso, sh))[0]);
+    // SIC: intestazioni e valori non-formula identici
+    const [a, o] = [await readRows(atteso, "SIC"), await readRows(out, "SIC")];
+    expect(o[0]).toEqual(a[0]);
+    expect(o.length).toBe(a.length);
+    for (let r = 1; r < a.length; r++) for (let c = 0; c < 4 + 30; c++) expect(o[r][c] ?? null).toEqual(a[r][c] ?? null);
+    // V_<DS>: righe titolo e dati tracking/Zucchetti identici
+    for (const st of ["DER1", "DLZ2"]) {
+      const [va, vo] = [await readRows(atteso, `V_${st}`), await readRows(out, `V_${st}`)];
+      expect(vo.length).toBe(va.length);
+      for (let r = 0; r < va.length; r++) for (let c = 0; c < 2 + 31 + 30; c++) if (va[r][c] !== null && va[r][c] !== undefined) expect([r, c, vo[r][c]]).toEqual([r, c, va[r][c]]);
+    }
+    expect(await readRows(out, "Tabella 6+domenica (SIC)")).toEqual(await readRows(atteso, "Tabella 6+domenica (SIC)"));
+  }, 60_000);
 });
