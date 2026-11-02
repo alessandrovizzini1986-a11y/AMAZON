@@ -2,7 +2,7 @@
 title: "Mappa"
 order: 0
 category: "Base"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Professional Solutions (Adecco Group) gestisce per Amazon Italia Transport le consegne last mile come DSP su 7 station. Il team Business Analysis segue costi, flotta, DPI, multe e fatturazione.
@@ -31,13 +31,15 @@ Professional Solutions (Adecco Group) gestisce per Amazon Italia Transport le co
 | Lista Targhe | cartella `Teste+mezzi` | Da targa a station e noleggiatore |
 | Lista attività completa | Sezione 11 di questo documento | Tutte le attività del ruolo, referenti, periodicità |
 
+![Anteprima: Lista attività, foglio Lezioni_Filippo](img/lista_attivita.png)
+
 **Calendario attività della stagista**
 
 | Quando | Attività | Sezione |
 |---|---|---|
 | Ogni giorno | Controllo mail Sanzioni CDS e apertura pratiche multe | 3-5 |
 | Ogni ordine | Registrazione in `Ordini_bis` | 2 |
-| Ogni lunedì | Controllo tracking e trasferte della settimana precedente, per station | 7 |
+| Ogni lunedì | Controllo tracking e controllo presenze tracking vs Amazon della settimana precedente, per station; entro il 25 sul periodo 1-25 | 7 |
 | Ogni lunedì | Inserimento fatture settimanali della settimana precedente in `fatt_2026` | 6 |
 | Entro il 5 del mese | Fatture mensili incentivi (parcheggi/pedaggi) in `fatt_2026` | 6 |
 | Terza settimana | Stima costi parziale per Annalisa | 8 |

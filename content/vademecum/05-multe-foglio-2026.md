@@ -2,7 +2,7 @@
 title: "Multe: compilazione del foglio 2026"
 order: 5
 category: "Multe"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Una riga per verbale, inserita il giorno stesso in cui arriva la mail. Le colonne in grassetto sono obbligatorie già al primo inserimento; le altre si completano alla risposta della station.
@@ -34,6 +34,10 @@ Una riga per verbale, inserita il giorno stesso in cui arriva la mail. Le colonn
 | **Motivo** | testo | Foglio `MACROAREE_VERBALI`, colonna B | DIVIETO DI SOSTA, ECCESSO DI VELOCITA', ZTL, AREA C, PREFERENZIALE, ROSSO SEMAFORICO, DATI PERSONALI, SINISTRO, AREA PEDONALE, CELLULARE, ALTRO |
 | QUARTIERI | testo | Mappa città | es. NAVIGLI, PERIFERIA |
 | MESE INFRAZIONE / ANNO INFRAZIONE / MESE-ANNO | formula | Da Data infrazione | `=MESE()`, `=ANNO()`, `=MESE&"-"&ANNO` |
+
+![Anteprima: Multe, foglio 2026](img/multe_2026.png)
+
+![Anteprima: foglio MACROAREE_VERBALI, da cui si prende il Motivo](img/macroaree_verbali.png)
 
 **Esempio compilato** (riga reale del foglio)
 

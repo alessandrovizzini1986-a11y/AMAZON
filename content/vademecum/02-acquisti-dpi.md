@@ -2,7 +2,7 @@
 title: "Acquisti DPI"
 order: 2
 category: "Acquisti"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Regola unica: **ogni ordine, su qualsiasi portale, diventa righe nel foglio `Ordini_bis` di Query_DPI.xlsx prima di chiudere la giornata.** Un ordine non registrato non esiste.
@@ -14,6 +14,8 @@ Regola unica: **ogni ordine, su qualsiasi portale, diventa righe nel foglio `Ord
 | Passi | 1. Verifica giacenza della station per modello e taglia. 2. Compila l'ordine sul portale. 3. Salva la conferma ordine (PDF o mail) nella cartella della station. 4. Inserisci una riga in `Ordini_bis` per ogni prodotto+misura. 5. Quando arriva la merce, compila `DATA EFFETTIVA` e `N° ORDINE` se mancante. |
 | Output | Righe in `Ordini_bis`, conferma ordine archiviata |
 | Check finale | Somma `PREZZO TOTALE` delle righe = totale della conferma ordine. Nessuna cella vuota in DS, DATA ORDINE, PRODOTTO, MISURA, QUANTITA', PREZZO UNITA'. |
+
+![Anteprima: Query_DPI, foglio Ordini_bis](img/ordini_bis.png)
 
 **Colonne di `Ordini_bis`**
 

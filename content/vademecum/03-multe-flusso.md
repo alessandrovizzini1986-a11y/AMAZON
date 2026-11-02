@@ -2,7 +2,7 @@
 title: "Multe: il flusso"
 order: 3
 category: "Multe"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Ogni verbale arriva da ADE IT SANZIONI CDS DL alla casella operationsamazonPS con oggetto `(N. progressivo) TARGA XXXXXX - VERBALE N. YYYY - AMAZON`. Il numero progressivo tra parentesi è la chiave della pratica: lo usi nel foglio e in ogni mail.

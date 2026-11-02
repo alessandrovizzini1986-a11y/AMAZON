@@ -2,7 +2,7 @@
 title: "Errori tipici e cose da non fare"
 order: 9
 category: "Riferimenti"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 | Procedura | Non fare | Fai invece |
@@ -30,6 +30,9 @@ updated: "2026-10-20"
 | Fatture | Testo nella colonna AVERE | Solo numeri (Totale - IVA) |
 | Tracking | Correggere il tracking della station da sola | Segnala, la station corregge |
 | Tracking | Ore straordinarie nella riga Standard | Split corretto per tipo contratto |
+| Presenze | Incollare i CSV Amazon dalla colonna A, o il tracking con le formule | Dalla colonna B; tracking con Incolla speciale → Valori in A1 |
+| Presenze | Accettare "mezzi" scritto nei commenti delle celle | Il codice va nella riga RIPOSO, altrimenti è un +1 |
+| Presenze | Mandare un driver A sconosciuto agli Ops | Ad Alessandro: possibile account improprio |
 | Stima costi | Modificare il costo orario in riga | Solo dal foglio `Costo orario` / colonna `COSTO/H` |
 | Stima costi | Inviare senza il controllo OK | Prima OK, poi mail |
 | Tutte | Inviare una mail senza Thomas e Alessandro in cc quando previsto | Gruppi contatti Outlook |

@@ -2,7 +2,7 @@
 title: "Stima costi: parziale e totale"
 order: 8
 category: "Personale"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Due momenti, due file, stessa logica: ore per categoria × costo orario = costo del mese. La parziale serve ad Annalisa per la stima; la totale chiude il mese.
@@ -14,6 +14,10 @@ Due momenti, due file, stessa logica: ore per categoria × costo orario = costo 
 | Input | Tracking SIC e STD di tutte le station, parziali | Tracking finali, teste per contratto, costo orario (foglio `Costo orario`) |
 | Granularità | Ore per categoria e station, SIC e STD separati | Teste per contratto (CTI FT, CTI PT, CTI PT 32h, Dispatcher, STD FT, STD PT, MOG) + ore per categoria + costo per station |
 | Destinatario | Annalisa Pinazzi | Annalisa Pinazzi, Valerio |
+
+![Anteprima: Stima_Costi, foglio Sett_26 (parziale al 20-09-26)](img/stima_costi_parziale.png)
+
+![Anteprima: Stima_Costo_personale, foglio AMZ_SEP_26 (totale)](img/stima_costo_personale.png)
 
 **Categorie di ore (uguali nei due file)**
 

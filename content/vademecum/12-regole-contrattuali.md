@@ -2,7 +2,7 @@
 title: "Regole contrattuali per i controlli"
 order: 12
 category: "Riferimenti"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Due fonti: il **CCNL Logistica, Trasporto merci e Spedizione** del 06/12/2024 e l'**Accordo di secondo livello Assoespressi per Amazon** del 26/05/2025 (valido 01/05/2025 - 30/04/2028). Quando i due dicono cose diverse vale l'Accordo. I driver sono qualifica G, parametro 1; i dispatcher sono 3° livello (Accordo art. 2). Qui ci sono solo le regole che servono per fare i controlli, con l'articolo da citare se qualcuno chiede "perché".

@@ -2,7 +2,7 @@
 title: "Fatture Amazon: compilazione di fatt_2026"
 order: 6
 category: "Fatture"
-updated: "2026-10-20"
+updated: "2026-10-27"
 ---
 
 Ogni riga della sezione **"Dettagli fattura"** del PDF diventa una riga del foglio `fatt_2026`. Non si usa mai il "Riepilogo" in testa alla fattura: è aggregato per descrizione, non per giorno.
@@ -21,6 +21,10 @@ Ogni riga della sezione **"Dettagli fattura"** del PDF diventa una riga del fogl
 | Passi | 1. Apri il PDF, leggi numero fattura (`INV-IT3JDBF-00xxxxx`), station (indirizzo di consegna) e importo totale. 2. Vai in fondo a `fatt_2026`, inserisci le righe dei "Dettagli fattura" in ordine di data. 3. Compila le colonne di mapping con le formule (sotto). 4. Verifica la quadratura. 5. Rinomina il PDF: settimanale `DS_WK<settimana>_<numero fattura>.pdf` (es. `DER1_WK37_INV-IT3JDBF-0002484.pdf`), mensile `DS_<MESE>_<numero fattura>.pdf` (es. `DER1_APR_INV-IT3JDBF-0002151.pdf`). |
 | Output | Righe in `fatt_2026` con Numero fattura compilato su ogni riga |
 | Check finale | Somma `Totale (€)` delle righe inserite = "Importo dovuto" del PDF (tolleranza 0,02 €). Somma `AVERE` = Sub-totale. Nessuna cella vuota in Numero e MACROAREA. |
+
+![Anteprima: AGGREGATO, foglio fatt_2026](img/fatt_2026.png)
+
+![Anteprima: foglio MACROAREA, il mapping descrizione → MACROAREA / MICROAREA](img/macroarea_mapping.png)
 
 **Colonne di `fatt_2026`**
 

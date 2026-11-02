@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/ui";
 import { CATEGORIES, getDoc, getPages, renderMarkdown } from "@/lib/vademecum";
+import { VademecumContent } from "./VademecumContent";
 
 export const metadata = { title: "Vademecum — FleetDSP" };
 
@@ -13,7 +14,7 @@ export default function VademecumIndexPage() {
       <PageHeader eyebrow="Vademecum" title={intro?.title ?? "Vademecum"} />
       {intro && (
         // HTML prodotto da renderMarkdown, già sanificato con whitelist
-        <div className="vd-prose card mb-8 p-5 md:p-7" dangerouslySetInnerHTML={{ __html: renderMarkdown(intro.content) }} />
+        <VademecumContent className="card mb-8 p-5 md:p-7" html={renderMarkdown(intro.content)} />
       )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {CATEGORIES.map((category) => {
