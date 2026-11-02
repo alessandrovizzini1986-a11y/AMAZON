@@ -86,7 +86,7 @@ async function commitDriverRow(row: Row, ctx: Ctx): Promise<RowOutcome["status"]
   const role = ((row.role as Role) ?? "DRIVER") as Role;
   const stationId = row.stationCode ? ctx.stationByCode.get(up(row.stationCode)!) : null;
   if (row.stationCode && !stationId) return `stazione "${row.stationCode}" inesistente`;
-  if (role !== "ADMIN" && !stationId) return `stazione obbligatoria per ruolo ${role}`;
+  if ((role === "DRIVER" || role === "RESP_MEZZI") && !stationId) return `stazione obbligatoria per ruolo ${role}`;
   if (!ctx.dryRun) {
     const tempPassword = crypto.randomBytes(6).toString("base64url");
     const u = await db.user.create({

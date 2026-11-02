@@ -18,7 +18,10 @@ export type Action =
   | "export.full"
   | "orders.view"
   | "vademecum.view"
-  | "officine.view";
+  | "officine.view"
+  | "presenze.view"
+  | "presenze.run"
+  | "presenze.config";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -30,6 +33,12 @@ const MATRIX: Record<Role, Action[]> = {
     "dashboard.station",
     "vademecum.view",
     "officine.view",
+  ],
+  // stagista dei controlli presenze: solo il modulo Presenze e il vademecum
+  CONTROLLO: [
+    "vademecum.view",
+    "presenze.view",
+    "presenze.run",
   ],
   ADMIN: [
     "vehicle.view",
@@ -44,6 +53,9 @@ const MATRIX: Record<Role, Action[]> = {
     "orders.view",
     "vademecum.view",
     "officine.view",
+    "presenze.view",
+    "presenze.run",
+    "presenze.config",
   ],
 };
 
