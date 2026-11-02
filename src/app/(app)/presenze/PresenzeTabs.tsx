@@ -9,11 +9,12 @@ const TABS = [
   { href: "/presenze/fine-mese", label: "3. Fine mese" },
 ];
 
-export function PresenzeTabs() {
+export function PresenzeTabs({ config }: { config: boolean }) {
   const p = usePathname();
+  const tabs = config ? [...TABS, { href: "/presenze/configurazione", label: "Configurazione" }] : TABS;
   return (
     <nav className="mb-6 flex flex-wrap gap-2 print:hidden" aria-label="Sezioni presenze">
-      {TABS.map((t) => {
+      {tabs.map((t) => {
         const on = p.startsWith(t.href) || (t.href === "/presenze/settimanale" && p.startsWith("/presenze/esecuzioni"));
         return (
           <Link

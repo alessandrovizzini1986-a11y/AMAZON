@@ -19,6 +19,7 @@ enum Role {
   ADMIN
   RESP_MEZZI
   DRIVER
+  CONTROLLO // controlli presenze (stagista): solo modulo Presenze e vademecum
 }
 
 enum VehicleStatus {
@@ -560,4 +561,29 @@ model PresenzeRisultato {
   aggiornatoIl DateTime?
 
   @@index([runId])
+}
+
+// Dispatcher: esclusi da ogni alert del controllo settimanale (modificabili da ADMIN)
+model PresenzeDispatcher {
+  id        String   @id @default(cuid())
+  cognome   String
+  nome      String
+  station   String? // null = qualsiasi station
+  attivo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([cognome, nome])
+}
+
+// Codici della riga RIPOSO (o dei commenti) che giustificano il giorno senza alert
+model PresenzeGiustificativo {
+  codice      String  @id
+  descrizione String  @default("")
+  attivo      Boolean @default(true)
+}
+
+// Referente Ops per station: il nome da salutare nei messaggi Teams ("Ciao <nome>")
+model PresenzeReferente {
+  station String @id
+  nome    String
 }

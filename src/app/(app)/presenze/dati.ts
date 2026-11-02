@@ -3,13 +3,30 @@ import { db } from "@/lib/db";
 import { GIUSTIFICATIVI_DEFAULT } from "@/domain/presenze/regole";
 import { DISPATCHER_DEFAULT } from "@/domain/presenze/dispatcher";
 
-/** Liste usate dai controlli (giustificativi, dispatcher, referenti). In questa fase: valori del kit. */
+/**
+ * Liste usate dai controlli: giustificativi e dispatcher attivi, referenti per
+ * station. Lette dalle tabelle gestite da ADMIN; se le tabelle non esistono
+ * ancora su questo database si usano i valori del kit.
+ */
 export async function configPresenze() {
-  return {
-    giustificativi: GIUSTIFICATIVI_DEFAULT.map((g) => g.codice),
-    dispatcher: DISPATCHER_DEFAULT,
-    referenti: {} as Record<string, string>,
-  };
+  try {
+    const [g, d, r] = await Promise.all([
+      db.presenzeGiustificativo.findMany({ where: { attivo: true }, orderBy: { codice: "asc" } }),
+      db.presenzeDispatcher.findMany({ where: { attivo: true }, orderBy: [{ cognome: "asc" }, { nome: "asc" }] }),
+      db.presenzeReferente.findMany(),
+    ]);
+    return {
+      giustificativi: g.map((x) => x.codice),
+      dispatcher: d.map((x) => `${x.cognome} ${x.nome}`),
+      referenti: Object.fromEntries(r.filter((x) => x.nome.trim()).map((x) => [x.station, x.nome.trim()])) as Record<string, string>,
+    };
+  } catch {
+    return {
+      giustificativi: GIUSTIFICATIVI_DEFAULT.map((g) => g.codice),
+      dispatcher: DISPATCHER_DEFAULT,
+      referenti: {} as Record<string, string>,
+    };
+  }
 }
 
 /** Esecuzioni salvate (ultime 20) con il numero di righe ancora aperte. */

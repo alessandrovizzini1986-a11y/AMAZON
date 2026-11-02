@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import { assertCan } from "@/lib/rbac";
+import { assertCan, can } from "@/lib/rbac";
 import { PresenzeTabs } from "./PresenzeTabs";
 
 export default async function PresenzeLayout({ children }: { children: React.ReactNode }) {
@@ -7,7 +7,7 @@ export default async function PresenzeLayout({ children }: { children: React.Rea
   assertCan(user, "presenze.view");
   return (
     <div>
-      <PresenzeTabs />
+      <PresenzeTabs config={can(user, "presenze.config")} />
       {children}
     </div>
   );

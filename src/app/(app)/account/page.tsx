@@ -9,6 +9,7 @@ const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Fleet Manager",
   RESP_MEZZI: "Responsabile Mezzi",
   DRIVER: "Driver",
+  CONTROLLO: "Controllo presenze",
 };
 
 export default async function AccountPage() {

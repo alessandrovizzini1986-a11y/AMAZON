@@ -6,8 +6,8 @@ import { MINISEARCH_OPTIONS, tokenize, snippet } from "@/domain/vademecumSearch"
 const docs = getAllDocs();
 
 describe("contenuti del vademecum", () => {
-  it("carica index + 13 pagine", () => {
-    expect(docs.length).toBe(14);
+  it("carica index + 14 pagine", () => {
+    expect(docs.length).toBe(15);
     expect(docs.some((d) => d.slug === "index")).toBe(true);
   });
 

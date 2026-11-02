@@ -13,7 +13,7 @@ const userSchema = z.object({
   email: z.string().email().transform((v) => v.toLowerCase().trim()),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
-  role: z.enum(["ADMIN", "RESP_MEZZI", "DRIVER"]),
+  role: z.enum(["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO"]),
   stationId: z.string().optional(),
   licenseNo: z.string().optional(),
   phone: z.string().optional(),
@@ -27,7 +27,7 @@ export async function createUserAction(formData: FormData) {
   const clean: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) clean[k] = v === "" ? undefined : v;
   const data = userSchema.parse(clean);
-  if (data.role !== "ADMIN" && !data.stationId) {
+  if ((data.role === "DRIVER" || data.role === "RESP_MEZZI") && !data.stationId) {
     redirect(`/users?error=${encodeURIComponent("Stazione obbligatoria per Driver e Responsabile Mezzi")}`);
   }
 
