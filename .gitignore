@@ -30,3 +30,7 @@ next-env.d.ts
 /uploads
 .vercel
 .env*
+
+# kit modulo presenze: file reali (nomi, ore, ID driver) solo in locale per i test golden
+docs/presenze-kit/esempi/
+docs/presenze-kit/attesi/

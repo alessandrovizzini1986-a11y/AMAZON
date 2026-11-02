@@ -1,0 +1,26 @@
+codice,descrizione
+MEZZI,spostamento mezzi
+SM,spostamento mezzi
+UFF,ufficio
+UFFICIO,ufficio
+CORSO,formazione
+FORMAZIONE,formazione
+RESCUE,rescue (trasferta dovuta)
+VM,visita medica
+DVN5,prestito altra station
+DVN6,prestito altra station
+DER1,prestito altra station
+DER2,prestito altra station
+DLO2,prestito altra station
+DLO4,prestito altra station
+DLO5,prestito altra station
+DLZ2,prestito altra station
+DVN1,prestito altra station
+ORIGGIO,prestito altra station
+BUCCINASCO,prestito altra station
+VALSAMOGGIA,prestito altra station
+SANTARCANGELO,prestito altra station
+CASTEGNATO,prestito altra station
+POMEZIA,prestito altra station
+VIGONZA,prestito altra station
+# NON giustificativi: SB (turno Same B), L1 (rotta standard 8h), R, C1, D, F, P

@@ -1,0 +1,34 @@
+/**
+ * Dispatcher (regole/dispatcher.csv del kit): esclusi da ogni alert, nessuna
+ * trasferta dovuta. Valori iniziali: in produzione la lista è modificabile da ADMIN.
+ */
+export const DISPATCHER_DEFAULT: string[] = [
+  "LEONARDI ANDREA",
+  "BRUNO DOMENICO",
+  "GIURIATO FEDERICO",
+  "CUOCO PAOLO",
+  "MITROI RAZVAN FLORIN",
+  "CAGNIN ALBERTO",
+  "BELLIATO DAVIDE",
+  "HALILAJ KLODIAN",
+  "CARRETTA MARCO",
+  "HATILLARI MATEO",
+  "SARTI PAMELA",
+  "VASSELLATTI GABRIELE OTTAVIANO",
+  "DI CARLO GIOVANNI",
+  "TUESTA GARCIA JULIUS AMADEUS",
+  "CUONZO SILVIO",
+  "GOTTI ALESSANDRO",
+  "ASHIQ ALI",
+  "MANCA PIETRO",
+  "LAZZARINI THOMAS",
+  "MATRANGA VINCENZO",
+  "CHIANELLA DAMIANO",
+  "FLORIS FABIO",
+  "SALLUSTIO MARCO",
+  "GUIDI SIMONE",
+  "VENTURINI ADRIANO",
+  "MIOTTO LUCA",
+  "BIASIN MATTEO",
+  "VIZZINI ALESSANDRO",
+];
