@@ -45,6 +45,11 @@ scrive mai nel file AGGREGATO e non si collega al portale Amazon.
    (fonte di verità, eseguibile con `node docs/fatture-amazon-kit/tests/run_tests.js`) e poi porta la stessa modifica in
    `src/domain/fatture/parser.ts`. Tutti i 12+ casi devono restare verdi.
 
+## Storico forecast e furgoni (`/fatture-amazon/forecast/storico`)
+- Versione di un file = settimana di emissione (`PROF_<wk>`, o la settimana della prima data): "ultimo" vale per versione, poi per caricamento (`src/lib/forecastVersioni.ts`, nessuna colonna nuova nel DB).
+- `src/domain/forecast/storico.ts`: stato del forecast a ogni versione, rotte del giorno = next + SD_A + max(SD_B, SD_C) (cicli dalla colonna `cycle`), furgoni = picco next (senza cargo bike) + picco max(A, B, C), SWA/MFN pickup simulate oltre l'orizzonte del next (media per giorno della settimana delle ultime 3 settimane), precisione per anticipo per DS.
+- Pagina: tendenza (€ o rotte, ND/SD), evoluzione di una settimana, precisione per anticipo, pivot settimana × versione, furgoni necessari contro flotta (ATTIVI + SOSTITUTIVI) con delta, Excel. Spec: `docs/forecast-storico/PROMPT_forecast_storico_tendenza.md`.
+
 ## Se cambia il forecast
 - Nuovo `service_type_scheduling`: compare come `NON_MAPPATO` nell'elenco file → aggiungi la regola nella mappa (pagina Forecast).
 - Nuovo formato colonne: aggiorna `COLONNE` in `src/app/(app)/fatture-amazon/forecast/ForecastClient.tsx` e aggiungi il file
