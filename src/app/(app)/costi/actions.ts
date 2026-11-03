@@ -129,3 +129,52 @@ export async function salvaStima(input: { mese: string; popolazione: "STD" | "SI
   revalidatePath(BASE, "layout");
   return { creataIl: creataIl.toISOString(), totale };
 }
+
+const rigaPay = z.object({
+  matr: z.string().max(20), dipe: z.string().max(120), station: z.string().max(20).nullable(), cod1: z.string().max(10), cod2: z.string().max(40), descrizione: z.string().max(200),
+  conto: z.string().max(20), importo: z.number().finite(), componente: z.string().max(30), istituto: z.string().max(30).nullable(),
+});
+
+/** Import "Costi del personale PS" a lotti: il primo lotto cancella il mese di paga. Il file non viene salvato. */
+export async function importaPayroll(input: { mesePaga: string; righe: z.infer<typeof rigaPay>[]; primo: boolean }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  const m = mese.parse(input.mesePaga);
+  const righe = z.array(rigaPay).max(5000).parse(input.righe);
+  if (input.primo) await db.payrollRiga.deleteMany({ where: { mesePaga: m } });
+  return (await db.payrollRiga.createMany({ data: righe.map((r) => ({ ...r, mesePaga: m })) })).count;
+}
+
+export async function concludiImportPayroll(c: { mesePaga: string; file: string; righe: number; totale: number; dipendenti: number; nonInAnagrafica: number }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  await audit({ userId: user.id, action: "costi.payroll", entity: "PayrollRiga", meta: c });
+  revalidatePath(BASE, "layout");
+}
+
+const rigaRic = z.object({ station: z.string().max(40), voce: z.string().max(60), stima: z.number().finite(), consuntivo: z.number().finite(), delta: z.number().finite(), nota: z.string().max(300).optional() });
+
+/** Salva la riconciliazione del mese (sostituisce quella precedente della stessa popolazione). */
+export async function salvaRiconciliazione(input: { mese: string; popolazione: "STD" | "SIC"; righe: z.infer<typeof rigaRic>[] }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  const m = mese.parse(input.mese);
+  const pop = z.enum(["STD", "SIC"]).parse(input.popolazione);
+  const righe = z.array(rigaRic).max(2000).parse(input.righe);
+  await db.$transaction([db.riconciliazione.deleteMany({ where: { mese: m, popolazione: pop } }), db.riconciliazione.createMany({ data: righe.map((r) => ({ ...r, mese: m, popolazione: pop })) })]);
+  await audit({ userId: user.id, action: "costi.riconciliazione", entity: "Riconciliazione", meta: { mese: m, popolazione: pop, righe: righe.length } });
+  revalidatePath(BASE, "layout");
+}
+
+/** "Aggiorna parametri": salva i coefficienti ricalcolati con validità dal mese indicato. */
+export async function aggiornaParametri(input: { validaDal: string; valori: Record<string, number>; fonte: string }) {
+  const user = await requireUser();
+  assertCan(user, "costi.parametri");
+  const dal = iso.parse(input.validaDal);
+  const valori = z.record(z.string().regex(/^SIC_[A-Z_]{2,30}$/), z.number().finite()).parse(input.valori);
+  const fonte = z.string().max(200).parse(input.fonte);
+  for (const [chiave, valore] of Object.entries(valori))
+    await db.parametro.upsert({ where: { chiave_validaDal: { chiave, validaDal: d(dal) } }, create: { chiave, validaDal: d(dal), valore, fonte, note: `ricalcolato da ${user.name}` }, update: { valore, fonte, note: `ricalcolato da ${user.name}` } });
+  await audit({ userId: user.id, action: "costi.parametri.aggiorna", entity: "Parametro", meta: { validaDal: dal, valori, fonte } });
+  revalidatePath(BASE, "layout");
+}

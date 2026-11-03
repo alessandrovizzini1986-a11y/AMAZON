@@ -13,13 +13,22 @@ import { accordoDomenica, giorniOltre10, letturaFile, rapportiAdit, rapportoMese
 import { parametriAlla } from "@/domain/costi/parametri";
 import type { AggregatoAdit, TariffeStd } from "@/domain/costi/adit";
 import type { ValorePerData } from "@/domain/costi/tariffe";
+import { bustaLavoratore, bustaStation, lavoratoriSic, sicLordo, type BustaLavoratore, type BustaStation, type LavoratoreSic, type ParametriSic, type SicLordo } from "@/domain/costi/sic";
+import type { RigaCDL } from "@/domain/costi/anagrafica";
+import { testoTeams, type RigaTeams } from "@/domain/costi/teams";
+import { valoreAlla } from "@/domain/costi/tariffe";
+import { excelStima } from "@/lib/costi/excelStima";
+import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaStima } from "../actions";
 
 type Props = {
   mese: string; fineMese: string; canRun: boolean; tariffe: ValorePerData[]; parametri: ValorePerData[]; versioneParametri: string | null;
   festivi: Festivo[]; tariffeStd: TariffeStd | null; meseTariffe: string | null; aditCtrl: AggregatoAdit; meseCtrl: string | null;
   anagrafica: { mese: string; eta: number } | null; zucchetti: { il: string; da: string } | null; oreLavoroPrec: Record<string, number> | null;
+  righeCdl: RigaCDL[]; aditDwh: { station: string; voce: string; quantita: number; costo: number; teste: number }[]; utente: string;
 };
+
+type Sic = { lav: LavoratoreSic[]; busta: BustaLavoratore[]; perStation: BustaStation[]; lordo: SicLordo[]; nonTracciati: { nome: string; station: string; cdl: number }[]; par: ParametriSic };
 
 type ControlliStation = {
   station: string; file: string; foglio: string; totaliFile: number; oreLette: number; trasfAMano: number; tetto: { nome: string; settimana: string; ore: number; tetto: number }[];
@@ -42,7 +51,9 @@ export function FineMeseClient(p: Props) {
   const [stato, setStato] = useState("");
   const [errore, setErrore] = useState<string | null>(null);
   const [avvisi, setAvvisi] = useState<string[]>([]);
-  const [ris, setRis] = useState<{ ore: OreStation[]; stime: StimaStdStation[]; ctrl: ControlliStation[] } | null>(null);
+  const [ris, setRis] = useState<{ ore: OreStation[]; stime: StimaStdStation[]; ctrl: ControlliStation[]; sic: Sic | null } | null>(null);
+  const [salvataSic, setSalvataSic] = useState<string | null>(null);
+  const [teams, setTeams] = useState<string | null>(null);
   const [salvata, setSalvata] = useState<string | null>(null);
 
   const aggiorna = async () => {
@@ -67,7 +78,7 @@ export function FineMeseClient(p: Props) {
 
   const calcola = async () => {
     if (!p.tariffeStd) return;
-    setLavoro(true); setErrore(null); setRis(null); setSalvata(null);
+    setLavoro(true); setErrore(null); setRis(null); setSalvata(null); setSalvataSic(null); setTeams(null);
     try {
       const [anno, mm] = p.mese.split("-").map(Number);
       const dati = await caricaDatiMese(p.mese, setStato);
@@ -90,7 +101,27 @@ export function FineMeseClient(p: Props) {
         });
       }
       if (!ore.length) throw new Error("nessun tracking STD del mese nell'archivio: trascinali qui sopra");
-      setRis({ ore, stime, ctrl });
+      let sic: Sic | null = null;
+      const trkSic = dati.tracking.filter((x) => x.tipo === "SIC").sort((a, b) => a.station.localeCompare(b.station));
+      if (trkSic.length && p.righeCdl.length) {
+        const idx = new Map(p.righeCdl.map((r) => [r.cf, r]));
+        const parS: ParametriSic = { MOLT_ONERI: par.SIC_MOLT_ONERI ?? 1.434, STR_FT: par.SIC_STR_FT ?? 17.9, STR_PT: par.SIC_STR_PT ?? 16.1, SUPP: par.SIC_SUPP ?? 14.1, DOMFEST: par.SIC_DOMFEST ?? 4.6, MALATTIA_H: par.SIC_MALATTIA_H ?? -9.5, CARENZA_PCT: par.SIC_CARENZA_PCT ?? 0.025 };
+        const lav: LavoratoreSic[] = [];
+        for (const t of trkSic) {
+          setStato(`Calcolo ${t.station} SIC…`);
+          const { lavoratori } = leggiLavoratori(t.sheets, anno, mm);
+          lav.push(...lavoratoriSic(t.station, lavoratori, idx, p.festivi, p.tariffe, festiviMese(anno, mm, t.station, p.festivi).map((f) => f.data)));
+        }
+        const st = [...new Set(lav.map((x) => x.station))];
+        const tracciati = new Set(lav.filter((x) => x.anag).map((x) => x.anag!.cf));
+        sic = {
+          lav, busta: lav.map((x) => bustaLavoratore(x, parS)), par: parS,
+          perStation: st.map((s) => bustaStation(s, lav.filter((x) => x.station === s), parS)),
+          lordo: st.map((s) => sicLordo(s, lav.filter((x) => x.station === s), p.tariffeStd!, { dispatcherTrasferta: true })),
+          nonTracciati: p.righeCdl.filter((r) => !tracciati.has(r.cf)).map((r) => ({ nome: `${r.cognome} ${r.nome}`, station: r.station, cdl: r.cdl })),
+        };
+      }
+      setRis({ ore, stime, ctrl, sic });
     } catch (e) { setErrore(e instanceof Error ? e.message : String(e)); } finally { setStato(""); setLavoro(false); }
   };
 
@@ -111,6 +142,80 @@ export function FineMeseClient(p: Props) {
       const r = await salvaStima({ mese: p.mese, popolazione: "STD", righe, versioneAnagrafica: null, versioneParametri: `parametri ${p.versioneParametri ?? "—"} · tariffe ADIT ${p.meseTariffe}` });
       void r; setSalvata(`Stima STD ${it(p.mese)} salvata (${eur(totaleStime(ris.stime))} €).`); router.refresh();
     } catch (e) { setErrore(e instanceof Error ? e.message : String(e)); } finally { setLavoro(false); }
+  };
+
+  /** Ore per il ricalcolo dei coefficienti dal payroll del mese dopo (gruppo FT = FT + dispatcher). */
+  const oreSicStation = (st: string): [string, number][] => {
+    const l = ris!.sic!.lav.filter((x) => x.station === st);
+    const S = (f: (x: LavoratoreSic) => number, ll = l) => Math.round(ll.reduce((a, x) => a + f(x), 0) * 100) / 100;
+    const ft = l.filter((x) => x.bucket === "CTI FT" || x.bucket === "DISPATCHER"), pt = l.filter((x) => !ft.includes(x));
+    return [["ORE_STR_FT", S((x) => x.straord, ft)], ["ORE_STR_PT", S((x) => x.straord, pt)], ["ORE_SUPP", S((x) => x.suppl)], ["ORE_DOMFEST", S((x) => x.oreDomFest)], ["ORE_MALATTIA", S((x) => x.malattia + x.infortunio)]];
+  };
+
+  const salvaSic = async () => {
+    if (!ris?.sic) return;
+    setLavoro(true);
+    try {
+      const righe = ris.sic.perStation.flatMap((b) => {
+        const l = ris.sic!.lordo.find((x) => x.station === b.station)!;
+        return [["BASE", b.base], ["TRASFERTA", b.trasferte], ["ISTITUTI", b.istituti], ["ASSENZE", b.assenze], ["FERIE_GODUTE", b.ferieGodute], ["LORDO_V2", l.lordo], ["SAVING_RATEI", l.savingRatei], ["FEST_NON_GODUTE", l.festNonGodute]]
+          .map(([voce, importo]) => ({ station: b.station, voce: voce as string, quantita: null as number | null, tariffa: null as number | null, importo: importo as number }))
+          .concat([{ station: b.station, voce: "TESTE", quantita: b.teste, tariffa: null, importo: 0 }, { station: b.station, voce: "CDL_STIMATI", quantita: b.cdlStimati, tariffa: null, importo: 0 }, { station: b.station, voce: "TOTALE", quantita: null, tariffa: null, importo: b.totale }])
+          .concat(oreSicStation(b.station).map(([voce, q]) => ({ station: b.station, voce, quantita: q, tariffa: null, importo: 0 })));
+      });
+      await salvaStima({ mese: p.mese, popolazione: "SIC", righe, versioneAnagrafica: p.anagrafica?.mese ?? null, versioneParametri: `parametri ${p.versioneParametri ?? "—"} · tariffe ADIT ${p.meseTariffe}` });
+      setSalvataSic(`Stima SIC ${it(p.mese)} (busta del 27 del mese dopo) salvata: ${eur(ris.sic.perStation.reduce((a, b) => a + b.totaleEsatto, 0))} €.`); router.refresh();
+    } catch (e) { setErrore(e instanceof Error ? e.message : String(e)); } finally { setLavoro(false); }
+  };
+
+  const avvisiStation = (st: string) => {
+    const c = ris!.ctrl.find((x) => x.station === st);
+    const out: { peso: number; testo: string }[] = [];
+    if (c) {
+      if (Math.abs(c.totaliFile - c.oreLette) >= 0.5) out.push({ peso: 9, testo: `ore STD lette ${h1(c.oreLette)} ≠ Totali ${h1(c.totaliFile)}` });
+      for (const r of c.rapporti.filter((x) => x.rosso)) out.push({ peso: 5 + Math.abs((r.rapporto ?? 1) - 1), testo: `${r.voce} stima/ADIT ${r.rapporto!.toLocaleString("it-IT", { maximumFractionDigits: 2 })}` });
+      if (c.mesePrec.rosso) out.push({ peso: 4, testo: `ore/mese prec. ${c.mesePrec.rapporto!.toLocaleString("it-IT", { maximumFractionDigits: 2 })}` });
+      if (c.trasfAMano) out.push({ peso: 3, testo: `${c.trasfAMano} trasferte scritte a mano` });
+      if (c.tetto.length) out.push({ peso: 2, testo: `${c.tetto.length} settimane oltre il tetto CCNL` });
+      if (c.accDom.length) out.push({ peso: 2, testo: `${c.accDom.length} Accordo di domenica` });
+    }
+    const b = ris!.sic?.perStation.find((x) => x.station === st);
+    if (b?.cdlStimati) out.push({ peso: 6, testo: `${b.cdlStimati} SIC senza CDL (media bucket)` });
+    const disp = ris!.sic?.lordo.find((x) => x.station === st)?.trasfDispatcherGg;
+    if (disp) out.push({ peso: 1, testo: `${disp} gg trasferta dispatcher in tracking (in busta 0)` });
+    return out;
+  };
+
+  const righeTeams = (): RigaTeams[] => [...new Set([...ris!.stime.map((s) => s.station), ...(ris!.sic?.perStation.map((b) => b.station) ?? [])])].sort().map((st) => {
+    const s = ris!.stime.find((x) => x.station === st), o = ris!.ore.find((x) => x.station === st), b = ris!.sic?.perStation.find((x) => x.station === st);
+    return { station: st, std: s?.totale ?? null, stdTeste: o?.teste ?? null, sic: b?.totale ?? null, sicTeste: b?.teste ?? null, avvisi: avvisiStation(st) };
+  });
+
+  const testo = async () => {
+    const t = testoTeams(p.mese, righeTeams(), [`STD = competenza del mese (tariffe ADIT ${p.meseTariffe ? it(p.meseTariffe) : "—"}); SIC = busta del 27 del mese successivo (anagrafica CDL ${p.anagrafica ? it(p.anagrafica.mese) : "—"}).`]);
+    setTeams(t);
+    try { await navigator.clipboard.writeText(t); } catch { /* copia a mano dal riquadro */ }
+  };
+
+  const excel = async () => {
+    if (!ris || !p.tariffeStd) return;
+    const [anno, mm] = p.mese.split("-").map(Number);
+    const primo = `${p.mese}-01`;
+    const par = parametriAlla(p.parametri.map((x) => ({ chiave: x.voce, validaDal: x.validaDal, valore: x.valore })), p.fineMese);
+    const tr = valoreAlla(p.tariffe, "TRASFERTA", primo) ?? 0, ex = valoreAlla(p.tariffe, "TRASFERTA_DOM_EXTRA", primo) ?? 0;
+    const stations = [...new Set([...ris.stime.map((s) => s.station), ...(ris.sic?.perStation.map((b) => b.station) ?? [])])].sort();
+    const rett: [string, string, string][] = [];
+    for (const x of ris.sic?.lav.filter((y) => !y.inAnagrafica) ?? []) rett.push([`${x.station} ${x.nome}`, `CDL assente in anagrafica ${p.anagrafica?.mese ?? ""}`, `CDL = media bucket ${x.bucket} della station (${eur(x.cdl)} €)`]);
+    for (const x of ris.sic?.lav.filter((y) => y.cfCorretto) ?? []) rett.push([`${x.station} ${x.nome}`, "codice fiscale con 0/O finale", "abbinato all'anagrafica con la correzione O↔0"]);
+    for (const x of ris.sic?.nonTracciati ?? []) rett.push([`${x.station} ${x.nome}`, `in anagrafica CDL (${eur(x.cdl)} €)`, "non presente nel tracking SIC del mese: escluso"]);
+    for (const st of stations) for (const a of avvisiStation(st)) rett.push([st, "controllo", a.testo]);
+    const wb = excelStima({
+      mese: p.mese, stations, oreStd: ris.ore, stimeStd: ris.stime, tariffeStd: p.tariffeStd, meseTariffe: p.meseTariffe ?? "", aditDwh: p.aditDwh,
+      parStd: { TRASF: tr, TRASFDOM: tr + ex, CTRB: par.STD_CTRB_H ?? 0.1, ALTRO: par.STD_ALTRO_PCT ?? 0.002, GGMESE: par.STD_GG_MESE ?? 26, MOG: par.STD_MOG ?? 0 },
+      sic: ris.sic ? { lav: ris.sic.lav, busta: ris.sic.busta } : null, sicLordo: ris.sic?.lordo ?? [], parSic: ris.sic?.par ?? null, dispTrasferta: true,
+      festivi: p.festivi, nFestivi: Object.fromEntries(stations.map((s) => [s, festiviMese(anno, mm, s, p.festivi).length])), rettifiche: rett.length ? rett : [["—", "nessuna rettifica", ""]], versioneAnagrafica: p.anagrafica?.mese ?? null,
+    });
+    await scarica(wb, `Stima_AMZ_${p.mese.slice(5)}_${p.mese.slice(2, 4)}.xlsx`);
   };
 
   const vai = (m: string) => router.push(`/costi/fine-mese?mese=${m}`);
@@ -184,7 +289,39 @@ export function FineMeseClient(p: Props) {
             </table></div>
             <p className="mt-2 text-xs text-ink-muted">Rosso: ore stima/ADIT fuori 0,85–1,15, ore mese/mese precedente fuori 0,7–1,4, ore lette diverse dalla riga Totali. Passa il mouse sulle celle per il dettaglio.</p>
           </section>
-          <p className="text-sm text-ink-muted">Stima SIC (busta del 27), Excel e testo per Teams: arrivano con la prossima versione.</p>
+          {ris.sic ? (
+            <section className="card p-4 md:p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-[19px] font-semibold">SIC busta 27 del mese dopo (tracking {it(p.mese)}) — {eur(ris.sic.perStation.reduce((a, b) => a + b.totaleEsatto, 0))} €</h2>
+                {p.canRun && <button type="button" className="btn-primary" disabled={lavoro} onClick={salvaSic}>Salva stima SIC</button>}
+              </div>
+              {salvataSic && <p className="mb-3 rounded-control bg-ok-soft px-4 py-3 text-sm text-ok">{salvataSic}</p>}
+              <div className="overflow-x-auto"><table className="table-base text-sm">
+                <thead><tr><th>Voce</th>{ris.sic.perStation.map((b) => <th key={b.station} className="text-right">{b.station}</th>)}<th className="text-right">Totale</th></tr></thead>
+                <tbody>{([["Teste", (b: BustaStation) => b.teste, "n"], ["di cui CDL stimati (media bucket)", (b: BustaStation) => b.cdlStimati, "n"], ["Base CDL", (b: BustaStation) => b.base, "€"], ["Trasferte (dispatcher esclusi)", (b: BustaStation) => b.trasferte, "€"],
+                  ["Istituti (trasferta + lordi × oneri)", (b: BustaStation) => b.istituti, "€"], ["Assenze", (b: BustaStation) => b.assenze, "€"], ["Ferie/ROL/ExF godute", (b: BustaStation) => b.ferieGodute, "€"], ["TOTALE busta", (b: BustaStation) => b.totale, "€"]] as [string, (b: BustaStation) => number, string][]).map(([l, f, u]) => {
+                  const v = ris.sic!.perStation.map(f);
+                  return <tr key={l} className={l.startsWith("TOTALE") ? "font-semibold" : ""}><td>{l}</td>{v.map((x, i) => <td key={i} className={`text-right font-mono ${l.startsWith("di cui") && x ? "bg-warn-soft text-warn" : ""}`}>{fmt(x, u)}</td>)}<td className="text-right font-mono">{fmt(l.startsWith("TOTALE") ? ris.sic!.perStation.reduce((a, b) => a + b.totaleEsatto, 0) : v.reduce((a, x) => a + x, 0), u)}</td></tr>;
+                })}
+                  <tr><td colSpan={ris.sic.perStation.length + 2} className="bg-surface-sunken text-xs font-semibold uppercase text-ink-muted">Metodo del file Stima v2 (confronto)</td></tr>
+                  {([["SIC lordo (CDL + trasferte + ore × tariffe STD)", (l: SicLordo) => l.lordo], ["Saving ratei goduti", (l: SicLordo) => l.savingRatei], ["Festività non godute (potenziale max)", (l: SicLordo) => l.festNonGodute], ["Ore Accordo (esposte)", (l: SicLordo) => l.accordo], ["gg trasferta dispatcher nel tracking", (l: SicLordo) => l.trasfDispatcherGg]] as [string, (l: SicLordo) => number][]).map(([lab, f]) => {
+                    const v = ris.sic!.lordo.map(f);
+                    const u = lab.startsWith("Ore") || lab.startsWith("gg") ? "n" : "€";
+                    return <tr key={lab}><td>{lab}</td>{v.map((x, i) => <td key={i} className="text-right font-mono">{fmt(x, u)}</td>)}<td className="text-right font-mono">{fmt(v.reduce((a, x) => a + x, 0), u)}</td></tr>;
+                  })}
+                </tbody>
+              </table></div>
+              <p className="mt-2 text-xs text-ink-muted">Base = CDL dell&apos;anagrafica {p.anagrafica ? it(p.anagrafica.mese) : ""} (costo pieno mensile). Istituti del mese: trasferta (esente) + straordinario {ris.sic.par.STR_FT}/{ris.sic.par.STR_PT} €/h, supplementare {ris.sic.par.SUPP} €/h, ore dom/festivo {ris.sic.par.DOMFEST} €/h e festività non godute, × {ris.sic.par.MOLT_ONERI}. Assenze: malattia/infortunio {ris.sic.par.MALATTIA_H} €/h × {ris.sic.par.MOLT_ONERI} + carenza, permessi non retribuiti al costo orario. Dispatcher: nessuna trasferta.
+                {ris.sic.nonTracciati.length > 0 && <> In anagrafica ma non nel tracking: {ris.sic.nonTracciati.length} persone ({eur(ris.sic.nonTracciati.reduce((a, x) => a + x.cdl, 0))} €), escluse.</>}</p>
+            </section>
+          ) : <p className="text-sm text-warn">{p.righeCdl.length ? "Nessun tracking SIC del mese nell'archivio: la stima SIC non è stata calcolata." : "Nessuna anagrafica CDL: la stima SIC non è stata calcolata."}</p>}
+          <section className="card flex flex-col gap-3 p-4 md:p-5">
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-secondary" onClick={excel}>Excel</button>
+              <button type="button" className="btn-secondary" onClick={testo}>Testo per Teams</button>
+            </div>
+            {teams && <><p className="text-sm text-ok">Copiato negli appunti: incollalo nella chat Teams (se non è stato copiato, selezionalo qui sotto).</p><textarea className="input h-56 w-full font-mono text-xs" readOnly value={teams} /></>}
+          </section>
         </>
       )}
     </div>
