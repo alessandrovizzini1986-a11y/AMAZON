@@ -125,3 +125,57 @@ describe("giorni consecutivi", () => {
     expect(maxConsecutivi(["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-05"])).toEqual({ n: 3, dal: "2026-10-01", al: "2026-10-03" });
   });
 });
+
+describe("addendum 3/11: R1–R4", () => {
+  // 1/11/2026 è domenica: giorni 30/10 (ven), 31/10 (sab), 1/11 (dom) — periodo dentro novembre: solo l'1
+  const hdr: Cell[] = [null, "Tipo Contratto", "Lavoratore", "Driver ID", "Codice fiscale", "Codice Matricola", "Tipo", D("2026-10-30"), D("2026-10-31"), D("2026-11-01"), D("2026-11-02")];
+  const blocco = (nome: string, id: string, righe: Record<string, (number | null)[]>) => {
+    const out: Cell[][] = [];
+    const voci = ["Standard", "Straordinario", "Accordo (dalla ora 39 a 44)", "Totali", "RIPOSO", "MALATTIA", "Indennità Trasferta"];
+    voci.forEach((v, i) => out.push([null, i === 0 ? "STD" : null, i === 0 ? nome : null, i === 0 ? id : null, "", "", v, ...(righe[v] ?? [null, null, null, null])]));
+    return out;
+  };
+  const std = grid("11.26", [hdr,
+    ...blocco("Malato Mario", "M1", { MALATTIA: [null, null, null, 8], "Indennità Trasferta": [0, 0, 0, 0] }),
+    ...blocco("Lungo Luca", "L1X", { Standard: [null, null, null, 9], Straordinario: [null, null, null, 2.5], "Indennità Trasferta": [0, 0, 0, 1] }),
+    ...blocco("Errore Elena", "E1", { Standard: [null, null, null, 78], "Indennità Trasferta": [0, 0, 0, 0] }),
+    ...blocco("Domenica Dario", "D1", { Standard: [null, null, 6, null], "Accordo (dalla ora 39 a 44)": [null, null, 1, null], "Indennità Trasferta": [0, 0, 1, 0] }),
+  ]);
+  const sic = grid("11.26", [hdr, ...blocco("Sicdom Sara", "S1", { Standard: [null, null, 6, null], "Accordo (dalla ora 39 a 44)": [null, null, 1, null], "Indennità Trasferta": [0, 0, 1, 0] })]);
+  const trk: TrackingInput[] = [
+    { station: "DER2", tipo: "STD", fileName: "std.xlsx", sheets: [std] },
+    { station: "DER2", tipo: "SIC", fileName: "sic.xlsx", sheets: [sic] },
+  ];
+  const fx = (data: string, nome: string, id: string, pacchi: number) => ({ station: "DER2" as const, data, nome, driverId: id, pacchi, spediti: pacchi });
+  const flex = [fx("2026-11-02", "Malato Mario", "M1", 120), fx("2026-11-02", "Lungo Luca", "L1X", 150), fx("2026-11-01", "Domenica Dario", "D1", 90), fx("2026-11-01", "Sicdom Sara", "S1", 90), fx("2026-11-02", "Errore Elena", "E1", 3)];
+  const e = controlloSettimanale(trk, flex, { station: "DER2", da: "2026-11-01", a: "2026-11-02", giustificativi: [], dispatcher: [] });
+  const r = (nome: string, d: string) => e.dettaglio.find((x) => x.driver === nome && x.data === d)!;
+
+  it("R1: malattia nel tracking e rotta Amazon → nessun −1, nota 'malattia batte il lavorato'", () => {
+    expect(r("Malato Mario", "2026-11-02").esitoBase).toBe("ALERT -1"); // la base v2 resta com'era
+    expect(r("Malato Mario", "2026-11-02").categoria).toBe("");
+    expect(r("Malato Mario", "2026-11-02").nota).toMatch(/Malattia batte il lavorato/);
+  });
+  it("R2: oltre 10 h lavorate → ORE anche se trasferta e rotta coincidono", () => {
+    const x = r("Lungo Luca", "2026-11-02");
+    expect(x.categoria).toBe("ORE");
+    expect(x.nota).toMatch(/oltre 10: 11.5 h/);
+  });
+  it("R3: valore > 24 → ORE con il valore letto, non usato per trasferta/rotta", () => {
+    const x = r("Errore Elena", "2026-11-02");
+    expect(x.ore).toBe(0);
+    expect(x.categoria).toBe("ORE");
+    expect(x.valoreAnomalo).toBe("78 h in Standard");
+    expect(e.anomalie.some((a) => /Valore anomalo 78 h/.test(a.anomalia))).toBe(true);
+  });
+  it("R4: STD di domenica con ore in Accordo → ACC; non vale per i SIC", () => {
+    expect(r("Domenica Dario", "2026-11-01").categoria).toBe("ACC");
+    expect(r("Domenica Dario", "2026-11-01").nota).toMatch(/cancellare/);
+    expect(r("Sicdom Sara", "2026-11-01").categoria).toBe("ok");
+  });
+  it("R5: conteggi e 'giorni da verificare' per driver", () => {
+    const rd = righePerDriver(e);
+    expect(rd.find((x) => x.driver === "Lungo Luca")).toMatchObject({ ore: 1, acc: 0, daVerificare: "2(ORE)" });
+    expect(rd.find((x) => x.driver === "Domenica Dario")).toMatchObject({ acc: 1, daVerificare: "1(ACC)" });
+  });
+});

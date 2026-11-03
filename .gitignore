@@ -34,3 +34,5 @@ next-env.d.ts
 # kit modulo presenze: file reali (nomi, ore, ID driver) solo in locale per i test golden
 docs/presenze-kit/esempi/
 docs/presenze-kit/attesi/
+docs/telepass-q8-kit/esempi/
+docs/telepass-q8-kit/attesi/

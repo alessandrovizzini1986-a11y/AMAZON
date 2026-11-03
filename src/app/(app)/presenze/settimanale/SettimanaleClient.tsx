@@ -21,6 +21,8 @@ const SIMBOLO_CLASS: Record<string, string> = {
   "-1": "bg-[#fdf1dc] text-warn font-bold",
   H: "bg-[#e5f0f7] text-info font-bold",
   A: "bg-[#efe7f7] text-[#5b2a86] font-bold",
+  ORE: "bg-[#fbe9e7] text-[#8a1c0a] font-bold ring-1 ring-inset ring-danger",
+  ACC: "bg-[#fff4cc] text-[#7a5a00] font-bold",
   ok: "text-ok",
   "?": "bg-surface-sunken text-ink-muted",
   "": "",
@@ -87,7 +89,10 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
   const righe = useMemo(() => esiti.flatMap(righePerDriver), [esiti]);
   const visibili = righe.filter((r) =>
     (filtroSt === "TUTTE" || r.station === filtroSt) &&
-    (filtroEsito === "TUTTI" || (filtroEsito === "ALERT" ? r.piu1 + r.meno1 + r.h + r.a > 0 : filtroEsito === "+1" ? r.piu1 > 0 : filtroEsito === "-1" ? r.meno1 > 0 : filtroEsito === "H" ? r.h > 0 : r.a > 0)));
+    (filtroEsito === "TUTTI" || (filtroEsito === "ALERT" ? r.piu1 + r.meno1 + r.h + r.a + r.ore + r.acc > 0 : filtroEsito === "+1" ? r.piu1 > 0 : filtroEsito === "-1" ? r.meno1 > 0 : filtroEsito === "H" ? r.h > 0 : filtroEsito === "ORE" ? r.ore > 0 : filtroEsito === "ACC" ? r.acc > 0 : r.a > 0)));
+  const riep = esiti.map(riepilogoStation);
+  const nOre = riep.reduce((s, r) => s + r.ore, 0);
+  const nAcc = riep.reduce((s, r) => s + r.acc, 0);
   const entro = entroGiorniLavorativi(oggiIso());
   const messaggi = esiti.map((e) => messaggioSettimanale(e, referenti[e.station] ?? null, entro)).filter((m) => m.nAnomalie > 0);
   const nConsec = dom.filter((d) => d.oltre6).length;
@@ -137,7 +142,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
       {esiti.length > 0 && (
         <>
           {/* blocco alert sempre visibile */}
-          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <button type="button" onClick={() => setVistaDom(vistaDom === "consec" ? "" : "consec")} className={`card p-4 text-left ${nConsec > 0 ? "border-danger bg-danger-soft" : ""}`}>
               <div className="text-sm font-medium text-ink-muted">Driver con più di 6 giorni consecutivi (mese)</div>
               <div className={`text-3xl font-bold ${nConsec > 0 ? "text-danger" : ""}`}>{nConsec}</div>
@@ -147,6 +152,16 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
               <div className="text-sm font-medium text-ink-muted">Casi 6 giorni + domenica nel periodo</div>
               <div className="text-3xl font-bold">{nSeiDom}</div>
               <div className="text-xs text-brand">{nSeiDom ? "Mostra elenco ↓" : "Nessun caso"}</div>
+            </button>
+            <button type="button" onClick={() => setFiltroEsito(filtroEsito === "ORE" ? "ALERT" : "ORE")} className={`card p-4 text-left ${nOre > 0 ? "border-danger bg-danger-soft" : ""}`}>
+              <div className="text-sm font-medium text-ink-muted">ORE: giornate oltre 10 h o valori anomali</div>
+              <div className={`text-3xl font-bold ${nOre > 0 ? "text-danger" : ""}`}>{nOre}</div>
+              <div className="text-xs text-brand">{nOre ? "Filtra i driver ↓" : "Nessun caso"}</div>
+            </button>
+            <button type="button" onClick={() => setFiltroEsito(filtroEsito === "ACC" ? "ALERT" : "ACC")} className={`card p-4 text-left ${nAcc > 0 ? "border-warn bg-warn-soft" : ""}`}>
+              <div className="text-sm font-medium text-ink-muted">ACC: Accordo di domenica (STD)</div>
+              <div className={`text-3xl font-bold ${nAcc > 0 ? "text-warn" : ""}`}>{nAcc}</div>
+              <div className="text-xs text-brand">{nAcc ? "Filtra i driver ↓" : "Nessun caso"}</div>
             </button>
           </section>
 
@@ -158,13 +173,14 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
               {salvata && <Link className="text-sm font-semibold text-brand hover:underline" href={`/presenze/esecuzioni/${salvata}`}>Apri per segnare gli esiti →</Link>}
             </div>
             <table className="table-base text-sm">
-              <thead><tr><th>Station</th><th>Driver</th><th>Trasferte</th><th>Rotte Amazon</th><th>+1</th><th>−1</th><th>H</th><th>A</th><th>€ +1</th><th>Giorni senza CSV</th></tr></thead>
+              <thead><tr><th>Station</th><th>Driver</th><th>Trasferte</th><th>Rotte Amazon</th><th>+1</th><th>−1</th><th>H</th><th>A</th><th>ORE</th><th>ACC</th><th>€ +1</th><th>Giorni senza CSV</th></tr></thead>
               <tbody>
-                {esiti.map(riepilogoStation).map((r) => (
+                {riep.map((r) => (
                   <tr key={r.station}>
                     <td className="font-mono font-semibold">{r.station}</td><td>{r.driver}</td><td>{r.trasferte}</td><td>{r.rotte}</td>
                     <td className={r.piu1 ? "font-bold text-danger" : ""}>{r.piu1}</td><td className={r.meno1 ? "font-bold text-warn" : ""}>{r.meno1}</td>
                     <td className={r.h ? "font-bold text-info" : ""}>{r.h}</td><td className={r.a ? "font-bold text-[#5b2a86]" : ""}>{r.a}</td>
+                    <td className={r.ore ? "font-bold text-danger" : ""}>{r.ore}</td><td className={r.acc ? "font-bold text-warn" : ""}>{r.acc}</td>
                     <td>{(r.eurPiu1).toLocaleString("it-IT", { style: "currency", currency: "EUR" })}</td><td>{r.giorniSenzaCsv || "—"}</td>
                   </tr>
                 ))}
@@ -190,7 +206,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
               </label>
               <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Esito
                 <select className="input h-10 w-44" value={filtroEsito} onChange={(e) => setFiltroEsito(e.target.value)}>
-                  <option value="ALERT">Solo da verificare</option><option value="+1">+1</option><option value="-1">−1</option><option value="H">H</option><option value="A">A</option><option value="TUTTI">Tutti</option>
+                  <option value="ALERT">Solo da verificare</option><option value="+1">+1</option><option value="-1">−1</option><option value="H">H</option><option value="A">A</option><option value="ORE">ORE</option><option value="ACC">ACC</option><option value="TUTTI">Tutti</option>
                 </select>
               </label>
             </div>
@@ -199,7 +215,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
                 <thead>
                   <tr className="text-left text-[11px] uppercase text-ink-muted">
                     <th className="sticky left-0 z-[1] bg-surface-raised px-2 py-2">Driver</th><th className="px-2">Station</th><th className="px-2">Tipo</th><th className="px-2">ID</th><th className="px-2">Contratto</th>
-                    <th className="px-1">gg</th><th className="px-1">Trasf.</th><th className="px-1">Rotte</th><th className="px-1">+1</th><th className="px-1">−1</th><th className="px-1">H</th><th className="px-1">A</th>
+                    <th className="px-1">gg</th><th className="px-1">Trasf.</th><th className="px-1">Rotte</th><th className="px-1">+1</th><th className="px-1">−1</th><th className="px-1">H</th><th className="px-1">A</th><th className="px-1">ORE</th><th className="px-1">ACC</th>
                     <th className="px-2">Giorni da verificare</th>
                     {giorni.map((d) => <th key={d} className="w-7 px-0 text-center font-semibold">{Number(d.slice(8))}<br />{GG[weekday(d)].slice(0, 1)}</th>)}
                     <th className="min-w-[280px] px-2">Nota</th>
@@ -211,7 +227,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
                       <td className="sticky left-0 z-[1] whitespace-nowrap bg-surface-raised px-2 py-1.5 font-semibold">{r.driver}</td>
                       <td className="px-2 font-mono">{r.station}</td><td className="px-2">{r.tipo}</td><td className="px-2 font-mono text-[11px]">{r.driverId || <span className="text-warn">manca</span>}</td><td className="whitespace-nowrap px-2">{r.contratto}</td>
                       <td className="px-1 text-center">{r.giorniLavorati}</td><td className="px-1 text-center">{r.trasferte}</td><td className="px-1 text-center">{r.rotte}</td>
-                      <td className="px-1 text-center">{r.piu1 || ""}</td><td className="px-1 text-center">{r.meno1 || ""}</td><td className="px-1 text-center">{r.h || ""}</td><td className="px-1 text-center">{r.a || ""}</td>
+                      <td className="px-1 text-center">{r.piu1 || ""}</td><td className="px-1 text-center">{r.meno1 || ""}</td><td className="px-1 text-center">{r.h || ""}</td><td className="px-1 text-center">{r.a || ""}</td><td className="px-1 text-center">{r.ore || ""}</td><td className="px-1 text-center">{r.acc || ""}</td>
                       <td className="whitespace-nowrap px-2 font-semibold">{r.daVerificare}</td>
                       {giorni.map((d) => {
                         const s = (r.simboli[d] ?? "") as Categoria;
@@ -223,7 +239,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-[11px] text-ink-faint">+1 trasferta senza rotta Amazon · −1 rotta Amazon senza ore nel tracking · H ore nel tracking, assente su Amazon, senza trasferta · A su Amazon ma in nessun tracking · ok coincidono · ? CSV del giorno mancante</p>
+            <p className="mt-2 text-[11px] text-ink-faint">+1 trasferta senza rotta Amazon · −1 rotta Amazon senza ore nel tracking · H ore nel tracking, assente su Amazon, senza trasferta · A su Amazon ma in nessun tracking · ORE oltre 10 h lavorate o valore &gt; 24 in una cella · ACC ore nella riga Accordo di domenica (STD) · ok coincidono · ? CSV del giorno mancante</p>
           </section>
 
           <section className="card overflow-x-auto p-4 md:p-5">

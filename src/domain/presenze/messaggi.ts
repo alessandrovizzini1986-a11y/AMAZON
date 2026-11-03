@@ -24,6 +24,8 @@ export const TESTI = {
   meno1: "ROTTA AMAZON MA ZERO ORE NEL TRACKING (-1)",
   h: "ORE NEL TRACKING MA ASSENTE SU AMAZON (H)",
   a: "DRIVER SU AMAZON NON PRESENTE NEI TRACKING (A)",
+  ore: "ORE GIORNALIERE OLTRE 10 O VALORE ANOMALO (ORE)",
+  acc: "ACCORDO DI DOMENICA (SOMMINISTRATI) (ACC)",
   delta: "ORE DIVERSE TRA TRACKING E ZUCCHETTI",
   nonAbbinati: "LAVORATORI NON ABBINATI",
   seiDom: "6 GIORNI + DOMENICA",
@@ -32,6 +34,8 @@ export const TESTI = {
     piu1: "cosa ha fatto? se mezzi/altra station/corso scrivetelo nella riga RIPOSO",
     meno1: "manca la giornata nel tracking: inseritela",
     h: "cosa ha fatto? se mezzi/ufficio/altra station scrivetelo nella riga RIPOSO",
+    ore: "verificare le ore del giorno e correggere il tracking (errore di digitazione?)",
+    acc: "la domenica degli STD non va nella riga Accordo: cancellare la cella",
     delta: "verificare quale dei due è giusto e correggere",
   },
 };

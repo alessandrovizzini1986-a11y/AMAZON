@@ -9,17 +9,18 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 /** Voce della barra in alto (desktop) con stato attivo a pill blu chiaro. */
-export function TopNavLink({ href, label }: { href: string; label: string; icon?: IconName }) {
+export function TopNavLink({ href, label, short }: { href: string; label: string; short?: string; icon?: IconName }) {
   const active = isActive(usePathname(), href);
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`rounded-control px-3.5 py-2.5 text-[15px] transition-colors ${
+      title={short ? label : undefined}
+      className={`whitespace-nowrap rounded-control px-3.5 py-2.5 text-[15px] transition-colors ${
         active ? "bg-brand-light font-semibold text-brand" : "font-medium text-[#3c4a5c] hover:bg-surface hover:text-ink"
       }`}
     >
-      {label}
+      {short ?? label}
     </Link>
   );
 }
