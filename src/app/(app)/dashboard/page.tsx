@@ -156,7 +156,7 @@ export default async function DashboardPage({
               <Link
                 key={r.stationId}
                 href={fleetHref(r.stationId)}
-                className="group grid grid-cols-[56px_1fr_92px] items-center gap-3 md:grid-cols-[64px_1fr_104px] md:gap-3.5"
+                className="group grid min-h-[44px] grid-cols-[56px_1fr_92px] items-center gap-3 md:grid-cols-[64px_1fr_104px] md:gap-3.5"
                 title={`${r.code} — ${r.name}: ${r.veicoli} veicoli, ${fmtEurInt(r.canone)}/mese`}
               >
                 <span className="font-mono text-sm font-semibold group-hover:text-brand">{r.code}</span>

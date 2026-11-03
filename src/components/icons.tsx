@@ -21,9 +21,17 @@ export type IconName =
   | "settings"
   | "audit"
   | "user"
-  | "logout";
+  | "logout"
+  | "menu";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  menu: (
+    <>
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+    </>
+  ),
   presenze: (
     <>
       <rect x="8" y="2" width="8" height="4" rx="1" />
