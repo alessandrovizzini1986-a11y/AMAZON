@@ -1,0 +1,16 @@
+DS
+Data
+Descrizione
+Quantità
+Prezzo (€)
+Tasse
+Rateo IVA
+Importo IVA (€)
+Totale (€)
+AVERE
+MICROAREA
+MACROAREA
+WEEK
+MESE
+ANNO
+Numero

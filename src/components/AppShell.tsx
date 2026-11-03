@@ -22,17 +22,18 @@ const GESTIONE: NavItem[] = [
 
 const NAV_BY_ROLE: Record<SessionUser["role"], { main: NavItem[]; admin: NavItem[] }> = {
   DRIVER: { main: [{ href: "/vehicles", label: "Flotta", icon: "fleet" }], admin: [] },
-  RESP_MEZZI: { main: OPERATIVO, admin: [] },
+  RESP_MEZZI: { main: [...OPERATIVO, { href: "/fatture-amazon/fatturato", label: "Fatturato", icon: "receipt" }], admin: [] },
   CONTROLLO: {
     main: [
       { href: "/presenze", label: "Presenze", icon: "presenze" },
       { href: "/carburante-telepass", label: "Telepass e carburante", icon: "fuel" },
+      { href: "/fatture-amazon", label: "Fatture Amazon", icon: "receipt" },
       { href: "/vademecum", label: "Vademecum", icon: "book" },
     ],
     admin: [],
   },
   ADMIN: {
-    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }, { href: "/carburante-telepass", label: "Telepass e carburante", short: "Telepass", icon: "fuel" }],
+    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }, { href: "/carburante-telepass", label: "Telepass e carburante", short: "Telepass", icon: "fuel" }, { href: "/fatture-amazon", label: "Fatture Amazon", short: "Fatture", icon: "receipt" }],
     admin: GESTIONE,
   },
 };

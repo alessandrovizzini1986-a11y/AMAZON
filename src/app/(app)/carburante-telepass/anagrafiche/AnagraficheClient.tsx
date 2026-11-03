@@ -7,7 +7,7 @@ import { cartaNonAttribuita, confrontaImport, leggiCensimento, leggiMappaTelepas
 import { DS_CARTA, STATION_TELEPASS } from "@/domain/telepass/comune";
 import { leggiFile, PAGINA } from "@/lib/telepass/riconosci";
 import { aggiornaCarta, aggiornaDispositivo, importaCarte, importaDispositivi, type RisultatoImport } from "../actions";
-import { Dropzone } from "../Dropzone";
+import { Dropzone } from "@/components/Dropzone";
 
 type DispRiga = Dispositivo & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
 type CartaRiga = Carta & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };

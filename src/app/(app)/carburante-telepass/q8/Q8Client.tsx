@@ -11,7 +11,7 @@ import { excelQ8 } from "@/lib/telepass/excelQ8";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaQ8Run } from "../actions";
 import type { RunRiga } from "../dati";
-import { Dropzone } from "../Dropzone";
+import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
 import { Storico } from "../Storico";
 

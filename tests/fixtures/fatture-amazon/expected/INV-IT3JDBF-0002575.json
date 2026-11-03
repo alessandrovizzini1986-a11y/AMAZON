@@ -1,0 +1,32 @@
+{
+ "file": "DVN6-INV-IT3JDBF-0002575.pdf",
+ "numero": "INV-IT3JDBF-0002575",
+ "template": "B",
+ "tipoDoc": "Fattura",
+ "rifNotaCredito": null,
+ "ds": "DVN6",
+ "dataFattura": "2026-10-21",
+ "periodoDa": "2026-10-04",
+ "periodoA": "2026-10-10",
+ "importoDovuto": 97.94,
+ "sommaTotale": 97.94,
+ "sommaAvere": 80.28,
+ "righe": [
+  {
+   "DS": "DVN6",
+   "Data": "2026-10-04",
+   "Descrizione": "Incentivi settimanali - DEI",
+   "Quantita": 1,
+   "Prezzo": 80.28,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 17.66,
+   "Totale": 97.94,
+   "AVERE": 80.28,
+   "WEEK": 41,
+   "MESE": 10,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002575"
+  }
+ ]
+}

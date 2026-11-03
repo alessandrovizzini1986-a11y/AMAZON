@@ -1,0 +1,32 @@
+{
+ "file": "DER1-INV-IT3JDBF-0002537.pdf",
+ "numero": "INV-IT3JDBF-0002537",
+ "template": "B",
+ "tipoDoc": "Fattura",
+ "rifNotaCredito": null,
+ "ds": "DER1",
+ "dataFattura": "2026-10-07",
+ "periodoDa": "2026-09-27",
+ "periodoA": "2026-10-03",
+ "importoDovuto": 1094.17,
+ "sommaTotale": 1094.17,
+ "sommaAvere": 896.86,
+ "righe": [
+  {
+   "DS": "DER1",
+   "Data": "2026-09-27",
+   "Descrizione": "OTR Services",
+   "Quantita": 1,
+   "Prezzo": 896.86,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 197.31,
+   "Totale": 1094.17,
+   "AVERE": 896.86,
+   "WEEK": 40,
+   "MESE": 9,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002537"
+  }
+ ]
+}

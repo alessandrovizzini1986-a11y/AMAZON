@@ -1,0 +1,32 @@
+{
+ "file": "DLO2-INV-IT3JDBF-0002429.pdf",
+ "numero": "INV-IT3JDBF-0002429",
+ "template": "B",
+ "tipoDoc": "Nota di credito",
+ "rifNotaCredito": "INV-IT3JDBF-0002366",
+ "ds": "DLO2",
+ "dataFattura": "2026-08-18",
+ "periodoDa": "2026-05-01",
+ "periodoA": "2026-05-31",
+ "importoDovuto": -10284.6,
+ "sommaTotale": -10284.6,
+ "sommaAvere": -8430.0,
+ "righe": [
+  {
+   "DS": "DLO2",
+   "Data": "2026-05-01",
+   "Descrizione": "Credit Note for INV-IT3JDBF-0002366 dated 2026/07/22",
+   "Quantita": 1,
+   "Prezzo": -8430.0,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": -1854.6,
+   "Totale": -10284.6,
+   "AVERE": -8430.0,
+   "WEEK": 18,
+   "MESE": 5,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002429"
+  }
+ ]
+}

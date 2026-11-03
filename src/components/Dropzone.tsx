@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-/** Zona di trascinamento file (stessa grafica dell'archivio presenze). */
+/** Zona di trascinamento file (stessa grafica dell'archivio presenze), condivisa dai moduli. */
 export function Dropzone({ titolo, testo, accept, multiple = false, lavoro, onFiles }: {
   titolo: string; testo: React.ReactNode; accept: string; multiple?: boolean; lavoro: boolean; onFiles: (f: File[]) => void;
 }) {

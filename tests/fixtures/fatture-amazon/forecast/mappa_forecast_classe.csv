@@ -1,0 +1,12 @@
+service_type_scheduling;cycle;classe
+Standard Parcel;*;ND_STANDARD
+Standard Parcel - 6.4H;*;ND_STANDARD
+Standard Parcel - 7.4H;*;ND_STANDARD
+Standard Parcel Away Team 60;*;ND_STANDARD
+ORDT Parcel;*;ND_ORDT
+MFN Pickup - Large Full Van;*;ND_SWA
+Cargo Electric Bicycle;*;ND_CARGOBIKE
+Sameday Parcel;CYCLE_SD_A;SD_A
+Sameday Parcel;CYCLE_SD_B;SD_C
+Sameday Parcel;CYCLE_SD_C;SD_C
+Multi-Use;*;SD_B

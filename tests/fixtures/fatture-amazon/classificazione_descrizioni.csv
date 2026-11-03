@@ -1,0 +1,189 @@
+Descrizione;classe;is_rotta;macro;micro;righe_2025_2026
+AMZL Late Cancel - weekday;EXTRA_ABORT;False;ROTTE ABORT WEEKDAY;ABORT;2457
+AMZL Late Cancel - weekend;EXTRA_ABORT;False;ROTTE ABORT WEEKEND;ABORT;328
+AMZL Late Cancel weekday;EXTRA_ABORT;False;ROTTE ABORT WEEKDAY;ABORT;2
+AMZL Late Cancel weekend;EXTRA_ABORT;False;ROTTE ABORT WEEKEND;ABORT;23
+AMZL weekday;EXTRA_ALTRO;False;ROTTA 8,24;STANDARD 8H;1
+Adeguamento retroattivo della scheda tariffaria;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;14
+Altri Pagamenti;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Altri pagamenti;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;14
+Box Truck Parcel (Medium) - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Box Truck Parcel (Medium) - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;33
+Cargo Electric Bicycle - Block of 3 Hours 54 Minutes;ND_CARGOBIKE;True;ROTTA 4;STANDARD 4H;33
+Cargo Electric Bicycle Extra Large - Block of 8 Hours 24 Minutes;ND_CARGOBIKE;True;ROTTA 8,24;STANDARD 8H;2
+Cargo Electric Bicycle Large - Block of 8 Hours 24 Minutes;ND_CARGOBIKE;True;ROTTA 8,24;STANDARD 8H;1
+Credit Note for INV-IT3JDBF-0001724;EXTRA_ALTRO;False;INCENTIVI;;1
+Credit Note for INV-IT3JDBF-0001724 dated 2025/09/17;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Credit Note for INV-IT3JDBF-0001726;EXTRA_ALTRO;False;INCENTIVI;;1
+Credit Note for INV-IT3JDBF-0001727;EXTRA_ALTRO;False;INCENTIVI;;1
+Credit Note for INV-IT3JDBF-0001727 dated 2025/09/17;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Credit Note for INV-IT3JDBF-0001728;EXTRA_ALTRO;False;INCENTIVI;;1
+Credit Note for INV-IT3JDBF-0001747 dated 2025/10/01;EXTRA_ALTRO;False;INCENTIVI;;1
+Credit Note for INV-IT3JDBF-0002365 dated 2026/07/22;EXTRA_ALTRO;False;PARCHEGGI;;1
+Credit Note for INV-IT3JDBF-0002366 dated 2026/07/22;EXTRA_ALTRO;False;PARCHEGGI;;1
+Credit Note for INV-IT3JDBF-0002367 dated 2026/07/22;EXTRA_ALTRO;False;PARCHEGGI;;1
+Credit Note for INV-IT3JDBF-0002368 dated 2026/07/22;EXTRA_ALTRO;False;PARCHEGGI;;1
+Credit Note for INV-IT3JDBF-0002369 dated 2026/07/22;EXTRA_ALTRO;False;PARCHEGGI;;1
+DSP - Correzione Di Pagamento;EXTRA_ALTRO;False;DSP - Correzione Di Pagamento;;13
+DSP Bonus Coverage - weekday;EXTRA_BONUS;False;DSP Bonus Coverage weekday;;69
+DSP Bonus Coverage - weekend;EXTRA_BONUS;False;DSP Bonus Coverage weekend;;1003
+DSP Bonus Coverage weekday;EXTRA_BONUS;False;DSP Bonus Coverage weekday;;3
+DSP Bonus Coverage weekend;EXTRA_BONUS;False;DSP Bonus Coverage weekend;;142
+Fuel Allowance;EXTRA_CARBURANTE;False;Carburante;;230
+FuelAllowance;EXTRA_CARBURANTE;False;Carburante;;3998
+Incentivi - Parcheggio;EXTRA_INCENTIVI;False;PARCHEGGI;;45
+Incentivi - Pedaggi;EXTRA_INCENTIVI;False;Pedaggi;;18
+Incentivi settimanali - DEI;EXTRA_INCENTIVI;False;INCENTIVI;;39
+Incentivo Stagionale;EXTRA_INCENTIVI;False;INCENTIVI;;6
+Incentivo stagionale;EXTRA_INCENTIVI;False;INCENTIVI;;106
+Late Cancel - Standard Parcel - Block of 8 Hours 24 Minutes;EXTRA_ALTRO;False;ROTTA 8,24;STANDARD 8H;1
+MFN Pickup - Large Full Van - Block of 3 Hours 54 Minutes;ND_SWA;True;SWA;STANDARD 4H;141
+MFN Pickup - Large Full Van - Block of 4 Hours;ND_SWA;True;SWA;STANDARD 4H;213
+MFN Pickup - Large Full Van - Block of 5 Hours;ND_SWA;True;SWA;STANDARD 4H;2
+MFN Pickup - Large Full Van Block of 4 Hours;ND_SWA;True;SWA;STANDARD 4H;41
+MFN Pickup - Large Full Van Block of 4 Hours.;ND_SWA;True;SWA;STANDARD 4H;3
+MFN Pickup - Standard Full Van - Block of 3 Hours 54 Minutes;ND_SWA;True;SWA;STANDARD 4H;28
+MFN Pickup Standard Full Van Block of 4 Hours;ND_SWA;True;SWA;STANDARD 4H;1
+Micro Oversize Parcels - Standard Van - Block of 3 Hours 54 Minutes;ND_MICRO;True;MICRO;;25
+Micro Oversize Parcels - Standard Van - Block of 7 Hours 48 Minutes;ND_MICRO;True;MICROMOBILITY;MICROMOBILITY;4
+Micro Transport - Large Van Block of 4 Hours;EXTRA_ALTRO;False;SWA;STANDARD 4H;1
+Modifiche - Carburante;EXTRA_ALTRO;False;Carburante;;1
+Modifiche - Pedaggi;EXTRA_INCENTIVI;False;Pedaggi;;11
+Modifiche - Rimborso - modifica tasso per festivi;EXTRA_ALTRO;False;Modifiche - Rimborso - modifica tasso per festivi;;1
+Modifiche - Rimborso - modifica tasso per giorni festivi e domenica;EXTRA_ALTRO;False;Modifiche - Rimborso - modifica tasso per festivi;;29
+Modifiche - Rimborso - pedaggi;EXTRA_ALTRO;False;Pedaggi;;4
+Modifiche - Sameday Parcel - Block of 6 Hours - AMZL Late Cancel- weekend;EXTRA_ALTRO;False;SAME DAY - ABORT WEEKEND;SAME DAY - ABORT WEEKEND;2
+Modifiche - Standard Parcel - Block of 8 Hours 24 Minuti - AMZL Late Cancel- weekday;EXTRA_ALTRO;False;ROTTE ABORT WEEKDAY;ABORT;1
+Modifiche - Standard Parcel - Block of 8 Hours 24 Minuti - AMZL Late Cancel- weekend;EXTRA_ALTRO;False;ROTTE ABORT WEEKEND;ABORT;2
+Modifiche Rimborso - pagamento insufficiente DSP;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;2
+Multi-Use - Block of 3 Hours;SD_B;True;SAME C;SAME C;2
+Multi-Use - Block of 3 Hours 30 Minutes;SD_B;True;SAME B;SAME B;694
+Multi-Use Block of 3 Hours 30 Minutes;SD_B;True;SAME B;SAME B;15
+Nursery Route Level - 1 Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;225
+Nursery Route Level - 2 Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;111
+Nursery Route Level - 3 Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;47
+Nursery Route Level - 4 Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;53
+Nursery Route Level 1 - Block of 4 Hours;ND_STANDARD;True;ROTTA 4;STANDARD 4H;1
+Nursery Route Level 1 - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;513
+Nursery Route Level 1 - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;661
+Nursery Route Level 1 Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;7
+Nursery Route Level 2 - Block of 4 Hours;ND_STANDARD;True;ROTTA 4;STANDARD 4H;1
+Nursery Route Level 2 - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;446
+Nursery Route Level 2 - Block of 8 Hours;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Nursery Route Level 2 - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;702
+Nursery Route Level 2 - Low Emissions Vehicle - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Nursery Route Level 2 Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;8
+Nursery Route Level 3 - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;444
+Nursery Route Level 3 - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;612
+Nursery Route Level 3 - Low Emissions Vehicle - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Nursery Route Level 3 Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;10
+Nursery Route Level 4 - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;748
+Nursery Route Level 4 - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;705
+Nursery Route Level 4 Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;22
+ORDT Extra large cargo van - Block of 8 Hours 24 Minutes;ND_ORDT;True;ROTTA 8,24;STANDARD 8H;1
+ORDT Parcel - Block of 7 Hours 48 Minutes;ND_ORDT;True;ROTTA 8,24;STANDARD 8H;724
+ORDT Parcel - Block of 8 Hours 24 Minutes;ND_ORDT;True;ROTTA 8,24;STANDARD 8H;466
+ORDT Parcel - Block of 8 Hours 24 Minutes.;ND_ORDT;True;ROTTA 8,24;STANDARD 8H;4
+OTR Services;EXTRA_INCENTIVI;False;Pedaggi;;150
+OTR Services WK18 - Missing Payment;EXTRA_INCENTIVI;False;Pedaggi;;5
+Pagamenti Incentivi;EXTRA_ALTRO;False;INCENTIVI;;2
+Pagamento incentivi;EXTRA_ALTRO;False;INCENTIVI;;28
+Pagamento incentivi – Incentivi settimanali DEI;EXTRA_ALTRO;False;INCENTIVI;;1
+Pagamento incentivi – Incentivo stagionale;EXTRA_ALTRO;False;INCENTIVI;;1
+Pagamento non ricorrente DEC-2025;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;2
+Pagamento non ricorrente JUL-2026;EXTRA_ALTRO;False;Carburante;;7
+Pagamento non ricorrente NOV-2025;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;11
+Pagamento non ricorrente OCT-2025;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;9
+Pagamento non ricorrente SEP-2025;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;12
+Pedaggi;EXTRA_INCENTIVI;False;Pedaggi;;20
+Re-bill INV for INV-IT3JDBF-0001723 dated 2025/09/17;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Re-bill INV for INV-IT3JDBF-0001724 dated 2025/09/1;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Re-bill INV for INV-IT3JDBF-0001724 dated 2025/09/17;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Re-bill INV for INV-IT3JDBF-0001726;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Re-bill INV for INV-IT3JDBF-0001727;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Re-bill INV for INV-IT3JDBF-0001727 dated 2025/09/17;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;1
+Rescue - Block of 3 Hours;ND_STANDARD;True;SAME C;SAME C;4
+Rescue - Block of 3 Hours 30 Minutes;ND_STANDARD;True;SAME B;SAME B;3
+Rescue - Block of 4 Hours;ND_STANDARD;True;ROTTA 4;STANDARD 4H;184
+Rescue - Block of 5 Hours;ND_STANDARD;True;ROTTA 5;STANDARD 4H;6
+Rescue - Block of 6 Hours;ND_STANDARD;True;ROTTA 6;STANDARD 4H;45
+Rescue - Block of 7 Hours;ND_STANDARD;True;ROTTA 7;STANDARD 8H;1
+Rescue - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;118
+Rescue - Block of 8 Hours;ND_STANDARD;True;ROTTA 8;STANDARD 8H;1
+Rescue - Block of 8 Hours 24 Minutes;ND_STANDARD;True;RESCUE;RESCUE;85
+Rescue - Block of Hours 4;ND_STANDARD;True;RESCUE;RESCUE;4
+Rescue Block of 3 Hours;ND_STANDARD;True;SAME C;SAME C;1
+Rescue Block of 4 Hours;ND_STANDARD;True;ROTTA 4;STANDARD 4H;19
+Rescue Block of 6 Hours;ND_STANDARD;True;ROTTA 6;STANDARD 4H;4
+Rescue Block of 8 Hours 24 Minutes;ND_STANDARD;True;RESCUE;RESCUE;10
+Rimborso - Incentivo alle prestazioni;EXTRA_ALTRO;False;INCENTIVI;;16
+Rimborso - Ore variabili;EXTRA_ALTRO;False;Rimborso Ore variabili;;33
+Rimborso - incentivo stagionale;EXTRA_ALTRO;False;INCENTIVI;;88
+Rimborso - pagamento insufficiente DSP;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;39
+Rimborso - pedaggi;EXTRA_ALTRO;False;Pedaggi;;27
+Rimborso Incentivo alle prestazioni;EXTRA_ALTRO;False;INCENTIVI;;15
+Rimborso Ore variabili;EXTRA_ALTRO;False;Rimborso Ore variabili;;4
+Rimborso incentivo stagionale;EXTRA_ALTRO;False;INCENTIVI;;12
+Rimborso pagamento insufficiente DSP;EXTRA_ALTRO;False;Rimborso pagamento insufficiente DSP;;18
+Rimborso pedaggi;EXTRA_ALTRO;False;Pedaggi;;17
+Sameday Parcel - Block of 3 Hours;SD_C;True;SAME C;SAME C;686
+Sameday Parcel - Block of 3 Hours 30 Minutes;SD_C;True;SAME B;SAME B;56
+Sameday Parcel - Block of 4 Hours;SD_B;True;SAME B;SAME B;142
+Sameday Parcel - Block of 4 Hours 30 Minutes;SD_B;True;SAME B;SAME B;50
+Sameday Parcel - Block of 4 Hours 30 Minutes.;SD_B;True;SAME B;SAME B;1
+Sameday Parcel - Block of 5 Hours;SD_ALTRO;True;SAME - DOMENICA;SAME - DOMENICA;48
+Sameday Parcel - Block of 5 Hours 30 Minutes;SD_ALTRO;True;SAME A;SAME A;65
+Sameday Parcel - Block of 5 Hours 30 Minutes.;SD_ALTRO;True;SAME A;SAME A;2
+Sameday Parcel - Block of 6 Hours;SD_A;True;SAME A;SAME A;639
+Sameday Parcel - Block of Hours 3;SD_ALTRO;True;SAME B;SAME B;10
+Sameday Parcel - Block of Hours 4;SD_ALTRO;True;ROTTA 4;STANDARD 4H;3
+Sameday Parcel Block of 3 Hours;SD_ALTRO;True;SAME C;SAME C;12
+Sameday Parcel Block of 4 Hours;SD_ALTRO;True;SAME B;SAME B;3
+Sameday Parcel Block of 5 Hours;SD_ALTRO;True;SAME - DOMENICA;SAME - DOMENICA;1
+Sameday Parcel Block of 6 Hours;SD_ALTRO;True;SAME A;SAME A;36
+Standard Parcel - AMZ Donations - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Standard Parcel - Block of 3 Hours 54 Minutes;ND_STANDARD;True;SWA;STANDARD 4H;58
+Standard Parcel - Block of 4 Hours;ND_STANDARD;True;ROTTA 4;STANDARD 4H;6
+Standard Parcel - Block of 4 Hours 48 Minutes;ND_STANDARD;True;ROTTA 5;STANDARD 4H;1
+Standard Parcel - Block of 5 Hours 48 Minutes;ND_STANDARD;True;ROTTA 6;STANDARD 4H;191
+Standard Parcel - Block of 6 Hours;ND_STANDARD;True;ROTTA 6;STANDARD 4H;2
+Standard Parcel - Block of 6 Hours 48 Minutes;ND_STANDARD;True;ROTTA 6;STANDARD 4H;139
+Standard Parcel - Block of 7 Hours;ND_STANDARD;True;ROTTA 7;STANDARD 8H;2
+Standard Parcel - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1859
+Standard Parcel - Block of 8 Hours;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;4
+Standard Parcel - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;2301
+Standard Parcel - Block of 8 Hours 24 Minutes.;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;42
+Standard Parcel - Block of 8 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Standard Parcel - Block of 9 Hours;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;12
+"Standard Parcel - Block_x000D_
+of 8 Hours 24 Minutes";ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Standard Parcel - Blueberry - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;111
+Standard Parcel - Blueberry - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;483
+Standard Parcel - Large Van - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;6
+Standard Parcel - Large Van - Special Access - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Standard Parcel - Large Van Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;5
+Standard Parcel - Low Emission Vehicle (210CF/66KWh) - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;6
+Standard Parcel - Low Emission Vehicle (350CF/81KWh) - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;26
+Standard Parcel - Low Emission Vehicle (350CF/81KWh) - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;4
+Standard Parcel - Low Emission Vehicle (Large) - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;2
+Standard Parcel - Low Emission Vehicle (Large) - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;20
+Standard Parcel - Low Emission Vehicle (Medium) - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Standard Parcel - Park and Walk - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Standard Parcel - Ride Along (Ironhide) - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;2
+Standard Parcel - Small Van - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;53
+Standard Parcel - Small Van - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;122
+Standard Parcel - Special Access - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;21
+Standard Parcel - Special Access - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;297
+Standard Parcel - Special Access Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;123
+Standard Parcel Away Team 60 - Block of 7 Hours 48 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;14
+Standard Parcel Block of 4 Hours;ND_STANDARD;True;ROTTA 4;STANDARD 4H;14
+Standard Parcel Medium Van - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;6
+Standard Parcel Small Van - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;3
+Standard Parcel Small Van Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;5
+Standard Parcel Special Access Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;2
+Standard Parcel with Helper (Ironhide) - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA HELPER 8,24;W HELPER 8H;73
+Standard Parcel with Helper (Ironhide) - Block of 8 Hours 24 Minutes.;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;1
+Standard Parcel with Helper - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA HELPER 8,24;W HELPER 8H;167
+Standard Parcel with Helper - Blueberry - Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA 8,24;STANDARD 8H;4
+Standard Parcel with Helper Block of 8 Hours 24 Minutes;ND_STANDARD;True;ROTTA HELPER 8,24;W HELPER 8H;48
+Training Day - Block of 7 Hours 48 Minutes;EXTRA_TRAINING;False;Training;;183
