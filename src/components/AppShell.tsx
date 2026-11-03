@@ -28,12 +28,13 @@ const NAV_BY_ROLE: Record<SessionUser["role"], { main: NavItem[]; admin: NavItem
       { href: "/presenze", label: "Presenze", icon: "presenze" },
       { href: "/carburante-telepass", label: "Telepass e carburante", icon: "fuel" },
       { href: "/fatture-amazon", label: "Fatture Amazon", icon: "receipt" },
+      { href: "/costi", label: "Costi del personale", short: "Costi", icon: "euro" },
       { href: "/vademecum", label: "Vademecum", icon: "book" },
     ],
     admin: [],
   },
   ADMIN: {
-    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }, { href: "/carburante-telepass", label: "Telepass e carburante", short: "Telepass", icon: "fuel" }, { href: "/fatture-amazon", label: "Fatture Amazon", short: "Fatture", icon: "receipt" }],
+    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }, { href: "/carburante-telepass", label: "Telepass e carburante", short: "Telepass", icon: "fuel" }, { href: "/fatture-amazon", label: "Fatture Amazon", short: "Fatture", icon: "receipt" }, { href: "/costi", label: "Costi del personale", short: "Costi", icon: "euro" }],
     admin: GESTIONE,
   },
 };
