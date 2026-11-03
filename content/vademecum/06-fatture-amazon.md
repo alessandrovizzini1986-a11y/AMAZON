@@ -2,10 +2,16 @@
 title: "Fatture Amazon: compilazione di fatt_2026"
 order: 6
 category: "Fatture"
-updated: "2026-10-27"
+updated: "2026-11-04"
 ---
 
 Ogni riga della sezione **"Dettagli fattura"** del PDF diventa una riga del foglio `fatt_2026`. Non si usa mai il "Riepilogo" in testa alla fattura: è aggregato per descrizione, non per giorno.
+
+**Dal sito, in 3 passi ([/fatture-amazon/importa](/fatture-amazon/importa))**
+
+1. Scarica i PDF della settimana dal portale (il preferito del browser produce uno zip con nomi `DS-INV-IT3JDBF-XXXXXXX.pdf`). In alto nella pagina leggi "ultima fattura registrata" e "prossimo numero da scaricare": se manca qualche numero, recuperalo.
+2. Trascina tutti i PDF (o lo zip) nella pagina. Ogni file ha uno stato: **nuova**, **già presente** (esportata il … / presente in fatt_2026), **doppione nel caricamento**, **errore** (es. PDF non Amazon). Controlla la colonna **Delta** (importo PDF − somma righe): tra −3 e +3 € è normale, oltre compare "controllare". Guarda le descrizioni marcate **nuova**: vanno aggiunte al foglio MACROAREA.
+3. Premi **Scarica Excel** (foglio `righe` con le 16 colonne di fatt_2026) oppure **Copia righe** e incolla in fondo a `fatt_2026` dalla colonna DS. Da quel momento le fatture risultano "esportate": ricaricandole il sito le segna "già presente", così non si inseriscono due volte. Le fatture esportate ma non ancora viste in fatt_2026 sono elencate nel [registro](/fatture-amazon/registro) finché Alessandro non riallinea il file.
 
 **I due formati di fattura**
 
