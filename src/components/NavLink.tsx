@@ -26,7 +26,7 @@ export function TopNavLink({ href, label, short }: { href: string; label: string
 }
 
 /** Voce della bottom nav mobile con stato attivo colorato. */
-export function BottomNavLink({ href, label, icon }: { href: string; label: string; icon: IconName }) {
+export function BottomNavLink({ href, label, short, icon }: { href: string; label: string; short?: string; icon: IconName }) {
   const active = isActive(usePathname(), href);
   return (
     <Link
@@ -37,7 +37,7 @@ export function BottomNavLink({ href, label, icon }: { href: string; label: stri
       }`}
     >
       <NavIcon name={icon} className="h-5 w-5" />
-      {label}
+      {short ?? label}
     </Link>
   );
 }

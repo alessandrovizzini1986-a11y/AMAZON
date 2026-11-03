@@ -51,7 +51,7 @@ export default async function FatturatoPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-center gap-2">
         {Object.entries(VISTE).map(([k, l]) => <Link key={k} href={link({ vista: k })} className={vista === k ? "btn-primary h-10" : "btn-secondary h-10"}>{l}</Link>)}
         <span className="mx-2 h-6 w-px bg-line" />
-        {anni.map((a) => <Link key={a} href={`/fatture-amazon/fatturato?anno=${a}&vista=${vista}`} className={a === anno ? "badge-ok" : "badge-neutral"}>{a}</Link>)}
+        {anni.map((a) => <Link key={a} href={`/fatture-amazon/fatturato?anno=${a}&vista=${vista}`} className={`${a === anno ? "badge-ok" : "badge-neutral"} min-h-[44px] px-4`}>{a}</Link>)}
       </div>
 
       {att.length === 0 ? (

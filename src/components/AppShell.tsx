@@ -2,42 +2,10 @@ import Link from "next/link";
 import type { SessionUser } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
 import { TopNavLink, BottomNavLink } from "./NavLink";
-import { NavIcon, type IconName } from "./icons";
-
-type NavItem = { href: string; label: string; short?: string; icon: IconName };
-
-const OPERATIVO: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-  { href: "/vehicles", label: "Flotta", icon: "fleet" },
-  { href: "/vademecum", label: "Vademecum", icon: "book" },
-  { href: "/officine", label: "Officine", icon: "wrench" },
-];
-
-const GESTIONE: NavItem[] = [
-  { href: "/import", label: "Import", icon: "import" },
-  { href: "/users", label: "Utenti", icon: "users" },
-  { href: "/config", label: "Configurazione", icon: "settings" },
-  { href: "/audit", label: "Audit", icon: "audit" },
-];
-
-const NAV_BY_ROLE: Record<SessionUser["role"], { main: NavItem[]; admin: NavItem[] }> = {
-  DRIVER: { main: [{ href: "/vehicles", label: "Flotta", icon: "fleet" }], admin: [] },
-  RESP_MEZZI: { main: [...OPERATIVO, { href: "/fatture-amazon/fatturato", label: "Fatturato", icon: "receipt" }], admin: [] },
-  CONTROLLO: {
-    main: [
-      { href: "/presenze", label: "Presenze", icon: "presenze" },
-      { href: "/carburante-telepass", label: "Telepass e carburante", icon: "fuel" },
-      { href: "/fatture-amazon", label: "Fatture Amazon", icon: "receipt" },
-      { href: "/costi", label: "Costi del personale", short: "Costi", icon: "euro" },
-      { href: "/vademecum", label: "Vademecum", icon: "book" },
-    ],
-    admin: [],
-  },
-  ADMIN: {
-    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }, { href: "/carburante-telepass", label: "Telepass e carburante", short: "Telepass", icon: "fuel" }, { href: "/fatture-amazon", label: "Fatture Amazon", short: "Fatture", icon: "receipt" }, { href: "/costi", label: "Costi del personale", short: "Costi", icon: "euro" }],
-    admin: GESTIONE,
-  },
-};
+import { NavIcon } from "./icons";
+import { NAV_BY_ROLE, vociBarra } from "./navModel";
+import { MenuMobile, AltroTablet } from "./MenuMobile";
+import { MarcaScroll } from "./MarcaScroll";
 
 const ROLE_LABEL: Record<SessionUser["role"], string> = {
   ADMIN: "Fleet Manager",
@@ -58,18 +26,20 @@ function initials(name: string): string {
  */
 export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const nav = NAV_BY_ROLE[user.role];
-  const bottomNav = [...nav.main, ...nav.admin].slice(0, 4);
+  const { barra, menu, conMenu } = vociBarra(user.role);
+  // tablet: le prime 4 voci operative in vista, il resto in "Altro"
+  const tabletVista = nav.main.slice(0, 4), tabletAltro = [...nav.main.slice(4), ...nav.admin];
 
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-line bg-surface-raised print:hidden">
         <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-6 px-4 md:h-[68px] md:gap-10 md:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <div className="brand-mark flex h-8 w-8 items-center justify-center rounded-lg text-[15px] font-bold md:h-9 md:w-9 md:text-[17px]">F</div>
+            <div className="brand-mark flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[15px] font-bold md:h-9 md:w-9 md:text-[17px]">F</div>
             <div className="text-[17px] font-bold tracking-tight md:text-lg">FleetDSP</div>
           </Link>
 
-          <nav className="hidden flex-1 items-center gap-1 md:flex" aria-label="Menu principale">
+          <nav className="hidden flex-1 items-center gap-1 2xl:flex" aria-label="Menu principale">
             {nav.main.map((item) => (
               <TopNavLink key={item.href} {...item} />
             ))}
@@ -77,6 +47,18 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
             {nav.admin.map((item) => (
               <TopNavLink key={item.href} {...item} />
             ))}
+          </nav>
+          <nav className="hidden flex-1 items-center gap-1 xl:flex 2xl:hidden" aria-label="Menu principale">
+            {nav.main.map((item) => (
+              <TopNavLink key={item.href} {...item} />
+            ))}
+            {nav.admin.length > 0 && <AltroTablet voci={nav.admin} etichetta="Gestione" />}
+          </nav>
+          <nav className="hidden flex-1 items-center gap-1 md:flex xl:hidden" aria-label="Menu principale">
+            {tabletVista.map((item) => (
+              <TopNavLink key={item.href} {...item} />
+            ))}
+            {tabletAltro.length > 0 && <AltroTablet voci={tabletAltro} />}
           </nav>
 
           <div className="ml-auto flex items-center gap-2 md:ml-0">
@@ -103,11 +85,13 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
       <main className="mx-auto max-w-[1240px] px-4 pb-24 pt-6 md:px-8 md:pb-16 md:pt-10 print:max-w-none print:p-0">{children}</main>
 
+      <MarcaScroll />
       {/* bottom nav mobile */}
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
-        {bottomNav.map((item) => (
+        {barra.map((item) => (
           <BottomNavLink key={item.href} {...item} />
         ))}
+        {conMenu && <MenuMobile voci={[...barra, ...menu]} inBarra={barra} utente={{ nome: user.name, ruolo: ROLE_LABEL[user.role] }} />}
       </nav>
     </div>
   );

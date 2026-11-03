@@ -124,6 +124,8 @@ body {
   .table-base td {
     @apply px-4 py-3 border-b border-[#eef1f4] align-top tabular-nums;
   }
+  /* numeri (es. "+0,4 %") mai spezzati su due righe */
+  .table-base td.font-mono { white-space: nowrap; }
   .table-base tbody tr {
     @apply transition-colors;
   }
@@ -324,5 +326,36 @@ body {
   .vd-prose tr,
   .vd-prose blockquote {
     break-inside: avoid;
+  }
+}
+
+/* ============================================================
+   TELEFONO E TABLET (docs/ux-guida/PROMPT_mobile_aiuto_percorsi.md, step 1)
+   ============================================================ */
+/* bersagli ≥ 44 px dove si tocca col dito (il desktop non cambia) */
+@media (pointer: coarse) {
+  main button, main select, main summary,
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  main .btn-primary, main .btn-secondary, main .btn-danger {
+    min-height: 44px;
+  }
+  main input[type="checkbox"], main input[type="radio"] { width: 22px; height: 22px; }
+  main label:has(> input[type="checkbox"]), main label:has(> input[type="radio"]) { min-height: 44px; display: inline-flex; align-items: center; gap: 10px; }
+  main nav a, header a, header button { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  header [role="menu"] a { display: flex; justify-content: flex-start; }
+  /* link a forma di pulsante o pillola (filtri, mesi, template) */
+  main a[class*="rounded"], main a[class*="btn"] { min-height: 44px; display: inline-flex; align-items: center; }
+}
+/* tabelle larghe su schermi stretti: prima colonna fissa e bordo destro sfumato finché si può scorrere */
+@media (max-width: 1023px) {
+  .overflow-x-auto > table th:first-child,
+  .overflow-x-auto > table td:first-child {
+    position: sticky; left: 0; z-index: 1; max-width: 46vw;
+    background: var(--color-surface-raised); box-shadow: 1px 0 0 var(--color-line);
+  }
+  .overflow-x-auto > table thead th:first-child { background: #f9fafb; }
+  [data-scorre="destra"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
   }
 }

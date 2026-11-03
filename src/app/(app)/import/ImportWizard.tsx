@@ -68,8 +68,8 @@ export function ImportWizard({ specs }: { specs: SpecInfo[] }) {
         </div>
         <p className="text-sm text-ink-muted mt-3">{spec.description}</p>
         <div className="mt-3 flex gap-3 text-sm">
-          <a className="underline text-brand" href={`/api/import/template/${entity}`}>Scarica template .xlsx</a>
-          <a className="underline text-brand" href={`/api/import/template/${entity}?format=csv`}>Scarica template .csv</a>
+          <a className="inline-flex min-h-[44px] items-center underline text-brand" href={`/api/import/template/${entity}`}>Scarica template .xlsx</a>
+          <a className="inline-flex min-h-[44px] items-center underline text-brand" href={`/api/import/template/${entity}?format=csv`}>Scarica template .csv</a>
         </div>
       </section>
 
