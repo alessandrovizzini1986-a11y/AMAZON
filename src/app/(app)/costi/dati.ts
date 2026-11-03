@@ -82,3 +82,13 @@ export async function stimaSalvata(mese: string, popolazione: "STD" | "SIC") {
   const r = await db.stimaCosti.findMany({ where: { mese, popolazione, creataIl: ultima.creataIl } });
   return { creataIl: ultima.creataIl.toISOString(), righe: r.map((x) => ({ station: x.station, voce: x.voce, quantita: x.quantita === null ? null : Number(x.quantita), importo: Number(x.importo) })), versioneAnagrafica: r[0]?.versioneAnagrafica ?? null, versioneParametri: r[0]?.versioneParametri ?? null };
 }
+
+/** Righe dell'anagrafica CDL (versione più recente, o quella indicata). */
+export async function anagraficaRighe(versione: string) {
+  const r = await db.anagraficaCDL.findMany({ where: { meseVersione: versione } }).catch(() => []);
+  const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return r.map((x) => ({
+    cf: x.cf, cognome: x.cognome, nome: x.nome, station: x.station, contratto: x.contratto, pctPt: n(x.pctPt), hSettim: n(x.hSettim), ggLavorativi: n(x.ggLavorativi), tipologiaPt: x.tipologiaPt,
+    rlm: n(x.rlm), edr: n(x.edr), cdl: Number(x.cdl), savingFeGg: n(x.savingFeGg), savingRolH: n(x.savingRolH), savingExfH: n(x.savingExfH), costoFestNonGodutaGg: n(x.costoFestNonGodutaGg), straoForfait: n(x.straoForfait),
+  }));
+}

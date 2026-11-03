@@ -67,3 +67,13 @@ describe("coefficienti alla data", async () => {
     expect(versioneParametri(t, "2026-09-30")).toBe("2026-06-01");
   });
 });
+
+describe("testo Teams", async () => {
+  const { testoTeams } = await import("@/domain/costi/teams");
+  it("tabella con totali e al massimo 3 avvisi per station, i più gravi", () => {
+    const t = testoTeams("2026-09", [{ station: "DER1", std: 82043.59, stdTeste: 33, sic: 150000, sicTeste: 51, avvisi: [{ peso: 1, testo: "a" }, { peso: 3, testo: "b" }, { peso: 2, testo: "c" }, { peso: 0, testo: "d" }] }]);
+    expect(t).toContain("settembre 2026");
+    expect(t).toContain("| DER1 | 82.044 | 33 | 150.000 | 51 | b; c; a |");
+    expect(t).toContain("| **Totale** | **82.044** | 33 | **150.000** | 51 | |");
+  });
+});

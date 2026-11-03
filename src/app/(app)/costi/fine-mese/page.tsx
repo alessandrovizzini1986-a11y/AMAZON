@@ -2,7 +2,7 @@ import { can } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui";
 import { aggregaAdit, tariffeDaAdit, type VoceAdit } from "@/domain/costi/adit";
 import { versioneParametri } from "@/domain/costi/parametri";
-import { aditMese, etaMesi, festivi, mesePrec, oggiIso, parametri, stimaSalvata, tariffe, ultimoAdit, utenteCosti, versioniCDL, zucchettiControllato } from "../dati";
+import { aditMese, anagraficaRighe, etaMesi, festivi, mesePrec, oggiIso, parametri, stimaSalvata, tariffe, ultimoAdit, utenteCosti, versioniCDL, zucchettiControllato } from "../dati";
 import { FineMeseClient } from "./FineMeseClient";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,8 @@ export default async function FineMesePage({ searchParams }: { searchParams: Pro
   const tStd = aditT.length ? tariffeDaAdit(aditT.map((r) => ({ ...r, voce: r.voce as VoceAdit }))) : null;
   const ctrl = aggregaAdit(aditC.map((r) => ({ ...r, voce: r.voce as VoceAdit })));
   const anag = versioni[0] ?? null;
+  const righeCdl = anag ? await anagraficaRighe(anag.mese) : [];
+  const aditDwh = Object.entries(aggregaAdit(aditT.map((r) => ({ ...r, voce: r.voce as VoceAdit })))).flatMap(([station, v]) => Object.entries(v).map(([voce, x]) => ({ station, voce, quantita: x!.quantita, costo: x!.costo, teste: x!.teste })));
   const oreLavoroPrec = prec ? Object.fromEntries([...new Set(prec.righe.map((r) => r.station))].map((s) => [s, prec.righe.filter((r) => r.station === s && r.voce === "ORE_LAVORO").reduce((a, r) => a + (r.quantita ?? 0), 0)])) : null;
   return (
     <div className="flex flex-col gap-6">
@@ -30,7 +32,7 @@ export default async function FineMesePage({ searchParams }: { searchParams: Pro
         mese={mese} fineMese={fineMese} canRun={can(user, "costi.run")}
         tariffe={tar} parametri={par.map((p) => ({ voce: p.chiave, validaDal: p.validaDal, valore: p.valore }))} versioneParametri={versioneParametri(par, fineMese)}
         festivi={fest} tariffeStd={tStd} meseTariffe={meseTariffe} aditCtrl={ctrl} meseCtrl={meseCtrl}
-        anagrafica={anag ? { mese: anag.mese, eta: etaMesi(anag.mese, fineMese) } : null} zucchetti={zuc} oreLavoroPrec={oreLavoroPrec}
+        anagrafica={anag ? { mese: anag.mese, eta: etaMesi(anag.mese, fineMese) } : null} zucchetti={zuc} oreLavoroPrec={oreLavoroPrec} righeCdl={righeCdl} aditDwh={aditDwh} utente={user.name}
       />
     </div>
   );
