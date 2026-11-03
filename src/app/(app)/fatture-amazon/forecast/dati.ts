@@ -5,10 +5,13 @@ import { confronta, perMese, prevedi, type Backtest, type Previsione, type RigaF
 import { addGiorni, chiusa, inizioSettimana } from "@/domain/forecast/settimane";
 import { versioniForecast } from "@/lib/forecastVersioni";
 import { statoAlla } from "@/domain/forecast/storico";
+import { mesiStima, stimaMese, type RigaStimaMese } from "@/domain/forecast/stimaMese";
 
 export type DatiForecast = {
   oggi: string; n: number; cal: Calibrazione; previsione: (Previsione & { fatturato: number | null })[]; mesi: Record<string, Record<string, number>>;
   backtest: Backtest[]; nonMappate: number;
+  /** stima del mese: fatturato + previsto per le settimane non ancora fatturate */
+  stima: RigaStimaMese[];
 };
 
 /** Calibrazione, previsione delle settimane aperte e backtest delle settimane chiuse con forecast. */
@@ -20,7 +23,11 @@ export async function calcolaForecast(n: number, oggi: string): Promise<DatiFore
     .map((r) => ({ data: r.data, station: r.station, classe: r.classe, routes: r.routes }));
   const primaData = fc.reduce((m, r) => (r.data < m ? r.data : m), addGiorni(oggi, -14));
   const daQuando = addGiorni(inizioSettimana(primaData), -7 * (n + 8));
-  const linee = await db.amazonInvoiceLine.findMany({ where: { data: { gte: new Date(daQuando + "T00:00:00Z") } }, select: { ds: true, data: true, classe: true, quantita: true, avere: true } });
+  const mesi = mesiStima(oggi, fc.reduce<string | null>((m, r) => (m === null || r.data > m ? r.data : m), null));
+  // righe dal più vecchio tra la finestra di calibrazione e lo stesso mese dell'anno prima (per il confronto)
+  const daStima = `${Number(mesi[0].slice(0, 4)) - 1}${mesi[0].slice(4)}-01`;
+  const da = daStima < daQuando ? daStima : daQuando;
+  const linee = await db.amazonInvoiceLine.findMany({ where: { data: { gte: new Date(da + "T00:00:00Z") } }, select: { ds: true, data: true, classe: true, quantita: true, avere: true } });
   const righe: RigaCalibrazione[] = linee.map((l) => ({ ds: l.ds, data: l.data.toISOString().slice(0, 10), classe: l.classe, quantita: l.quantita, avere: Number(l.avere) }));
   const cal = calibra(righe, finestra(righe, n, oggi));
 
@@ -38,5 +45,6 @@ export async function calcolaForecast(n: number, oggi: string): Promise<DatiFore
     const rw: RigaForecast[] = fc.filter((r) => inizioSettimana(r.data) === w);
     backtest.push(...confronta(prevedi(rw, calW), righe));
   }
-  return { oggi, n, cal, previsione, mesi: perMese(previsione), backtest, nonMappate: fc.filter((r) => r.classe === "NON_MAPPATO").reduce((s, r) => s + r.routes, 0) };
+  const stima = stimaMese({ righe, previsioni: prevedi(fc, cal), mesi });
+  return { oggi, n, cal, previsione, mesi: perMese(previsione), backtest, stima, nonMappate: fc.filter((r) => r.classe === "NON_MAPPATO").reduce((s, r) => s + r.routes, 0) };
 }

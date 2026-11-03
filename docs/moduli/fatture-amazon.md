@@ -45,6 +45,11 @@ scrive mai nel file AGGREGATO e non si collega al portale Amazon.
    (fonte di verità, eseguibile con `node docs/fatture-amazon-kit/tests/run_tests.js`) e poi porta la stessa modifica in
    `src/domain/fatture/parser.ts`. Tutti i 12+ casi devono restare verdi.
 
+## Stima del fatturato del mese (pagina Forecast)
+- `src/domain/forecast/stimaMese.ts`: per mese × DS, fatturato già sul sito (tutte le voci delle fatture) + previsto dal forecast in uso per le settimane che la DS non ha ancora in fattura (una settimana è "fatturata" se ha almeno una riga di rotte). Giorni senza fatture né forecast contati a parte; confronto con lo stesso mese dell'anno prima se le sue fatture sono caricate.
+- Mesi: dal mese scorso all'ultimo mese coperto dal forecast. Foglio "stima del mese" nell'Excel del forecast.
+- Serve lo storico delle righe (Allinea e storico → Carica storico righe), altrimenti la stima è solo il previsto.
+
 ## Storico forecast e furgoni (`/fatture-amazon/forecast/storico`)
 - Versione di un file = settimana di emissione (`PROF_<wk>`, o la settimana della prima data): "ultimo" vale per versione, poi per caricamento (`src/lib/forecastVersioni.ts`, nessuna colonna nuova nel DB).
 - `src/domain/forecast/storico.ts`: stato del forecast a ogni versione, rotte del giorno = next + SD_A + max(SD_B, SD_C) (cicli dalla colonna `cycle`), furgoni = picco next (senza cargo bike) + picco max(A, B, C), SWA/MFN pickup simulate oltre l'orizzonte del next (media per giorno della settimana delle ultime 3 settimane), precisione per anticipo per DS.
