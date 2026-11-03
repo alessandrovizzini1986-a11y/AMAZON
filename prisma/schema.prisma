@@ -587,3 +587,100 @@ model PresenzeReferente {
   station String @id
   nome    String
 }
+
+// ---------- Modulo Telepass e carburante ----------
+// Sul server solo anagrafiche, metadati e totali: i file originali restano sul PC.
+
+// Mappa Telepass (foglio TELEPASS FINALE di TBusiness_carica_veicoli.xlsx)
+model TelepassDispositivo {
+  codice       String   @id // codice dispositivo
+  station      String
+  targa        String? // AREA C
+  progetto     String?
+  check        String? // Attivo | Bloccato | Disattivo
+  note         String?
+  nonPiuInFile Boolean  @default(false) // presente in tabella ma assente dall'ultimo file importato
+  aggiornatoIl DateTime @updatedAt
+  aggiornatoDa String?
+
+  @@index([station])
+}
+
+// Censimento fuel card Q8 (foglio Carte Q8 Flotte). Nome diverso da FuelCard,
+// che esiste già (carte legate ai veicoli per le FuelTransaction).
+model CartaCarburante {
+  pan            String    @id
+  numeroCarta    String?
+  identificativo String? // Nominativo driver: AMZxxx / GLSxxx
+  targa          String?
+  bloccata       String?
+  dataBlocco     DateTime?
+  centroCosto    String?
+  appalto        String? // AMZ | GLS
+  ds             String? // vuoto o "Da verificare" = carta non attribuita
+  note           String?
+  ordine         Int       @default(0) // riga nel file: per l'abbinamento per Identificativo vince la prima carta
+  nonPiuInFile   Boolean   @default(false)
+  aggiornatoIl   DateTime  @updatedAt
+  aggiornatoDa   String?
+
+  @@index([identificativo])
+}
+
+// Storico degli import delle anagrafiche
+model AnagraficaImport {
+  id         String   @id @default(cuid())
+  tipo       String // TELEPASS | FUELCARD
+  nomeFile   String
+  hashSha256 String
+  righe      Int
+  nuovi      Int
+  aggiornati Int
+  invariati  Int
+  spariti    Int
+  eseguitoDa String
+  eseguitoIl DateTime @default(now())
+
+  @@index([tipo, eseguitoIl])
+}
+
+// Elaborazione mensile Telepass (metadati + totali station × settimana)
+model TelepassRun {
+  id           String   @id @default(cuid())
+  anno         Int
+  mese         Int
+  nomeFile     String // file CSV di partenza
+  hashSha256   String
+  righe        Int
+  fuoriMese    Int
+  nonMappati   Int // dispositivi
+  ricondotti   Int // dispositivi con STATION non standard
+  totale       Float
+  totaliJson   Json // { station: { settimana: importo } }
+  anomalieJson Json
+  eseguitoDa   String
+  eseguitoIl   DateTime @default(now())
+
+  @@index([anno, mese])
+}
+
+// Elaborazione mensile Q8
+model Q8Run {
+  id                String   @id @default(cuid())
+  anno              Int
+  mese              Int
+  nomeFile          String
+  hashSha256        String
+  righeExport       Int
+  tenute            Int
+  scartate          Int
+  nonCensite        Int // carte
+  perIdentificativo Int // carte abbinate per Identificativo (PAN riemesso)
+  totale            Float
+  totaliJson        Json
+  anomalieJson      Json
+  eseguitoDa        String
+  eseguitoIl        DateTime @default(now())
+
+  @@index([anno, mese])
+}

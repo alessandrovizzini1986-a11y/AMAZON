@@ -4,7 +4,7 @@ import { logoutAction } from "@/app/login/actions";
 import { TopNavLink, BottomNavLink } from "./NavLink";
 import { NavIcon, type IconName } from "./icons";
 
-type NavItem = { href: string; label: string; icon: IconName };
+type NavItem = { href: string; label: string; short?: string; icon: IconName };
 
 const OPERATIVO: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
@@ -24,11 +24,15 @@ const NAV_BY_ROLE: Record<SessionUser["role"], { main: NavItem[]; admin: NavItem
   DRIVER: { main: [{ href: "/vehicles", label: "Flotta", icon: "fleet" }], admin: [] },
   RESP_MEZZI: { main: OPERATIVO, admin: [] },
   CONTROLLO: {
-    main: [{ href: "/presenze", label: "Presenze", icon: "presenze" }, { href: "/vademecum", label: "Vademecum", icon: "book" }],
+    main: [
+      { href: "/presenze", label: "Presenze", icon: "presenze" },
+      { href: "/carburante-telepass", label: "Telepass e carburante", icon: "fuel" },
+      { href: "/vademecum", label: "Vademecum", icon: "book" },
+    ],
     admin: [],
   },
   ADMIN: {
-    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }],
+    main: [...OPERATIVO, { href: "/orders", label: "Ordini", icon: "orders" }, { href: "/presenze", label: "Presenze", icon: "presenze" }, { href: "/carburante-telepass", label: "Telepass e carburante", short: "Telepass", icon: "fuel" }],
     admin: GESTIONE,
   },
 };

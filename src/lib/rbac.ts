@@ -21,7 +21,10 @@ export type Action =
   | "officine.view"
   | "presenze.view"
   | "presenze.run"
-  | "presenze.config";
+  | "presenze.config"
+  | "telepass.view"
+  | "telepass.run"
+  | "telepass.anagrafiche";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -34,11 +37,14 @@ const MATRIX: Record<Role, Action[]> = {
     "vademecum.view",
     "officine.view",
   ],
-  // stagista dei controlli presenze: solo il modulo Presenze e il vademecum
+  // stagista dei controlli: moduli Presenze e Telepass/carburante, vademecum
   CONTROLLO: [
     "vademecum.view",
     "presenze.view",
     "presenze.run",
+    "telepass.view",
+    "telepass.run",
+    "telepass.anagrafiche",
   ],
   ADMIN: [
     "vehicle.view",
@@ -56,6 +62,9 @@ const MATRIX: Record<Role, Action[]> = {
     "presenze.view",
     "presenze.run",
     "presenze.config",
+    "telepass.view",
+    "telepass.run",
+    "telepass.anagrafiche",
   ],
 };
 
