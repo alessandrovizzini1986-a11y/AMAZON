@@ -5,11 +5,13 @@
  * 1. esito BASE: porting fedele di controllo_trasferte_v2.py (Esito OK /
  *    ALERT +1 / ALERT -1 / CHECK formula / N/D con categoria A…I) — è ciò che il
  *    test golden confronta con attesi/Controllo_trasferte_<DS>_ott26.xlsx;
- * 2. CATEGORIA finale per gli Ops (+1, -1, H, A, ok, ?), con le regole nuove:
- *    dispatcher esclusi, giustificativi della riga RIPOSO e dei commenti di
- *    cella, ricerca del driver in tutti i tracking e CSV caricati (prestiti).
+ * 2. CATEGORIA finale per gli Ops (+1, -1, H, A, ORE, ACC, ok, ?), con le regole
+ *    nuove: dispatcher esclusi, giustificativi della riga RIPOSO e dei commenti
+ *    di cella, ricerca del driver in tutti i tracking e CSV caricati (prestiti),
+ *    e le regole dell'addendum del 3/11 (R1 malattia batte il lavorato, R2 ore
+ *    > 10, R3 valore > 24, R4 Accordo di domenica per gli STD).
  */
-import { addDays, at, daysBetween, g, GG, num, text, type Cell } from "./grid";
+import { addDays, at, daysBetween, g, GG, num, text, weekday, type Cell } from "./grid";
 import { type FlexRow } from "./flex";
 import {
   ALTRADS_V2,
@@ -23,13 +25,11 @@ import {
 } from "./regole";
 import { cellNote, findTrackingSheet, headerCol, isFormula, trackingBlocks, type TrackingSheet } from "./tracking";
 import type { SheetGrid } from "./grid";
+import { normVoce, type Voce } from "./lavoratori";
 
-const WORK = new Set(["standard", "straordinario", "supplementare", "accordo (dalla ora 39 a 44)"]);
-const ABS = new Set([
-  "ferie", "rol", "exf", "104", "assenza ingiust.", "assenza ingiustificata", "permesso sindacale",
-  "altri permessi (104, cong. par)", "altri permesssi (104, cong. par)", "altri permessi (cong. par)",
-  "permesso non retribuito", "malattia", "infortunio",
-]);
+// voci riconosciute per prefisso (normVoce): "SupplementAUe" o "ALTRI PERMESSI (104, cong. Par)" non rompono nulla
+const WORK = new Set<Voce>(["Standard", "Straordinario", "Supplementare", "Accordo"]);
+const ABS = new Set<Voce>(["FERIE", "ROL", "ExF", "104", "MALATTIA", "INFORTUNIO", "PERM_SIND", "ALTRI_PERM", "PERM_NR", "ASS_INGIUST"]);
 
 export type TipoFile = "STD" | "SIC";
 
@@ -45,6 +45,9 @@ type Rec = {
   trasf_formula?: boolean;
   trasf_trk?: number;
   note?: string[]; // commenti di cella del giorno
+  ore_mal?: number; // malattia + infortunio (R1)
+  ore_acc?: number; // riga Accordo (R4)
+  anomalo?: string[]; // valori > 24 h nelle righe di lavoro (R3)
 };
 
 type Info = { nome: string; cf: string; contratto: string; tipo: string; riga: number; id: string };
@@ -52,7 +55,10 @@ type Info = { nome: string; cf: string; contratto: string; tipo: string; riga: n
 export type Anomalia = { file: string; riga: number | ""; driver: string; anomalia: string };
 
 export type EsitoBase = "OK" | "ALERT +1" | "ALERT -1" | "CHECK formula" | "N/D";
-export type Categoria = "+1" | "-1" | "H" | "A" | "ok" | "?" | "";
+export type Categoria = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "ok" | "?" | "";
+/** Alert che non dipendono da Amazon (R2–R4): si aggiungono a qualsiasi esito del giorno. */
+export type AlertExtra = { cat: "ORE" | "ACC"; nota: string };
+export const SOGLIA_ORE_GIORNO = 10; // R2
 
 /** Una riga driver × giorno (foglio Dettaglio). */
 export type RisultatoGiorno = {
@@ -77,6 +83,11 @@ export type RisultatoGiorno = {
   categoria: Categoria;
   nota: string;
   noteCelle: string;
+  oreMalattia: number;
+  oreAccordo: number;
+  valoreAnomalo: string;
+  /** alert R2–R4 del giorno (anche se il simbolo mostrato è +1/−1/H) */
+  extra: AlertExtra[];
 };
 
 export type ParametriSettimanale = {
@@ -145,24 +156,30 @@ function parseTrackingV2(input: TrackingInput, p: { da: string; a: string; sogli
     });
     for (const r of b.rows) {
       const tl = text(cell(r, ts.tipoCol)).trim().toLowerCase();
+      const voce = normVoce(tl);
       for (const { col, date } of ts.dayCols) {
         const v = cell(r, col);
         let x = num(v);
         const rec = recOf(k, date);
-        if (WORK.has(tl) || ABS.has(tl) || tl === "totali") {
+        if (WORK.has(voce) || ABS.has(voce) || voce === "Totali") {
           if (x > 24) {
             if (p.da <= date && date <= p.a) {
-              anomalie.push({ file: tipoFile, riga: r + 1, driver: nome, anomalia: `Valore anomalo ${g(x)} h il ${ddmm(date)} riga ${tl} (cella collegata a file esterno?) - ignorato` });
+              anomalie.push({ file: tipoFile, riga: r + 1, driver: nome, anomalia: `Valore anomalo ${g(x)} h il ${ddmm(date)} riga ${tl}: non usato per trasferta/rotta, segnalato come ORE` });
+              if (WORK.has(voce)) (rec.anomalo ??= []).push(`${g(x)} h in ${text(cell(r, ts.tipoCol)).trim()}`);
             }
             x = 0;
           }
         }
-        if (WORK.has(tl)) rec.ore_lav = (rec.ore_lav ?? 0) + x;
-        else if (ABS.has(tl)) rec.ore_ass = (rec.ore_ass ?? 0) + x;
-        else if (tl === "totali") rec.totali_file = x;
-        else if (tl === "riposo") {
+        if (WORK.has(voce)) {
+          rec.ore_lav = (rec.ore_lav ?? 0) + x;
+          if (voce === "Accordo") rec.ore_acc = (rec.ore_acc ?? 0) + x;
+        } else if (ABS.has(voce)) {
+          rec.ore_ass = (rec.ore_ass ?? 0) + x;
+          if (voce === "MALATTIA" || voce === "INFORTUNIO") rec.ore_mal = (rec.ore_mal ?? 0) + x;
+        } else if (voce === "Totali") rec.totali_file = x;
+        else if (voce === "RIPOSO") {
           if (v !== null && v !== "" && v !== " ") rec.riposo = text(v).trim();
-        } else if (tl === "indennità trasferta") {
+        } else if (voce === "TRASFERTA") {
           rec.trasf_file = x;
           rec.trasf_formula = isFormula(ts, r, col);
         }
@@ -276,6 +293,9 @@ export function controlloSettimanale(
         trasf_trk: Math.min(1, sum("trasf_trk")),
         riposo: ra.riposo || rb.riposo || "",
         note: [...(ra.note ?? []), ...(rb.note ?? [])],
+        ore_mal: sum("ore_mal"),
+        ore_acc: ra.ore_acc ?? 0, // R4 vale solo per la parte STD
+        anomalo: [...(ra.anomalo ?? []), ...(rb.anomalo ?? [])],
       });
     }
     allRows.set(`STD|${d}`, a);
@@ -368,6 +388,7 @@ export function controlloSettimanale(
         station: st, tipo: inf.tipo, driver: inf.nome, driverId: did, contratto: inf.contratto, data: d, giorno: GG[(new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7],
         ore, oreAssenza: ass, trasferta: tFile, trasfRicalcolata: tCalc, pacchi, match: via, riposo: rip, inRotta: flexIn,
         esitoBase: esito, categoriaBase: cat, notaBase: nota, categoria: "", nota: "", noteCelle: (rec.note ?? []).join(" | "),
+        oreMalattia: rec.ore_mal ?? 0, oreAccordo: rec.ore_acc ?? 0, valoreAnomalo: (rec.anomalo ?? []).join(", "), extra: [],
       });
     }
   }
@@ -481,14 +502,26 @@ function applicaRegoleNuove(x: {
   }
 
   for (const r of x.dettaglio) {
-    if (r.esitoBase === "N/D") {
-      r.categoria = "?";
-      r.nota = "CSV Amazon mancante per questo giorno";
-      continue;
-    }
     if (isDispatcher(r.contratto, r.driver, dispatcher)) {
       r.categoria = "";
       if (r.esitoBase !== "OK" || r.ore > 0) r.nota = "Dispatcher: escluso dai controlli";
+      continue;
+    }
+    // R2–R4: indipendenti da Amazon, valgono anche nei giorni senza CSV
+    if (r.valoreAnomalo || r.ore > SOGLIA_ORE_GIORNO) {
+      const parti = [
+        ...(r.valoreAnomalo ? [`Valore anomalo: ${r.valoreAnomalo} (non usato per trasferta/rotta)`] : []),
+        ...(r.ore > SOGLIA_ORE_GIORNO ? [`Ore giornaliere oltre 10: ${g(r.ore)} h lavorate`] : []),
+      ];
+      r.extra.push({ cat: "ORE", nota: parti.join(" | ") + ": verificare e correggere il tracking" });
+    }
+    if (r.tipo.includes("STD") && weekday(r.data) === 6 && r.oreAccordo > 0) {
+      r.extra.push({ cat: "ACC", nota: `Accordo di domenica (STD): ${g(r.oreAccordo)} h nella riga Accordo, cancellare` });
+    }
+    if (r.esitoBase === "N/D") {
+      r.categoria = "?";
+      r.nota = "CSV Amazon mancante per questo giorno";
+      promuoviExtra(r);
       continue;
     }
     const giust = giustificativo(r.riposo, r.noteCelle, codici);
@@ -498,6 +531,10 @@ function applicaRegoleNuove(x: {
       if (giust) { r.categoria = ""; r.nota = `Giustificativo ${giust}${noteCella}: nessun alert`; }
       else if (altrove) { r.categoria = ""; r.nota = `Rotta Amazon su ${[...new Set(altrove)].join(", ")}: prestito ad altra station`; }
       else { r.categoria = "+1"; r.nota = r.notaBase + (r.riposo ? ` | riga RIPOSO: ${r.riposo} (non è un giustificativo)` : ""); }
+    } else if (r.esitoBase === "ALERT -1" && r.ore === 0 && r.oreMalattia > 0) {
+      // R1: il tracking è la fonte retributiva, malattia/infortunio prevalgono sul lavorato
+      r.categoria = "";
+      r.nota = `Malattia batte il lavorato: ${g(r.oreMalattia)} h di malattia/infortunio nel tracking, Amazon ${r.pacchi} pacchi`;
     } else if (r.esitoBase === "ALERT -1") {
       r.categoria = "-1";
       r.nota = r.notaBase;
@@ -512,6 +549,7 @@ function applicaRegoleNuove(x: {
       r.categoria = "";
       r.nota = r.notaBase;
     }
+    promuoviExtra(r);
   }
 
   // A: in Amazon con rotta, assente dai tracking della station
@@ -527,6 +565,20 @@ function applicaRegoleNuove(x: {
     const other = [...(presenteAltrove.get(n.driverId) ?? [])].sort();
     n.nota = other.length ? `presente in Amazon anche su: ${other.join(", ")} → probabile prestito` : "nuovo assunto, dimesso o nome diverso nel tracking?";
   }
+}
+
+/** Se il giorno non ha già un alert +1/−1/H, il simbolo diventa ORE o ACC (R5). */
+function promuoviExtra(r: RisultatoGiorno) {
+  if (!r.extra.length || ["+1", "-1", "H"].includes(r.categoria)) return;
+  r.categoria = r.extra[0].cat;
+  r.nota = r.extra.map((e) => e.nota).join(" | ");
+}
+
+/** Tutti gli alert di un giorno: il simbolo principale (+1/−1/H) più ORE/ACC. */
+export function alertDelGiorno(r: RisultatoGiorno): Categoria[] {
+  const out: Categoria[] = ["+1", "-1", "H"].includes(r.categoria) ? [r.categoria] : [];
+  for (const e of r.extra) out.push(e.cat);
+  return out;
 }
 
 // ------------------------------------------------------------------ riepiloghi
@@ -557,7 +609,7 @@ export function riepilogoBase(e: EsitoSettimanale): RiepilogoTipo[] {
 export type RigaDriver = {
   station: Station; tipo: string; driver: string; driverId: string; contratto: string;
   simboli: Record<string, Categoria>; giorniLavorati: number; trasferte: number; rotte: number;
-  piu1: number; meno1: number; h: number; a: number; daVerificare: string; nota: string;
+  piu1: number; meno1: number; h: number; a: number; ore: number; acc: number; daVerificare: string; nota: string;
 };
 
 export function righePerDriver(e: EsitoSettimanale): RigaDriver[] {
@@ -571,18 +623,18 @@ export function righePerDriver(e: EsitoSettimanale): RigaDriver[] {
     const f = rs[0];
     const simboli: Record<string, Categoria> = {};
     for (const r of rs) simboli[r.data] = r.categoria;
-    const alert = rs.filter((r) => ["+1", "-1", "H"].includes(r.categoria));
+    const alert = rs.filter((r) => alertDelGiorno(r).length > 0);
+    const conta = (c: string) => rs.filter((r) => alertDelGiorno(r).includes(c as Categoria)).length;
     out.push({
       station: e.station, tipo: f.tipo, driver: f.driver, driverId: f.driverId.startsWith("NOID|") ? "" : f.driverId, contratto: f.contratto,
       simboli, giorniLavorati: rs.filter((r) => r.ore > 0).length, trasferte: rs.reduce((s, r) => s + r.trasferta, 0),
       rotte: rs.reduce((s, r) => s + r.inRotta, 0),
-      piu1: rs.filter((r) => r.categoria === "+1").length, meno1: rs.filter((r) => r.categoria === "-1").length,
-      h: rs.filter((r) => r.categoria === "H").length, a: 0,
-      daVerificare: alert.map((r) => `${Number(r.data.slice(8, 10))}(${r.categoria})`).join(", "),
+      piu1: conta("+1"), meno1: conta("-1"), h: conta("H"), a: 0, ore: conta("ORE"), acc: conta("ACC"),
+      daVerificare: alert.flatMap((r) => alertDelGiorno(r).map((c) => `${Number(r.data.slice(8, 10))}(${c})`)).join(", "),
       nota: [...new Set([
         ...(f.driverId.startsWith("NOID|") ? ["ID mancante nel tracking"] : []),
         ...rs.filter((r) => r.categoria === "" && r.nota.startsWith("Dispatcher")).slice(0, 1).map((r) => r.nota),
-        ...alert.map((r) => r.nota).filter(Boolean).slice(0, 3),
+        ...alert.flatMap((r) => [r.nota, ...r.extra.map((e) => e.nota)]).filter(Boolean).slice(0, 3),
       ])].join(" | "),
     });
   }
@@ -594,11 +646,12 @@ export function righePerDriver(e: EsitoSettimanale): RigaDriver[] {
     for (const n of ns) simboli[n.data] = "A";
     out.push({
       station: e.station, tipo: "AMAZON", driver: ns[0].driver, driverId: ns[0].driverId, contratto: "",
-      simboli, giorniLavorati: 0, trasferte: 0, rotte: ns.length, piu1: 0, meno1: 0, h: 0, a: ns.length,
+      simboli, giorniLavorati: 0, trasferte: 0, rotte: ns.length, piu1: 0, meno1: 0, h: 0, a: ns.length, ore: 0, acc: 0,
       daVerificare: ns.map((n) => `${Number(n.data.slice(8, 10))}(A)`).join(", "), nota: ns[0].nota,
     });
   }
-  return out.sort((x, y) => (y.piu1 + y.meno1 + y.h + y.a) - (x.piu1 + x.meno1 + x.h + x.a) || cmpStr(x.tipo, y.tipo) || cmpStr(x.driver, y.driver));
+  const tot = (r: RigaDriver) => r.piu1 + r.meno1 + r.h + r.a + r.ore + r.acc;
+  return out.sort((x, y) => tot(y) - tot(x) || cmpStr(x.tipo, y.tipo) || cmpStr(x.driver, y.driver));
 }
 
 /** Per i test e gli export: giorni consecutivi lavorati più lunghi in una lista di date ISO. */

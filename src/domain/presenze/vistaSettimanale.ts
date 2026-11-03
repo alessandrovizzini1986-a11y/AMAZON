@@ -4,6 +4,8 @@
  * domeniche / giorni consecutivi.
  */
 import { righePerDriver, type EsitoSettimanale, type RigaDriver, type TrackingInput } from "./controlloSettimanale";
+
+const ALERT_CAT = ["+1", "-1", "H", "A", "ORE", "ACC"] as const;
 import { leggiLavoratori, oreLavoro } from "./lavoratori";
 import { controlloDomenica } from "./domeniche";
 import { daysBetween, g, weekday } from "./grid";
@@ -12,7 +14,7 @@ import { IND_EUR, type Station } from "./regole";
 
 export type RiepilogoStation = {
   station: Station; driver: number; trasferte: number; rotte: number;
-  piu1: number; meno1: number; h: number; a: number; eurPiu1: number; giorniSenzaCsv: string;
+  piu1: number; meno1: number; h: number; a: number; ore: number; acc: number; eurPiu1: number; giorniSenzaCsv: string;
 };
 
 export type AlertRiga = {
@@ -36,15 +38,21 @@ export function riepilogoStation(e: EsitoSettimanale): RiepilogoStation {
     rotte: d.reduce((s, r) => s + r.inRotta, 0),
     piu1, meno1: d.filter((r) => r.categoria === "-1").length, h: d.filter((r) => r.categoria === "H").length,
     a: e.nonInTracking.filter((n) => n.categoria === "A").length,
+    ore: e.dettaglio.filter((r) => r.extra.some((x) => x.cat === "ORE")).length,
+    acc: e.dettaglio.filter((r) => r.extra.some((x) => x.cat === "ACC")).length,
     eurPiu1: piu1 * IND_EUR,
     giorniSenzaCsv: e.giorniSenzaCsv.map(ddmm).join(", "),
   };
 }
 
 export function alertRighe(e: EsitoSettimanale): AlertRiga[] {
-  const out: AlertRiga[] = e.dettaglio
-    .filter((r) => ["+1", "-1", "H"].includes(r.categoria))
-    .map((r) => ({ station: e.station, tipo: r.tipo, driver: r.driver, driverId: r.driverId.startsWith("NOID|") ? "" : r.driverId, data: r.data, categoria: r.categoria, ore: r.ore, trasferta: r.trasferta, pacchi: r.pacchi, riposo: r.riposo, nota: r.nota }));
+  const out: AlertRiga[] = e.dettaglio.flatMap((r) => {
+    const base = { station: e.station, tipo: r.tipo, driver: r.driver, driverId: r.driverId.startsWith("NOID|") ? "" : r.driverId, data: r.data, ore: r.ore, trasferta: r.trasferta, pacchi: r.pacchi, riposo: r.riposo };
+    return [
+      ...(["+1", "-1", "H"].includes(r.categoria) ? [{ ...base, categoria: r.categoria, nota: r.nota }] : []),
+      ...r.extra.map((x) => ({ ...base, categoria: x.cat, nota: x.nota })),
+    ];
+  });
   for (const n of e.nonInTracking.filter((x) => x.categoria === "A")) {
     out.push({ station: e.station, tipo: "AMAZON", driver: n.driver, driverId: n.driverId, data: n.data, categoria: "A", ore: 0, trasferta: 0, pacchi: n.pacchi, riposo: "", nota: n.nota });
   }
@@ -93,6 +101,8 @@ export function messaggioSettimanale(e: EsitoSettimanale, referente: string | nu
     { titolo: TESTI.meno1, colonne: ["Driver", "Giorni", "Pacchi Amazon", "Cosa chiediamo"], righe: per("-1").map((rs) => [rs[0].driver, rs.map((r) => ddmm(r.data)).join(", "), rs.map((r) => String(r.pacchi ?? "")).join(", "), TESTI.chiedi.meno1]) },
     { titolo: TESTI.h, colonne: ["Driver", "Giorni", "Ore", "Cosa chiediamo"], righe: per("H").map((rs) => [rs[0].driver, rs.map((r) => ddmm(r.data)).join(", "), rs.map((r) => g(r.ore)).join(", "), TESTI.chiedi.h]) },
     { titolo: TESTI.a, colonne: ["Driver", "ID", "Giorni", "Pacchi", "Nota"], righe: per("A").map((rs) => [rs[0].driver, rs[0].driverId, rs.map((r) => ddmm(r.data)).join(", "), rs.map((r) => String(r.pacchi ?? "")).join(", "), rs[0].nota]) },
+    { titolo: TESTI.ore, colonne: ["Driver", "Giorni", "Cosa abbiamo letto", "Cosa chiediamo"], righe: per("ORE").map((rs) => [rs[0].driver, rs.map((r) => ddmm(r.data)).join(", "), rs.map((r) => `${ddmm(r.data)}: ${r.nota.replace(/: verificare e correggere il tracking$/, "")}`).join("; "), TESTI.chiedi.ore]) },
+    { titolo: TESTI.acc, colonne: ["Driver", "Domeniche", "Ore Accordo", "Cosa chiediamo"], righe: per("ACC").map((rs) => [rs[0].driver, rs.map((r) => ddmm(r.data)).join(", "), rs.map((r) => (r.nota.match(/: ([\d.,]+) h nella riga/)?.[1] ?? "")).join(", "), TESTI.chiedi.acc]) },
   ];
   return componi(e.station, TESTI.aperturaSettimanale(TESTI.saluto(referente), e.station, ddmm(e.da), ddmm(e.a), entro), sezioni);
 }
@@ -102,7 +112,7 @@ export function risultatiDaSalvare(e: EsitoSettimanale) {
   const rows = righePerDriver(e);
   const alert = alertRighe(e);
   const out: { station: Station; tipo: string; driver: string; driverId: string; categoria: string; giorni: unknown[]; oreTracking: number; trasferte: number; rotte: number; nota: string }[] = [];
-  for (const cat of ["+1", "-1", "H", "A"]) {
+  for (const cat of ALERT_CAT) {
     const by = new Map<string, AlertRiga[]>();
     for (const r of alert.filter((x) => x.categoria === cat)) by.set(`${r.tipo}|${r.driver}|${r.driverId}`, [...(by.get(`${r.tipo}|${r.driver}|${r.driverId}`) ?? []), r]);
     for (const rs of by.values()) {
