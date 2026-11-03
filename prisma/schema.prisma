@@ -684,3 +684,107 @@ model Q8Run {
 
   @@index([anno, mese])
 }
+
+// ---------- Modulo Fatture Amazon ----------
+// I PDF e il file AGGREGATO restano sul PC: sul server solo fatture, righe estratte e forecast.
+
+// Una fattura (o nota di credito) Amazon, da PDF o dallo storico del file AGGREGATO
+model AmazonInvoice {
+  id                   String              @id @default(cuid())
+  numero               String              @unique // INV-IT3JDBF-0002543 (maiuscolo, trim, NV- → INV-)
+  ds                   String // DER1 … DVN6
+  tipo                 String // Fattura | Nota di credito
+  dataFattura          DateTime
+  periodoDa            DateTime
+  periodoA             DateTime
+  importoDovuto        Decimal             @db.Decimal(12, 2)
+  sommaTotale          Decimal             @db.Decimal(12, 2)
+  sommaAvere           Decimal             @db.Decimal(12, 2)
+  nRighe               Int
+  rifNotaCredito       String?
+  pdfNome              String?
+  pdfSha256            String?
+  fonte                String // PDF | AGGREGATO
+  esportataIl          DateTime?
+  esportataDaId        String?
+  presenteInFatt2026Il DateTime?
+  righe                AmazonInvoiceLine[]
+  createdAt            DateTime            @default(now())
+
+  @@index([ds, periodoDa])
+}
+
+model AmazonInvoiceLine {
+  id          String        @id @default(cuid())
+  invoiceId   String
+  invoice     AmazonInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  ds          String
+  data        DateTime
+  descrizione String
+  quantita    Int
+  prezzo      Decimal       @db.Decimal(12, 4)
+  tasse       String // VAT 22
+  rateoIva    Decimal       @db.Decimal(5, 4)
+  importoIva  Decimal       @db.Decimal(12, 2)
+  totale      Decimal       @db.Decimal(12, 2)
+  avere       Decimal       @db.Decimal(12, 2) // netto = totale − importoIva
+  microarea   String?
+  macroarea   String?
+  week        Int // settimana Amazon (dom–sab)
+  mese        Int
+  anno        Int
+  classe      String // ND_STANDARD, SD_A, EXTRA_CARBURANTE, …
+  chiave      String        @unique // numero|data|descrizione|quantità|avere|progressivo: impedisce i doppioni dello storico
+
+  @@index([invoiceId])
+  @@index([ds, data])
+  @@index([anno, mese])
+  @@index([anno, week])
+  @@index([classe])
+}
+
+// File di forecast Amazon (PROF_<wk>_next / _same): per station, data e classe vale l'ultimo caricato
+model ForecastFile {
+  id           String          @id @default(cuid())
+  nome         String
+  linea        String // ND | SD
+  sha256       String          @unique
+  caricatoIl   DateTime        @default(now())
+  caricatoDaId String?
+  righe        ForecastRoute[]
+}
+
+model ForecastRoute {
+  id          String       @id @default(cuid())
+  fileId      String
+  file        ForecastFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  week        Int
+  data        DateTime
+  station     String
+  cycle       String
+  serviceType String
+  routes      Int
+  classe      String
+
+  @@index([station, data])
+  @@index([week])
+  @@index([fileId])
+}
+
+// Mappa service_type_scheduling (+ cycle, + station) → classe, modificabile da ADMIN ("*" = qualsiasi)
+model ForecastClasseMap {
+  id          String @id @default(cuid())
+  serviceType String
+  cycle       String @default("*")
+  station     String @default("*")
+  classe      String
+
+  @@unique([serviceType, cycle, station])
+}
+
+// Mapping descrizione → MACROAREA / MICROAREA (opzione "precompilate" dell'export)
+model MacroareaMap {
+  descrizione String @id
+  macroarea   String
+  microarea   String
+}

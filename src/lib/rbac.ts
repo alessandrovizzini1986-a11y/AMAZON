@@ -24,7 +24,15 @@ export type Action =
   | "presenze.config"
   | "telepass.view"
   | "telepass.run"
-  | "telepass.anagrafiche";
+  | "telepass.anagrafiche"
+  | "fatture.import"
+  | "fatture.registro"
+  | "fatture.allinea"
+  | "fatture.storico"
+  | "fatture.annulla"
+  | "fatturato.view"
+  | "forecast.import"
+  | "forecast.view";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -36,6 +44,7 @@ const MATRIX: Record<Role, Action[]> = {
     "dashboard.station",
     "vademecum.view",
     "officine.view",
+    "fatturato.view", // solo la propria station (filtro nelle query)
   ],
   // stagista dei controlli: moduli Presenze e Telepass/carburante, vademecum
   CONTROLLO: [
@@ -45,6 +54,8 @@ const MATRIX: Record<Role, Action[]> = {
     "telepass.view",
     "telepass.run",
     "telepass.anagrafiche",
+    "fatture.import",
+    "fatture.registro",
   ],
   ADMIN: [
     "vehicle.view",
@@ -65,6 +76,14 @@ const MATRIX: Record<Role, Action[]> = {
     "telepass.view",
     "telepass.run",
     "telepass.anagrafiche",
+    "fatture.import",
+    "fatture.registro",
+    "fatture.allinea",
+    "fatture.storico",
+    "fatture.annulla",
+    "fatturato.view",
+    "forecast.import",
+    "forecast.view",
   ],
 };
 

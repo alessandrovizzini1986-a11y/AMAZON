@@ -1,0 +1,36 @@
+// Scheletro Vitest per il parser (adattare import e percorsi al repo).
+import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.js";
+import { parseInvoice } from "@/domain/fatture/parser";
+
+const FIX = path.join(__dirname, "fixtures");
+async function pages(file: string) {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(fs.readFileSync(file)), verbosity: 0 }).promise;
+  const out = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const tc = await (await doc.getPage(i)).getTextContent();
+    out.push(tc.items.map((it: any) => ({ str: it.str, x: it.transform[4], y: it.transform[5] })));
+  }
+  return out;
+}
+const iso = (d: Date | string) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
+
+describe("parser fatture Amazon", () => {
+  for (const f of fs.readdirSync(path.join(FIX, "pdf")).sort()) {
+    it(f, async () => {
+      const r = parseInvoice(await pages(path.join(FIX, "pdf", f)), f);
+      const exp = JSON.parse(fs.readFileSync(path.join(FIX, "expected", r.numero + ".json"), "utf8"));
+      expect(r.numero).toBe(exp.numero); expect(r.ds).toBe(exp.ds); expect(r.tipoDoc).toBe(exp.tipoDoc);
+      expect(iso(r.dataFattura)).toBe(exp.dataFattura); expect(iso(r.periodoDa)).toBe(exp.periodoDa);
+      expect(r.importoDovuto).toBeCloseTo(exp.importoDovuto, 2); expect(r.sommaAvere).toBeCloseTo(exp.sommaAvere, 2);
+      expect(r.righe.length).toBe(exp.righe.length);
+      r.righe.forEach((x: any, i: number) => {
+        const e = exp.righe[i];
+        expect(iso(x.Data)).toBe(e.Data); expect(x.Descrizione).toBe(e.Descrizione); expect(x.Quantita).toBe(e.Quantita);
+        expect(x.AVERE).toBeCloseTo(e.AVERE, 2); expect(x.Totale).toBeCloseTo(e.Totale, 2); expect(x.WEEK).toBe(e.WEEK);
+      });
+    });
+  }
+});

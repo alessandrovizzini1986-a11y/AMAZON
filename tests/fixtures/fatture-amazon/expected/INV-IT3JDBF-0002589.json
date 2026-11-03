@@ -1,0 +1,32 @@
+{
+ "file": "DER1-INV-IT3JDBF-0002589.pdf",
+ "numero": "INV-IT3JDBF-0002589",
+ "template": "B",
+ "tipoDoc": "Fattura",
+ "rifNotaCredito": null,
+ "ds": "DER1",
+ "dataFattura": "2026-10-21",
+ "periodoDa": "2026-10-04",
+ "periodoA": "2026-10-10",
+ "importoDovuto": 800.32,
+ "sommaTotale": 800.32,
+ "sommaAvere": 656.0,
+ "righe": [
+  {
+   "DS": "DER1",
+   "Data": "2026-10-04",
+   "Descrizione": "Incentivo stagionale",
+   "Quantita": 1,
+   "Prezzo": 656.0,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 144.32,
+   "Totale": 800.32,
+   "AVERE": 656.0,
+   "WEEK": 41,
+   "MESE": 10,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002589"
+  }
+ ]
+}

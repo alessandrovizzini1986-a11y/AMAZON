@@ -1,0 +1,32 @@
+{
+ "file": "DER2-INV-IT3JDBF-0002152.pdf",
+ "numero": "INV-IT3JDBF-0002152",
+ "template": "B",
+ "tipoDoc": "Fattura",
+ "rifNotaCredito": null,
+ "ds": "DER2",
+ "dataFattura": "2026-04-22",
+ "periodoDa": "2026-04-05",
+ "periodoA": "2026-04-11",
+ "importoDovuto": 2203.56,
+ "sommaTotale": 2203.56,
+ "sommaAvere": 1806.2,
+ "righe": [
+  {
+   "DS": "DER2",
+   "Data": "2026-04-05",
+   "Descrizione": "Incentivi - Pedaggi",
+   "Quantita": 1,
+   "Prezzo": 1806.2,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 397.36,
+   "Totale": 2203.56,
+   "AVERE": 1806.2,
+   "WEEK": 15,
+   "MESE": 4,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002152"
+  }
+ ]
+}

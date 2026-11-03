@@ -10,7 +10,7 @@ import { excelTelepass } from "@/lib/telepass/excelTelepass";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaTelepassRun } from "../actions";
 import type { RunRiga } from "../dati";
-import { Dropzone } from "../Dropzone";
+import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
 import { Storico } from "../Storico";
 

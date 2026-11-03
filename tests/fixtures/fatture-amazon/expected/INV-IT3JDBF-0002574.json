@@ -1,0 +1,48 @@
+{
+ "file": "DLO5-INV-IT3JDBF-0002574.pdf",
+ "numero": "INV-IT3JDBF-0002574",
+ "template": "B",
+ "tipoDoc": "Fattura",
+ "rifNotaCredito": null,
+ "ds": "DLO5",
+ "dataFattura": "2026-10-21",
+ "periodoDa": "2026-10-04",
+ "periodoA": "2026-10-10",
+ "importoDovuto": 2838.89,
+ "sommaTotale": 2838.89,
+ "sommaAvere": 2326.96,
+ "righe": [
+  {
+   "DS": "DLO5",
+   "Data": "2026-10-04",
+   "Descrizione": "Incentivi settimanali - DEI",
+   "Quantita": 1,
+   "Prezzo": 1238.96,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 272.57,
+   "Totale": 1511.53,
+   "AVERE": 1238.96,
+   "WEEK": 41,
+   "MESE": 10,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002574"
+  },
+  {
+   "DS": "DLO5",
+   "Data": "2026-10-04",
+   "Descrizione": "Incentivo stagionale",
+   "Quantita": 1,
+   "Prezzo": 1088.0,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 239.36,
+   "Totale": 1327.36,
+   "AVERE": 1088.0,
+   "WEEK": 41,
+   "MESE": 10,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002574"
+  }
+ ]
+}

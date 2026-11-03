@@ -1,0 +1,48 @@
+{
+ "file": "DER1-INV-IT3JDBF-0002195.pdf",
+ "numero": "INV-IT3JDBF-0002195",
+ "template": "B",
+ "tipoDoc": "Fattura",
+ "rifNotaCredito": null,
+ "ds": "DER1",
+ "dataFattura": "2026-05-20",
+ "periodoDa": "2026-04-01",
+ "periodoA": "2026-04-30",
+ "importoDovuto": 8143.98,
+ "sommaTotale": 8143.99,
+ "sommaAvere": 6675.4,
+ "righe": [
+  {
+   "DS": "DER1",
+   "Data": "2026-04-01",
+   "Descrizione": "Incentivi - Parcheggio",
+   "Quantita": 1,
+   "Prezzo": 3535.65,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 777.84,
+   "Totale": 4313.49,
+   "AVERE": 3535.65,
+   "WEEK": 14,
+   "MESE": 4,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002195"
+  },
+  {
+   "DS": "DER1",
+   "Data": "2026-04-01",
+   "Descrizione": "Incentivi - Pedaggi",
+   "Quantita": 1,
+   "Prezzo": 3139.75,
+   "Tasse": "VAT 22",
+   "Rateo": 0.22,
+   "ImportoIVA": 690.75,
+   "Totale": 3830.5,
+   "AVERE": 3139.75,
+   "WEEK": 14,
+   "MESE": 4,
+   "ANNO": 2026,
+   "Numero": "INV-IT3JDBF-0002195"
+  }
+ ]
+}
