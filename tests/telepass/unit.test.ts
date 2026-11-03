@@ -83,3 +83,17 @@ describe("Q8", () => {
     expect(e.perStation).toEqual({ DER1: 15, "NON CENSITA": 10 });
   });
 });
+
+describe("regola d'oro DLO4", () => {
+  const hdr = "ID Transazione;ID Codificato;Movimento;Data;Orario;Importo;Stato;Pagamento;Codice dispositivo;CDC veicolo".split(";");
+  const riga = (imp: string, pag: string, disp: string) => ["x", "y", "Area C Milano", "05/10/2026", "08:00:00", imp, "", pag, disp, ""];
+  it("pagamento con targa → DLO4 e −7,50, a prescindere dal dispositivo; si può spegnere", () => {
+    const t = [hdr, riga("-4,50", "Targa", "1"), riga("-7,50", "Targa", "9"), riga("-4,50", "Dispositivo", "1")];
+    const e = elaboraTelepass(t, new Map([["1", "DER1"]]));
+    expect(e.righe.map((r) => [r[e.iStation], r[e.iImporto]])).toEqual([["DLO4", -7.5], ["DLO4", -7.5], ["DER1", -4.5]]);
+    expect(e.nonMappati).toEqual([]); // il dispositivo 9 non conta: la riga è pagata con targa
+    expect(e.areaC).toMatchObject({ n: 2, importiCorretti: 1, delta: -3 });
+    const off = elaboraTelepass(t, new Map([["1", "DER1"]]), { regolaAreaC: false });
+    expect(off.righe.map((r) => r[off.iStation])).toEqual(["DER1", "NON MAPPATO", "DER1"]);
+  });
+});

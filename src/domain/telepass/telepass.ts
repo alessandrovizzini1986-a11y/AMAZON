@@ -4,6 +4,14 @@
  */
 import { GLS_CM, mesePrevalente, MESI, numIt, ordinaStation, settimaneDelMese, STATION_TELEPASS, weeknumExcel } from "./comune";
 
+/**
+ * Regola d'oro del 3/11/2026 (DLO4): ogni transazione pagata con la TARGA
+ * (colonna Pagamento = "Targa", cioè gli accessi Area C Milano) va a DLO4 a
+ * prescindere dal codice dispositivo, e l'importo è sempre −7,50
+ * (i −4,50 diventano −7,50).
+ */
+export const AREA_C = { station: "DLO4", importo: -7.5 } as const;
+
 export const INTESTAZIONE_TELEPASS = "ID Transazione;ID Codificato;Movimento;";
 
 /** Il testo è un export Telepass? (prima riga, BOM tolto) */
@@ -33,6 +41,8 @@ export type EsitoTelepass = {
   perStation: Record<string, number>;
   totale: number;
   nonMappati: { codice: string; n: number }[];
+  /** righe pagate con targa portate a DLO4 (regola Area C) */
+  areaC: { n: number; importiCorretti: number; daAltreStation: number; delta: number; perImporto: Record<string, number> };
   ricondotti: { codice: string; station: string; n: number; importo: number }[];
   fuoriMese: number;
   anomalie: AnomaliaTelepass[];
@@ -59,7 +69,8 @@ const r2 = (x: number) => Math.round(x * 100) / 100;
  * @param tabella righe del CSV già divise (prima riga = intestazione)
  * @param mappa codice dispositivo → station (dalla tabella TelepassDispositivo)
  */
-export function elaboraTelepass(tabella: string[][], mappa: Map<string, string>): EsitoTelepass {
+export function elaboraTelepass(tabella: string[][], mappa: Map<string, string>, opzioni: { regolaAreaC?: boolean } = {}): EsitoTelepass {
+  const regolaAreaC = opzioni.regolaAreaC ?? true;
   const hdr = tabella[0].map((h, i) => (i === 0 ? h.replace(/^﻿/, "") : h));
   const body = tabella.slice(1).filter((r) => r.some((x) => x !== ""));
   const idx = (n: string) => {
@@ -68,6 +79,7 @@ export function elaboraTelepass(tabella: string[][], mappa: Map<string, string>)
     return i;
   };
   const iData = idx("Data"), iOra = idx("Orario"), iImp = idx("Importo"), iStato = idx("Stato"), iDisp = idx("Codice dispositivo"), iCdc = idx("CDC veicolo");
+  const iPag = hdr.indexOf("Pagamento");
   const numeriche = new Set(NUMERICHE.map((n) => hdr.indexOf(n)).filter((i) => i >= 0));
   const date = body.map((r) => data(r[iData] ?? ""));
   const { anno, mese } = mesePrevalente(date);
@@ -78,14 +90,27 @@ export function elaboraTelepass(tabella: string[][], mappa: Map<string, string>)
   const nonMappati = new Map<string, number>();
   const ricondotti = new Map<string, { codice: string; station: string; n: number; importo: number }>();
   let fuoriMese = 0;
+  const areaC = { n: 0, importiCorretti: 0, daAltreStation: 0, delta: 0, perImporto: {} as Record<string, number> };
   const righe: ValToll[][] = [];
   body.forEach((r, k) => {
     const d = date[k];
     if (!d || d.getUTCFullYear() !== anno || d.getUTCMonth() + 1 !== mese) fuoriMese++;
     const disp = (r[iDisp] ?? "").trim();
     let st: string;
+    let importo: number | string | null = numIt(r[iImp]);
     const s0 = mappa.get(disp);
-    if (s0 === undefined) {
+    const pagTarga = regolaAreaC && iPag >= 0 && (r[iPag] ?? "").trim().toLowerCase() === "targa";
+    if (pagTarga) {
+      st = AREA_C.station;
+      areaC.n++;
+      areaC.perImporto[r[iImp] ?? ""] = (areaC.perImporto[r[iImp] ?? ""] ?? 0) + 1;
+      if (importo !== AREA_C.importo) {
+        areaC.importiCorretti++;
+        if (typeof importo === "number") areaC.delta += AREA_C.importo - importo;
+        importo = AREA_C.importo;
+      }
+      if (s0 !== AREA_C.station) areaC.daAltreStation++;
+    } else if (s0 === undefined) {
       st = "NON MAPPATO";
       nonMappati.set(disp, (nonMappati.get(disp) ?? 0) + 1);
     } else if (!STATION_TELEPASS.includes(s0)) {
@@ -102,6 +127,7 @@ export function elaboraTelepass(tabella: string[][], mappa: Map<string, string>)
       if (j === iData) return d;
       if (j === iOra) return orario(v);
       if (j === iStato) return st;
+      if (j === iImp) return importo;
       if (numeriche.has(j)) return numIt(v);
       if (j === iDisp || j === iCdc) return /^\d+$/.test(v ?? "") ? Number(v) : v || null;
       return v !== "" ? v : null;
@@ -130,13 +156,14 @@ export function elaboraTelepass(tabella: string[][], mappa: Map<string, string>)
   const anomalie: AnomaliaTelepass[] = [
     ...nm.map((x) => ({ tipo: "Telepass non in TELEPASS FINALE", chiave: x.codice, n: x.n, nota: "aggiungere il dispositivo in TBusiness_carica_veicoli" })),
     ...ric.map((x) => ({ tipo: "STATION non standard ricondotta a GLS - CASTEL MAGGIORE", chiave: x.codice, n: x.n, nota: `in TELEPASS FINALE STATION = '${x.station}' (regola confermata il 3/11/2026)` })),
+    ...(areaC.n ? [{ tipo: "Pagamento con targa (Area C) attribuito a DLO4", chiave: "", n: areaC.n, nota: `regola del 3/11/2026: STATION DLO4 a prescindere dal dispositivo (${areaC.daAltreStation} righe da altre station) e importo sempre -7,50 (${areaC.importiCorretti} importi corretti, ${Object.entries(areaC.perImporto).map(([k, v]) => `${k}: ${v}`).join(", ")})` }] : []),
     ...(fuoriMese ? [{ tipo: "Righe fuori dal mese prevalente", chiave: "", n: fuoriMese, nota: `mese prevalente ${MESI[mese]} ${anno}` }] : []),
   ];
   const mm = String(mese).padStart(2, "0");
   return {
     anno, mese, nomeFile: `${mm}_Telepass_${MESI[mese]}_${anno}.xlsx`, foglio: `${mm}_Telepass_${MESI[mese]}_${anno}`,
     intestazione, righe, iData, iOra, iImporto: iImp, iStation: iStato, settimane, stazioni, totali, perStation, totale: r2(totale),
-    nonMappati: nm, ricondotti: ric, fuoriMese, anomalie,
+    nonMappati: nm, ricondotti: ric, areaC: { ...areaC, delta: r2(areaC.delta) }, fuoriMese, anomalie,
   };
 }
 
