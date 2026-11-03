@@ -80,7 +80,7 @@ export function differenzeCDL(prima: RigaCDL[], dopo: RigaCDL[]) {
 
 /**
  * Join per CF: esatto, poi con O↔0 nell'ultimo carattere (trappola nota:
- * FSCPTR96D11A4940 vs FSCPTR96D11A494O). Restituisce la riga e se è stata corretta.
+ * un CF del tracking finisce con 0, in anagrafica con O). Restituisce la riga e se è stata corretta.
  */
 export function trovaCDL(cf: string, indice: Map<string, RigaCDL>): { riga: RigaCDL; corretto: boolean } | null {
   const k = normCf(cf);

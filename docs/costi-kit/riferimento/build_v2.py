@@ -72,7 +72,7 @@ lav['CF'] = lav.CF.str.strip().str.upper(); lav['Bucket'] = lav.Contratto.map(bu
 def hrs(v): return dsic[dsic.voce==v].groupby(['station','nome']).ore.sum()
 for v,lab in [('STD','Ore Standard'),('STR','Ore Straord'),('SUPP','Ore Suppl'),('ACC','Ore Accordo'),('FERIE','Ore Ferie'),('ROL','Ore ROL'),('EXF','Ore ExF'),('MAL','Ore Malattia')]:
     lav[lab] = [hrs(v).get((s,n),0.0) for s,n in zip(lav.station,lav.nome)]
-cdl_fix = {'FSCPTR96D11A4940':'FSCPTR96D11A494O'}  # 0/O finale (trappola nota)
+cdl_fix = {'<CF con 0 finale>':'<CF con O finale>'}  # 0/O finale (trappola nota)
 lav['CF_join'] = lav.CF.map(lambda c: cdl_fix.get(c,c))
 cc = cdl.set_index('CF')
 cols = {'CDL':'CDL','h Settim.':'h Settim.','GG LAVORATIVI':'GG lavorativi','Tipologia PT':'Tipologia PT','CONTRATTO':'Contratto CDL','Saving FE':'Saving FE €/gg','Saving ROL':'Saving ROL €/h','Saving EXF':'Saving EXF €/h','Costo festività (Non goduta)':'Costo festività non goduta €/gg','Strao a forfait':'Strao a forfait'}

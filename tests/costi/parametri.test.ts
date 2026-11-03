@@ -4,6 +4,16 @@ import { prossimoCambio, trasfertaGiorno, type ValorePerData } from "@/domain/co
 import { differenzeCDL, leggiAnagraficaCDL, riepilogoCDL, trovaCDL } from "@/domain/costi/anagrafica";
 import { esempio, grids, hasKit } from "./kit";
 
+describe("join CF", () => {
+  it("esatto, poi O↔0 sull'ultimo carattere", () => {
+    const r = { cf: "AAABBB00A00A000O", cdl: 1 } as never;
+    const idx = new Map([["AAABBB00A00A000O", r]]);
+    expect(trovaCDL(" aaabbb00a00a000o ", idx)).toMatchObject({ corretto: false });
+    expect(trovaCDL("AAABBB00A00A0000", idx)).toMatchObject({ corretto: true });
+    expect(trovaCDL("AAABBB00A00A0001", idx)).toBeNull();
+  });
+});
+
 describe("festivi e patroni", () => {
   it("Pasqua e patroni 2026", () => {
     expect(pasqua(2026)).toBe("2026-04-05");
@@ -39,9 +49,10 @@ describe.skipIf(!hasKit)("anagrafica CDL 06/2026 (golden)", () => {
     expect(r.teste).toBe(403);
     expect(r.cdl).toBe(1256309.94);
     expect(Object.keys(r.perStation).sort()).toEqual(["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1"]);
-    // trappola O/0 nel CF (Fiasconaro)
+    // trappola O/0 nel CF: almeno un CF dell'anagrafica finisce con O
     const idx = new Map(a.righe.map((x) => [x.cf, x]));
-    expect(trovaCDL("FSCPTR96D11A4940", idx)).toMatchObject({ corretto: true, riga: { cf: "FSCPTR96D11A494O" } });
+    const conO = a.righe.find((x) => x.cf.endsWith("O"))!;
+    expect(trovaCDL(conO.cf.slice(0, -1) + "0", idx)).toMatchObject({ corretto: true, riga: { cf: conO.cf } });
     expect(differenzeCDL(a.righe, a.righe)).toEqual({ entrati: [], usciti: [], cambiati: [] });
   });
 });
