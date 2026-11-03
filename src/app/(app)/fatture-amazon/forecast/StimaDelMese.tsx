@@ -15,7 +15,7 @@ export function StimaDelMese({ stima }: { stima: RigaStimaMese[] }) {
       <h2 className="mb-1 text-[19px] font-semibold">Stima del fatturato del mese</h2>
       <p className="mb-3 text-sm text-ink-muted">
         <b>Fatturato</b> = righe delle fatture già sul sito (tutte le voci). <b>Previsto</b> = forecast in uso per le settimane che quella DS non ha ancora in fattura (rotte + extra previsti, niente incentivi una tantum).
-        Le settimane a cavallo di due mesi si dividono per giorni. <b>Giorni senza dati</b> = né fatture né forecast: lì la stima è incompleta.
+        Le settimane a cavallo di due mesi si dividono per giorni. <b>Giorni senza dati</b> = né fatture né forecast next (con solo il same day il previsto è parziale): lì la stima è incompleta.
       </p>
       {nessunFatturato && <p className="mb-3 rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">Sul sito non ci sono ancora righe di fatturato: carica lo storico in <Link className="underline" href="/fatture-amazon/allinea">Allinea e storico → Carica storico righe</Link> (file AGGREGATO), altrimenti la stima è solo il previsto.</p>}
       <div className="flex flex-col gap-5">

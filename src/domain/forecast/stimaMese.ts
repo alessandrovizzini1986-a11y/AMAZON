@@ -17,7 +17,7 @@ export type RigaStimaMese = {
   totale: number;
   /** quota del totale già fatturata, 0–1 */
   quotaCerta: number;
-  /** giorni del mese senza fatture né forecast */
+  /** giorni del mese senza fatture né forecast next (con solo same day il previsto è parziale) */
   giorniSenza: number;
   /** stesso mese dell'anno prima, se le sue fatture sono sul sito */
   annoPrima: number | null;
@@ -43,7 +43,8 @@ export function stimaMese(x: { righe: RigaCalibrazione[]; previsioni: Previsione
   const coperti = new Set<string>();
   for (const p of x.previsioni) {
     if (fatt.has(`${p.ds}|${p.settimana}`)) continue;
-    for (const [g, v] of Object.entries(p.perGiorno)) { prevGiorno.set(`${p.ds}|${g}`, (prevGiorno.get(`${p.ds}|${g}`) ?? 0) + v); coperti.add(`${p.ds}|${g}`); }
+    for (const [g, v] of Object.entries(p.perGiorno)) prevGiorno.set(`${p.ds}|${g}`, (prevGiorno.get(`${p.ds}|${g}`) ?? 0) + v);
+    // coperto = c'è il forecast next: una settimana con solo same day resta "senza dati" (previsto parziale)
     if (!p.soloSD) for (let i = 0; i < 7; i++) { const d = new Date(Date.parse(p.settimana) + i * 864e5).toISOString().slice(0, 10); coperti.add(`${p.ds}|${d}`); }
   }
   const out: RigaStimaMese[] = [];

@@ -25,6 +25,11 @@ describe("stima del mese", () => {
     expect(r.quotaCerta).toBeCloseTo(250 / 320, 6);
     expect(settimaneFatturate(righe).has("DER1|2026-10-04")).toBe(false);
   });
+  it("una settimana con solo forecast same day conta come senza dati (previsto parziale)", () => {
+    const sd = prev("DLO2", "2026-11-22", { "2026-11-22": 5, "2026-11-23": 5 }, true);
+    const [r] = stimaMese({ righe: [], previsioni: [sd], mesi: ["2026-11"] });
+    expect([r.previsto, r.giorniSenza]).toEqual([10, 30]);
+  });
   it("mesi: dal mese scorso all'ultimo coperto dal forecast", () => {
     expect(mesiStima("2026-11-03", "2027-01-17")).toEqual(["2026-10", "2026-11", "2026-12", "2027-01"]);
     expect(mesiStima("2026-01-10", null)).toEqual(["2025-12", "2026-01"]);
