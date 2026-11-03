@@ -19,6 +19,7 @@ import {
   type MultiField,
 } from "@/domain/officine";
 import { MultiSelect } from "./MultiSelect";
+import { Aiuto } from "@/components/Aiuto";
 
 const PAGE = 200;
 
@@ -176,7 +177,7 @@ export function OfficineExplorer({ centri }: { centri: Centro[] }) {
           </div>
           <button type="button" onClick={reset} className="btn-secondary h-11">Reset</button>
           <a href={`${exportHref}${query ? "&" : "?"}tutto=1`} className="btn-secondary h-11">Scarica tutto</a>
-          <a href={exportHref} className="btn-primary h-11 px-[18px] text-[15px]">Scarica Excel</a>
+          <a href={exportHref} className="btn-primary h-11 px-[18px] text-[15px]">Scarica Excel</a> <Aiuto k="officine.excel" />
         </div>
       </section>
 

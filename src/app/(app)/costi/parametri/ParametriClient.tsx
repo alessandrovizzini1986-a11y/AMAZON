@@ -6,6 +6,7 @@ import { Dropzone } from "@/components/Dropzone";
 import { workbookToGrids } from "@/lib/presenze/excelGrid";
 import { isAnagraficaCDL, leggiAnagraficaCDL, riepilogoCDL, type RigaCDL, type RiepilogoCDL } from "@/domain/costi/anagrafica";
 import { aggiungiFestivo, aggiungiParametro, aggiungiTariffa, anteprimaAnagrafica, eliminaFestivo, importaAnagrafica } from "../actions";
+import { Aiuto } from "@/components/Aiuto";
 
 const eur = (v: number) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const numIt = (s: string) => Number(s.replace(/\./g, "").replace(",", "."));
@@ -32,7 +33,7 @@ export function NuovaTariffa() {
       <label className="flex flex-col">Valida dal<input className="input" type="date" required value={f.validaDal} onChange={(e) => setF({ ...f, validaDal: e.target.value })} /></label>
       <label className="flex flex-col">€/giorno<input className="input w-24" required inputMode="decimal" value={f.valore} onChange={(e) => setF({ ...f, valore: e.target.value })} /></label>
       <label className="flex flex-col">Fonte<input className="input" value={f.fonte} onChange={(e) => setF({ ...f, fonte: e.target.value })} placeholder="accordo, circolare…" /></label>
-      <button className="btn-primary" disabled={a.pending}>Aggiungi tariffa</button>
+      <button className="btn-primary" disabled={a.pending}>Aggiungi tariffa</button> <Aiuto k="costi.tariffa" />
       <Err e={a.errore} />
     </form>
   );
@@ -47,7 +48,7 @@ export function NuovoParametro({ chiavi }: { chiavi: string[] }) {
       <label className="flex flex-col">Valido dal<input className="input" type="date" required value={f.validaDal} onChange={(e) => setF({ ...f, validaDal: e.target.value })} /></label>
       <label className="flex flex-col">Valore<input className="input w-28" required inputMode="decimal" value={f.valore} onChange={(e) => setF({ ...f, valore: e.target.value })} placeholder="percentuali: 0,025" /></label>
       <label className="flex flex-col">Nota<input className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></label>
-      <button className="btn-primary" disabled={a.pending}>Aggiungi valore</button>
+      <button className="btn-primary" disabled={a.pending}>Aggiungi valore</button> <Aiuto k="costi.parametro" />
       <Err e={a.errore} />
     </form>
   );
@@ -61,7 +62,7 @@ export function NuovoFestivo({ stations }: { stations: string[] }) {
       <label className="flex flex-col">Data<input className="input" type="date" required value={f.data} onChange={(e) => setF({ ...f, data: e.target.value })} /></label>
       <label className="flex flex-col">Descrizione<input className="input" required value={f.descrizione} onChange={(e) => setF({ ...f, descrizione: e.target.value })} /></label>
       <label className="flex flex-col">Station<select className="input" value={f.station} onChange={(e) => setF({ ...f, station: e.target.value })}><option>TUTTE</option>{stations.map((s) => <option key={s}>{s}</option>)}</select></label>
-      <button className="btn-primary" disabled={a.pending}>Aggiungi festivo</button>
+      <button className="btn-primary" disabled={a.pending}>Aggiungi festivo</button> <Aiuto k="costi.festivo" />
       <Err e={a.errore} />
     </form>
   );
@@ -111,7 +112,7 @@ export function AnagraficaCDLClient() {
   const prima = dati?.ante.riepilogoPrima;
   return (
     <div className="flex flex-col gap-3">
-      <Dropzone titolo="Trascina qui l'anagrafica CDL" accept=".xlsx" lavoro={lavoro} onFiles={leggi}
+      <Dropzone titolo="Trascina qui l'anagrafica CDL" aiuto="costi.anagrafica" accept=".xlsx" lavoro={lavoro} onFiles={leggi}
         testo={<><code>DB_CDL_base_MMAA_AmazonGLS_BO.xlsx</code>: si legge qui nel browser, al sito vanno solo le colonne del costo (CF, nome, station, contratto, CDL, saving).</>} />
       {errore && <p className="rounded-control bg-danger-soft px-4 py-3 text-sm text-danger">{errore}</p>}
       {fatto && <p className="rounded-control bg-ok-soft px-4 py-3 text-sm text-ok">{fatto}</p>}
@@ -143,7 +144,7 @@ export function AnagraficaCDLClient() {
             </div>
           ) : <p className="mt-3 text-sm text-ink-muted">Prima versione: nessun confronto.</p>}
           <div className="mt-4 flex gap-2">
-            <button type="button" className="btn-primary" disabled={lavoro || !/^\d{4}-\d{2}$/.test(dati.mese)} onClick={conferma}>Conferma e salva la versione</button>
+            <button type="button" className="btn-primary" disabled={lavoro || !/^\d{4}-\d{2}$/.test(dati.mese)} onClick={conferma}>Conferma e salva la versione</button> <Aiuto k="costi.anagrafica.conferma" />
             <button type="button" className="btn-secondary" onClick={() => setDati(null)}>Annulla</button>
           </div>
         </div>

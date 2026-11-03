@@ -20,6 +20,7 @@ import { valoreAlla } from "@/domain/costi/tariffe";
 import { excelStima } from "@/lib/costi/excelStima";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaStima } from "../actions";
+import { Aiuto, Motivo } from "@/components/Aiuto";
 
 type Props = {
   mese: string; fineMese: string; canRun: boolean; tariffe: ValorePerData[]; parametri: ValorePerData[]; versioneParametri: string | null;
@@ -243,10 +244,11 @@ export function FineMeseClient(p: Props) {
           <Semaforo ok={!!p.anagrafica && p.anagrafica.eta <= 3} warn={!!p.anagrafica}>Anagrafica CDL: {p.anagrafica ? <>versione {it(p.anagrafica.mese)} ({p.anagrafica.eta} mesi){p.anagrafica.eta > 3 && " — più di 3 mesi, chiedi a HR quella nuova"}</> : "nessuna (serve per la stima SIC)"}</Semaforo>
           <Semaforo ok={!!p.tariffeStd}>Tariffe STD dall&apos;ADIT: {p.meseTariffe ? <>ADIT {it(p.meseTariffe)} (Standard {eur(p.tariffeStd!.STANDARD)} · MAGG50 {eur(p.tariffeStd!.MAGG50)} · STR30 {eur(p.tariffeStd!.STR30)} · SUPP18 {eur(p.tariffeStd!.SUPP18)} · STR65 {eur(p.tariffeStd!.STR65)} €/h)</> : <>nessun ADIT fino al mese precedente: caricalo in <a className="underline" href="/costi/consuntivo">Consuntivo</a></>}</Semaforo>
         </ul>
-        <div className="mt-4"><Dropzone titolo="Aggiungi tracking all'archivio di questo PC" accept=".xlsx,.xlsm" multiple lavoro={lavoro} onFiles={aggiungi}
+        <div className="mt-4"><Dropzone titolo="Aggiungi tracking all'archivio di questo PC" aiuto="costi.tracking" accept=".xlsx,.xlsm" multiple lavoro={lavoro} onFiles={aggiungi}
           testo={<>Gli stessi file del modulo Presenze: se li hai già caricati lì non serve. Restano solo in questo browser.</>} /></div>
         {avvisi.length > 0 && <ul className="mt-3 text-sm text-ink-muted">{avvisi.map((a) => <li key={a}>• {a}</li>)}</ul>}
-        {p.canRun && <button type="button" className="btn-primary mt-4" disabled={lavoro || !p.tariffeStd || stdPresenti.size === 0} onClick={calcola}>Calcola costi</button>}
+        {p.canRun && <><button type="button" className="btn-primary mt-4" disabled={lavoro || !p.tariffeStd || stdPresenti.size === 0} onClick={calcola}>Calcola costi</button> <Aiuto k="costi.calcola" /></>}
+        {p.canRun && <Motivo testo={!p.tariffeStd ? "Calcola costi è spento: carica prima l'ADIT del mese precedente in Consuntivo." : stdPresenti.size === 0 ? "Calcola costi è spento: aggiungi qui sopra i tracking STD del mese." : null} href={!p.tariffeStd ? "/costi/consuntivo" : undefined} />}
         {stato && <p className="mt-2 text-sm text-ink-muted">{stato}</p>}
         {errore && <p className="mt-3 rounded-control bg-danger-soft px-4 py-3 text-sm text-danger">{errore}</p>}
       </section>
@@ -256,7 +258,7 @@ export function FineMeseClient(p: Props) {
           <section className="card p-4 md:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-[19px] font-semibold">STD competenza {it(p.mese)} — {eur(totaleStime(ris.stime))} €</h2>
-              {p.canRun && <button type="button" className="btn-primary" disabled={lavoro} onClick={salva}>Salva stima STD</button>}
+              {p.canRun && <><button type="button" className="btn-primary" disabled={lavoro} onClick={salva}>Salva stima STD</button> <Aiuto k="costi.salva.std" /></>}
             </div>
             {salvata && <p className="mb-3 rounded-control bg-ok-soft px-4 py-3 text-sm text-ok">{salvata}</p>}
             <div className="overflow-x-auto"><table className="table-base text-sm">
@@ -293,7 +295,7 @@ export function FineMeseClient(p: Props) {
             <section className="card p-4 md:p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-[19px] font-semibold">SIC busta 27 del mese dopo (tracking {it(p.mese)}) — {eur(ris.sic.perStation.reduce((a, b) => a + b.totaleEsatto, 0))} €</h2>
-                {p.canRun && <button type="button" className="btn-primary" disabled={lavoro} onClick={salvaSic}>Salva stima SIC</button>}
+                {p.canRun && <><button type="button" className="btn-primary" disabled={lavoro} onClick={salvaSic}>Salva stima SIC</button> <Aiuto k="costi.salva.sic" /></>}
               </div>
               {salvataSic && <p className="mb-3 rounded-control bg-ok-soft px-4 py-3 text-sm text-ok">{salvataSic}</p>}
               <div className="overflow-x-auto"><table className="table-base text-sm">
@@ -317,8 +319,8 @@ export function FineMeseClient(p: Props) {
           ) : <p className="text-sm text-warn">{p.righeCdl.length ? "Nessun tracking SIC del mese nell'archivio: la stima SIC non è stata calcolata." : "Nessuna anagrafica CDL: la stima SIC non è stata calcolata."}</p>}
           <section className="card flex flex-col gap-3 p-4 md:p-5">
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary" onClick={excel}>Excel</button>
-              <button type="button" className="btn-secondary" onClick={testo}>Testo per Teams</button>
+              <button type="button" className="btn-secondary" onClick={excel}>Excel</button> <Aiuto k="costi.excel" />
+              <button type="button" className="btn-secondary" onClick={testo}>Testo per Teams</button> <Aiuto k="costi.teams" />
             </div>
             {teams && <><p className="text-sm text-ok">Copiato negli appunti: incollalo nella chat Teams (se non è stato copiato, selezionalo qui sotto).</p><textarea className="input h-56 w-full font-mono text-xs" readOnly value={teams} /></>}
           </section>

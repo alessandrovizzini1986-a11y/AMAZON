@@ -8,6 +8,7 @@ import { DS_CARTA, STATION_TELEPASS } from "@/domain/telepass/comune";
 import { leggiFile, PAGINA } from "@/lib/telepass/riconosci";
 import { aggiornaCarta, aggiornaDispositivo, importaCarte, importaDispositivi, type RisultatoImport } from "../actions";
 import { Dropzone } from "@/components/Dropzone";
+import { Aiuto } from "@/components/Aiuto";
 
 type DispRiga = Dispositivo & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
 type CartaRiga = Carta & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
@@ -71,7 +72,7 @@ export function AnagraficheClient({ canEdit, dispositivi, carte, imports }: { ca
     <div className="flex flex-col gap-6">
       {canEdit && (
         <Dropzone
-          titolo="Trascina qui i file delle anagrafiche"
+          titolo="Trascina qui i file delle anagrafiche" aiuto="telepass.anagrafiche"
           testo={<><code>TBusiness_carica_veicoli.xlsx</code> (foglio TELEPASS FINALE) e/o il censimento <code>AAMM_Censimento_fuel_card.xlsx</code> (foglio Carte Q8 Flotte). Il tipo si riconosce dal contenuto.</>}
           accept=".xlsx,.xlsm" multiple lavoro={lavoro} onFiles={carica}
         />
@@ -93,7 +94,7 @@ export function AnagraficheClient({ canEdit, dispositivi, carte, imports }: { ca
             </details>
           )}
           <div className="mt-4 flex gap-2">
-            <button type="button" className="btn-primary" disabled={lavoro} onClick={() => conferma(a)}>Conferma import</button>
+            <button type="button" className="btn-primary" disabled={lavoro} onClick={() => conferma(a)}>Conferma import</button> <Aiuto k="telepass.anagrafiche.conferma" />
             <button type="button" className="btn-secondary" disabled={lavoro} onClick={() => setAnteprime((x) => x.filter((y) => y !== a))}>Annulla</button>
           </div>
         </section>

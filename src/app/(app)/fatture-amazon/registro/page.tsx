@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
 import { utenteCon } from "../dati";
 import { annullaEsportazione } from "./actions";
+import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registro fatture Amazon — FleetDSP" };
@@ -49,7 +50,7 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
         <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Stato
           <select name="stato" defaultValue={stato} className="input h-10 w-56">{Object.entries(STATI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </label>
-        <button className="btn-primary h-10">Filtra</button>
+        <button className="btn-primary h-10">Filtra</button> <Aiuto k="fatture.annulla" />
       </form>
       <section className="card overflow-x-auto p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">{n.toLocaleString("it-IT")} fatture{n > 500 ? " (prime 500)" : ""}</h2>

@@ -13,6 +13,7 @@ import type { RunRiga } from "../dati";
 import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
 import { Storico } from "../Storico";
+import { Aiuto } from "@/components/Aiuto";
 
 const eur = (x: number) => x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -61,7 +62,7 @@ export function TelepassClient({ mappa, runs, canRun }: { mappa: Record<string, 
         <p className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">La mappa dei dispositivi è vuota: prima importa <code>TBusiness_carica_veicoli.xlsx</code> nella pagina <Link className="font-semibold underline" href="/carburante-telepass/anagrafiche">Anagrafiche</Link>, altrimenti ogni transazione risulta NON MAPPATO.</p>
       )}
       {canRun && (
-        <Dropzone titolo="Trascina qui il CSV Telepass" accept=".csv" lavoro={lavoro} onFiles={carica}
+        <Dropzone titolo="Trascina qui il CSV Telepass" aiuto="telepass.elabora" accept=".csv" lavoro={lavoro} onFiles={carica}
           testo={<>Telepass Business → Transazioni → Esporta CSV (<code>_lista_transazioni_….csv</code>). Mese e anno si leggono dalla colonna Data; mappa attuale: {nMappa} dispositivi.</>} />
       )}
       {errore && <p className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">{errore}</p>}
@@ -90,7 +91,7 @@ export function TelepassClient({ mappa, runs, canRun }: { mappa: Record<string, 
           <section className="card p-4 md:p-5">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <h2 className="mr-auto text-[19px] font-semibold">Somma di Importo per station e settimana</h2>
-              <button type="button" className="btn-primary h-10" disabled={lavoro} onClick={genera}>Genera Excel</button>
+              <button type="button" className="btn-primary h-10" disabled={lavoro} onClick={genera}>Genera Excel</button> <Aiuto k="telepass.excel" />
               {canRun && <button type="button" className="btn-secondary h-10" disabled={salvata} onClick={salva}>{salvata ? "Salvata ✓" : "Salva elaborazione"}</button>}
             </div>
             {giaFatto && !salvata && <p className="mb-2 text-sm text-warn">{MESI[e.mese]} {e.anno} è già stato elaborato il {new Date(giaFatto.eseguitoIl).toLocaleDateString("it-IT")} da {giaFatto.eseguitoDa}: salvando ne registri una nuova versione.</p>}
