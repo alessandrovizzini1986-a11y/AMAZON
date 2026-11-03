@@ -60,6 +60,7 @@ Le carte con **DS vuoto o "Da verificare"** sono evidenziate in giallo: vanno at
 - La STATION è un **valore** preso dalle anagrafiche del momento: l'Excel del mese resta storico anche se dopo la mappa cambia. Rielaborare un mese vecchio con le anagrafiche di oggi può dare station diverse: è normale.
 - Le anomalie **non si correggono nell'Excel**: si aggiornano le anagrafiche e si rielabora.
 - Le settimane sono quelle di WEEKNUM di Excel (la settimana inizia di domenica).
+- **Area C (pagamento con targa) → DLO4**: tutte le transazioni Telepass con Pagamento = "Targa" (gli accessi Area C Milano) vanno a **DLO4**, qualunque sia il codice dispositivo, e l'importo è sempre **−7,50** (i −4,50 diventano −7,50). Lo fa il sito da solo e lo riporta nelle Anomalie con il numero di righe e di importi corretti.
 
 **Escalation**
 
