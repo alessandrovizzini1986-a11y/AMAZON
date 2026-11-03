@@ -10,6 +10,7 @@ import { bucket } from "@/domain/costi/sic";
 import type { RigaCDL } from "@/domain/costi/anagrafica";
 import { aggiornaParametri, concludiImportAdit, concludiImportPayroll, importaAdit, importaPayroll, salvaRiconciliazione } from "../actions";
 import { Aiuto } from "@/components/Aiuto";
+import { useAvvisoUscita } from "@/components/Percorso";
 
 const eur = (v: number) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const it = (m: string) => m.split("-").reverse().join("/");
@@ -26,6 +27,7 @@ export function ConsuntivoClient({ righeCdl }: { righeCdl: Pick<RigaCDL, "cognom
   const [errore, setErrore] = useState<string | null>(null);
   const [letto, setLetto] = useState<Letto | null>(null);
   const [fatto, setFatto] = useState<string | null>(null);
+  useAvvisoUscita(!!letto);
 
   const leggi = async (files: File[]) => {
     const f = files[0];

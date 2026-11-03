@@ -16,6 +16,7 @@ import { salvaEsecuzione } from "../actions";
 import { CopiaMessaggio } from "../CopiaMessaggio";
 import type { RunSalvata } from "../settimanale/SettimanaleClient";
 import { Aiuto } from "@/components/Aiuto";
+import { useAvvisoUscita } from "@/components/Percorso";
 
 const oggiIso = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const mesePrecedente = () => {
@@ -35,6 +36,7 @@ export function FineMeseClient({ referenti, runs, canRun }: { referenti: Record<
   const [vista, setVista] = useState<"" | "consec" | "6dom">("");
   const [stMatrice, setStMatrice] = useState<Station | "">("");
   const [salvata, setSalvata] = useState<string | null>(null);
+  useAvvisoUscita(!!esito && !salvata);
 
   const esegui = async () => {
     setLavoro(true); setErrori([]); setEsito(null); setSalvata(null);

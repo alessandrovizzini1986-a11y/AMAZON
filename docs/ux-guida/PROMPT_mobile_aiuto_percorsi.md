@@ -101,3 +101,10 @@ Tre etichette fisse, sempre uguali: **"Salvato sul sito"** (verde), **"Solo su q
   - schermate telefono e desktop delle pagine toccate;
   - nessun cambio di comportamento dei calcoli (i test golden restano verdi).
 - A fine step: tabella con i controlli passati, gli URL da provare e cosa manca.
+
+## 8. Stato (03/11/2026)
+| Step | PR | Esito |
+|---|---|---|
+| 1. Telefono e tablet | #33 | menu completo, Altro/Gestione, 44 px al tocco, tabelle con prima colonna fissa; audit 62/62 |
+| 2. Aiuto e "dove finisce" | #34 | 48 testi in `src/content/aiuto.ts`, componente `Aiuto`/`DoveFinisce`/`Motivo`, test di copertura |
+| 3–4. Percorsi, avviso di uscita, tutorial | questa | `src/domain/percorsi`, `Percorso` in Presenze/Telepass/Fatture/Costi, `useAvvisoUscita` su 6 schermate con risultati temporanei, vademecum 16, riquadro "Prima volta qui?" |

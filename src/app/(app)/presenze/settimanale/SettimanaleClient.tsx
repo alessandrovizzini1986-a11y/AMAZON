@@ -14,6 +14,7 @@ import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaEsecuzione } from "../actions";
 import { CopiaMessaggio } from "../CopiaMessaggio";
 import { Aiuto } from "@/components/Aiuto";
+import { useAvvisoUscita } from "@/components/Percorso";
 
 export type RunSalvata = { id: string; station: string | null; da: string; a: string; nAlert: number; eseguitoDa: string; eseguitoIl: string; aperti: number };
 
@@ -54,6 +55,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
   const [filtroEsito, setFiltroEsito] = useState("ALERT");
   const [vistaDom, setVistaDom] = useState<"" | "consec" | "6dom">("");
   const [salvata, setSalvata] = useState<string | null>(null);
+  useAvvisoUscita(esiti.length > 0 && !salvata);
 
   const esegui = async () => {
     if (p.da > p.a) { setErrori(["La data di inizio è dopo quella di fine."]); return; }

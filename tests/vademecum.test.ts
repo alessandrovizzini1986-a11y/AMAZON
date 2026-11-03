@@ -7,7 +7,7 @@ const docs = getAllDocs();
 
 describe("contenuti del vademecum", () => {
   it("carica index + 15 pagine", () => {
-    expect(docs.length).toBe(17);
+    expect(docs.length).toBe(18);
     expect(docs.some((d) => d.slug === "index")).toBe(true);
   });
 

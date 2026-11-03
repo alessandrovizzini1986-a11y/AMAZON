@@ -21,6 +21,7 @@ import { excelStima } from "@/lib/costi/excelStima";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaStima } from "../actions";
 import { Aiuto, Motivo } from "@/components/Aiuto";
+import { useAvvisoUscita } from "@/components/Percorso";
 
 type Props = {
   mese: string; fineMese: string; canRun: boolean; tariffe: ValorePerData[]; parametri: ValorePerData[]; versioneParametri: string | null;
@@ -56,6 +57,7 @@ export function FineMeseClient(p: Props) {
   const [salvataSic, setSalvataSic] = useState<string | null>(null);
   const [teams, setTeams] = useState<string | null>(null);
   const [salvata, setSalvata] = useState<string | null>(null);
+  useAvvisoUscita(!!ris && (!salvata || (!!ris.sic && !salvataSic)));
 
   const aggiorna = async () => {
     const f = await elencoFile().catch(() => []);
