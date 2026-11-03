@@ -15,6 +15,7 @@ import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaEsecuzione } from "../actions";
 import { CopiaMessaggio } from "../CopiaMessaggio";
 import type { RunSalvata } from "../settimanale/SettimanaleClient";
+import { Aiuto } from "@/components/Aiuto";
 
 const oggiIso = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const mesePrecedente = () => {
@@ -92,7 +93,7 @@ export function FineMeseClient({ referenti, runs, canRun }: { referenti: Record<
           <input type="month" className="input h-11 w-48" value={mese} onChange={(e) => setMese(e.target.value)} />
         </label>
         <div className="text-xs text-ink-muted">Servono: tracking SIC (e STD per i consecutivi) e file Zucchetti del mese, per ogni station.</div>
-        <button type="button" className="btn-primary ml-auto h-11" onClick={esegui} disabled={lavoro || !mese}>{lavoro ? "Controllo in corso…" : "Esegui controllo"}</button>
+        <button type="button" className="btn-primary ml-auto h-11" onClick={esegui} disabled={lavoro || !mese}>{lavoro ? "Controllo in corso…" : "Esegui controllo"}</button> <Aiuto k="presenze.finemese.esegui" />
         {stato && <p className="w-full text-sm text-ink-muted">{stato}</p>}
       </section>
 
@@ -144,8 +145,8 @@ export function FineMeseClient({ referenti, runs, canRun }: { referenti: Record<
           <section className="card overflow-x-auto p-4 md:p-5">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <h2 className="mr-auto text-[19px] font-semibold">Riepilogo {nomeMese(esito.anno, esito.mese)}</h2>
-              <button type="button" className="btn-secondary h-10" onClick={excel}>Scarica Excel</button>
-              {canRun && <button type="button" className="btn-primary h-10" onClick={salva} disabled={!!salvata}>{salvata ? "Salvata ✓" : "Salva esecuzione"}</button>}
+              <button type="button" className="btn-secondary h-10" onClick={excel}>Scarica Excel</button> <Aiuto k="presenze.finemese.excel" />
+              {canRun && <><button type="button" className="btn-primary h-10" onClick={salva} disabled={!!salvata}>{salvata ? "Salvata ✓" : "Salva esecuzione"}</button> <Aiuto k="presenze.salva" /></>}
               {salvata && <Link className="text-sm font-semibold text-brand hover:underline" href={`/presenze/esecuzioni/${salvata}`}>Apri per segnare gli esiti →</Link>}
             </div>
             <table className="table-base text-sm">

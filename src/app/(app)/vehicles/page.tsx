@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui";
 import { STATUS_LABELS, FUEL_LABELS } from "./VehicleForm";
 import { VehicleTable, type VehicleRow } from "./VehicleTable";
 import type { VehicleStatus } from "@prisma/client";
+import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +82,7 @@ export default async function VehiclesPage({
           <option value="">Non dismessi</option>
           {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <button className="btn-secondary ml-2 h-10">Applica</button>
+        <button className="btn-secondary ml-2 h-10">Applica</button> <Aiuto k="flotta.filtri" />
       </form>
     </div>
   );
@@ -91,7 +92,7 @@ export default async function VehiclesPage({
       <PageHeader
         eyebrow="Flotta"
         title={scope.stationId ? "Le targhe della tua stazione" : "Dove si trova ogni targa"}
-        action={can(user, "vehicle.manage") ? <Link href="/vehicles/new" className="btn-primary">+ Nuovo veicolo</Link> : undefined}
+        action={can(user, "vehicle.manage") ? <span className="inline-flex items-center gap-1"><Link href="/vehicles/new" className="btn-primary">+ Nuovo veicolo</Link><Aiuto k="flotta.nuovo" /></span> : undefined}
       />
 
       {params.error && (

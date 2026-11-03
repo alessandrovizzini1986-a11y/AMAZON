@@ -6,6 +6,7 @@ import { STATIONS } from "@/domain/presenze/regole";
 import { riconosci, type FileLocale } from "@/lib/presenze/riconosci";
 import { eliminaFile, elencoFile, salvaFile } from "@/lib/presenze/archivioLocale";
 import { registraFile, type FileMeta } from "../actions";
+import { Aiuto, DoveFinisce } from "@/components/Aiuto";
 
 export type Registrato = { tipo: string; station: string; giorno: number; nomeFile: string; caricatoDa: string; caricatoIl: string };
 type Meta = Omit<FileLocale, "buffer" | "flexRows">;
@@ -103,11 +104,12 @@ export function ArchivioClient({ mese, registrati, canRun }: { mese: string; reg
           className={`card flex flex-col items-center gap-3 border-2 border-dashed p-8 text-center transition-colors ${drag ? "border-brand bg-brand-light" : "border-[#c4ccd6]"}`}
         >
           <p className="text-lg font-semibold">Trascina qui i file</p>
+        <DoveFinisce tipo="PC" />
           <p className="max-w-xl text-sm text-ink-muted">.csv Amazon (singoli o uniti), tracking .xlsx/.xlsm SIC e STD, export Zucchetti <code>Amazon_AAAA_MM_Città_*.xlsm</code>. Puoi trascinarne quanti vuoi insieme.</p>
           <input ref={input} type="file" multiple accept=".csv,.xlsx,.xlsm" className="hidden" onChange={(e) => carica([...(e.target.files ?? [])])} />
           <button type="button" className="btn-primary" disabled={lavoro} onClick={() => input.current?.click()}>
             {lavoro ? "Lettura in corso…" : "Oppure scegli i file"}
-          </button>
+          </button> <Aiuto k="presenze.archivio" />
         </section>
       )}
 

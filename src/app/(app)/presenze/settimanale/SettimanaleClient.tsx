@@ -13,6 +13,7 @@ import { excelSettimanale } from "@/lib/presenze/excelSettimanale";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaEsecuzione } from "../actions";
 import { CopiaMessaggio } from "../CopiaMessaggio";
+import { Aiuto } from "@/components/Aiuto";
 
 export type RunSalvata = { id: string; station: string | null; da: string; a: string; nAlert: number; eseguitoDa: string; eseguitoIl: string; aperti: number };
 
@@ -129,7 +130,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
           </select>
         </label>
         <div className="text-xs text-ink-muted">Soglie: rotta Amazon &gt; 10 pacchi · trasferta se &gt; 4 h</div>
-        <button type="button" className="btn-primary ml-auto h-11" onClick={esegui} disabled={lavoro}>{lavoro ? "Controllo in corso…" : "Esegui controllo"}</button>
+        <button type="button" className="btn-primary ml-auto h-11" onClick={esegui} disabled={lavoro}>{lavoro ? "Controllo in corso…" : "Esegui controllo"}</button> <Aiuto k="presenze.settimanale.esegui" />
         {stato && <p className="w-full text-sm text-ink-muted">{stato}</p>}
       </section>
 
@@ -168,8 +169,8 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
           <section className="card overflow-x-auto p-4 md:p-5">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <h2 className="mr-auto text-[19px] font-semibold">Riepilogo per station</h2>
-              <button type="button" className="btn-secondary h-10" onClick={excel}>Excel per le Ops</button>
-              {canRun && <button type="button" className="btn-primary h-10" onClick={salva} disabled={!!salvata}>{salvata ? "Salvata ✓" : "Salva esecuzione"}</button>}
+              <button type="button" className="btn-secondary h-10" onClick={excel}>Excel per le Ops</button> <Aiuto k="presenze.settimanale.excel" />
+              {canRun && <><button type="button" className="btn-primary h-10" onClick={salva} disabled={!!salvata}>{salvata ? "Salvata ✓" : "Salva esecuzione"}</button> <Aiuto k="presenze.salva" /></>}
               {salvata && <Link className="text-sm font-semibold text-brand hover:underline" href={`/presenze/esecuzioni/${salvata}`}>Apri per segnare gli esiti →</Link>}
             </div>
             <table className="table-base text-sm">

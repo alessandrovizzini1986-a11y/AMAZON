@@ -8,6 +8,7 @@ import { normalizzaNumero } from "@/domain/fatture/numero";
 import { isoData, righeStorico } from "@/domain/fatture/storico";
 import { leggiAggregato } from "@/lib/fatture/leggiAggregato";
 import { allineaNumeri, caricaStorico, concludiAllineamento, concludiStorico } from "./actions";
+import { Aiuto } from "@/components/Aiuto";
 
 type Report = { titolo: string; righe: [string, string | number][]; elenco?: { titolo: string; voci: string[] } };
 
@@ -112,7 +113,7 @@ export function AllineaClient({ canStorico }: { canStorico: boolean }) {
           : "Importa tutte le righe di fatt_2026 (e, se vuoi, fatt_2025) per il Fatturato e le tariffe del Forecast. Le fatture registrate da PDF non vengono toccate; reimportare lo stesso file non crea doppioni."}
       </p>
       {modo === "storico" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={con2025} onChange={(e) => setCon2025(e.target.checked)} /> anche il foglio fatt_2025</label>}
-      <Dropzone titolo="Trascina qui il file AGGREGATO" accept=".xlsx,.xlsm" lavoro={lavoro} onFiles={daFile}
+      <Dropzone titolo="Trascina qui il file AGGREGATO" aiuto={modo === "allinea" ? "fatture.allinea" : "fatture.storico"} accept=".xlsx,.xlsm" lavoro={lavoro} onFiles={daFile}
         testo={<><code>AGGREGATO DETTAGLI FATTURA_conto_economico.xlsx</code> (anche 37 MB): si legge qui nel browser, in background, e non viene inviato al sito.</>} />
       {stato && <p className="text-sm text-ink-muted">{stato}</p>}
       {errore && <p className="rounded-control bg-danger-soft px-4 py-3 text-sm text-danger">{errore}</p>}
@@ -128,7 +129,7 @@ export function AllineaClient({ canStorico }: { canStorico: boolean }) {
           <h2 className="mb-1 text-[19px] font-semibold">Ripiego: incolla la colonna Numero</h2>
           <p className="mb-3 text-sm text-ink-muted">Se il file è troppo pesante per questo PC: in Excel seleziona la colonna Numero di fatt_2026, copia e incolla qui (un numero per riga).</p>
           <textarea className="input h-32 w-full font-mono text-xs" value={incolla} onChange={(e) => setIncolla(e.target.value)} placeholder={"INV-IT3JDBF-0002543\nINV-IT3JDBF-0002544"} />
-          <button type="button" className="btn-primary mt-3" disabled={lavoro || !incolla.trim()} onClick={daTesto}>Allinea i numeri incollati</button>
+          <button type="button" className="btn-primary mt-3" disabled={lavoro || !incolla.trim()} onClick={daTesto}>Allinea i numeri incollati</button> <Aiuto k="fatture.allinea.incolla" />
         </section>
       )}
     </div>

@@ -6,6 +6,7 @@ import { PageHeader, SourceNote, EmptyState } from "@/components/ui";
 import { fmtNum } from "@/lib/format";
 import { PHASE_LABEL, isoWeek, orderPhase, orderRefDate, todayRome, weekRecap, type OrderPhase } from "@/domain/orders";
 import { uploadAyvensOrdersAction } from "./actions";
+import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +98,7 @@ export default async function OrdersPage({
         File ordini Ayvens (.xlsx)
         <input type="file" name="file" accept=".xlsx" required className="input h-11 w-64 py-2 text-sm font-normal" />
       </label>
-      <button className="btn-primary h-11 px-[18px] text-[15px]">Carica ordini</button>
+      <button className="btn-primary h-11 px-[18px] text-[15px]">Carica ordini</button> <Aiuto k="ordini.carica" />
     </form>
   ) : undefined;
 

@@ -9,6 +9,7 @@ import { componentiPerStation, isPayroll, leggiPayroll, nomeKey, stationPerDipen
 import { bucket } from "@/domain/costi/sic";
 import type { RigaCDL } from "@/domain/costi/anagrafica";
 import { aggiornaParametri, concludiImportAdit, concludiImportPayroll, importaAdit, importaPayroll, salvaRiconciliazione } from "../actions";
+import { Aiuto } from "@/components/Aiuto";
 
 const eur = (v: number) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const it = (m: string) => m.split("-").reverse().join("/");
@@ -72,7 +73,7 @@ export function ConsuntivoClient({ righeCdl }: { righeCdl: Pick<RigaCDL, "cognom
   return (
     <section className="card flex flex-col gap-3 p-4 md:p-5">
       <h2 className="text-[19px] font-semibold">Carica consuntivo</h2>
-      <Dropzone titolo="Trascina qui la fattura ADIT o i Costi del personale PS" accept=".xlsx" lavoro={lavoro} onFiles={leggi}
+      <Dropzone titolo="Trascina qui la fattura ADIT o i Costi del personale PS" aiuto="costi.consuntivo" accept=".xlsx" lavoro={lavoro} onFiles={leggi}
         testo={<><code>MMAA_Doc._emessi_ADIT_STD-SL_*.xlsx</code> (STD) o <code>Costi_del_Personale_PS_MMAA_*.xlsx</code> (SIC, dopo il 27): riconosciuti dal contenuto, letti nel browser. Al sito vanno solo le righe CDC 5569; il file non viene salvato.</>} />
       {stato && <p className="text-sm text-ink-muted">{stato}</p>}
       {errore && <p className="rounded-control bg-danger-soft px-4 py-3 text-sm text-danger">{errore}</p>}
@@ -81,7 +82,7 @@ export function ConsuntivoClient({ righeCdl }: { righeCdl: Pick<RigaCDL, "cognom
       {letto?.tipo === "PAYROLL" && <AnteprimaPayroll l={letto} onMese={(m) => setLetto({ ...letto, mesePaga: m })} />}
       {letto && (
         <div className="flex gap-2">
-          <button type="button" className="btn-primary" disabled={lavoro} onClick={salva}>{letto.tipo === "ADIT" ? `Salva ADIT ${it(letto.meseFattura)}` : `Salva Costi del personale ${letto.mesePaga ? it(letto.mesePaga) : ""}`}</button>
+          <button type="button" className="btn-primary" disabled={lavoro} onClick={salva}>{letto.tipo === "ADIT" ? `Salva ADIT ${it(letto.meseFattura)}` : `Salva Costi del personale ${letto.mesePaga ? it(letto.mesePaga) : ""}`}</button> <Aiuto k="costi.consuntivo.salva" />
           <button type="button" className="btn-secondary" onClick={() => setLetto(null)}>Annulla</button>
         </div>
       )}
@@ -139,7 +140,7 @@ export function SalvaRiconciliazione({ mese, popolazione, righe }: { mese: strin
   const [busy, setBusy] = useState(false);
   return (
     <span className="inline-flex items-center gap-2">
-      <button type="button" className="btn-secondary px-3 py-1 text-xs" disabled={busy} onClick={async () => { setBusy(true); try { await salvaRiconciliazione({ mese, popolazione, righe }); setOk("salvata"); router.refresh(); } finally { setBusy(false); } }}>Salva riconciliazione {popolazione}</button>
+      <button type="button" className="btn-secondary px-3 py-1 text-xs" disabled={busy} onClick={async () => { setBusy(true); try { await salvaRiconciliazione({ mese, popolazione, righe }); setOk("salvata"); router.refresh(); } finally { setBusy(false); } }}>Salva riconciliazione {popolazione}</button> <Aiuto k="costi.riconciliazione" />
       {ok && <span className="text-xs text-ok">{ok}</span>}
     </span>
   );
@@ -154,7 +155,7 @@ export function AggiornaParametri({ validaDal, valori, fonte }: { validaDal: str
       <button type="button" className="btn-primary" disabled={busy || !Object.keys(valori).length} onClick={async () => {
         if (!confirm(`Salvare ${Object.keys(valori).length} coefficienti con validità dal ${it(validaDal)}? Fallo solo se Alessandro ha confermato.`)) return;
         setBusy(true); try { await aggiornaParametri({ validaDal, valori, fonte }); setOk(`Salvati, validi dal ${it(validaDal)}.`); router.refresh(); } finally { setBusy(false); }
-      }}>Aggiorna parametri</button>
+      }}>Aggiorna parametri</button> <Aiuto k="costi.aggiorna" />
       {ok && <span className="text-sm text-ok">{ok}</span>}
     </span>
   );

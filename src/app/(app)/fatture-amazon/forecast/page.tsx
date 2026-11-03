@@ -8,6 +8,7 @@ import { versioniForecast } from "@/lib/forecastVersioni";
 import { eliminaRegolaMappa, salvaRegolaMappa } from "./actions";
 import { ExportForecast, ForecastUpload } from "./ForecastClient";
 import { GraficoSettimane } from "./Grafico";
+import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Forecast ricavi Amazon — FleetDSP" };
@@ -167,7 +168,7 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
             <input name="cycle" className="input h-10 w-36" placeholder="cycle (*)" />
             <input name="station" className="input h-10 w-28" placeholder="station (*)" />
             <input name="classe" className="input h-10 w-40" placeholder="es. ND_STANDARD" required pattern="(ND|SD)_[A-Z]+" />
-            <button className="btn-primary h-10">Aggiungi / aggiorna</button>
+            <button className="btn-primary h-10">Aggiungi / aggiorna</button> <Aiuto k="forecast.mappa" />
           </form>
         )}
       </section>

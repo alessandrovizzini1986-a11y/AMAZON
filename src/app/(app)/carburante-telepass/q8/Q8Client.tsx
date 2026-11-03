@@ -14,6 +14,7 @@ import type { RunRiga } from "../dati";
 import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
 import { Storico } from "../Storico";
+import { Aiuto } from "@/components/Aiuto";
 
 const eur = (x: number) => x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -62,7 +63,7 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
         <p className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">Il censimento fuel card è vuoto: prima importalo nella pagina <Link className="font-semibold underline" href="/carburante-telepass/anagrafiche">Anagrafiche</Link>, altrimenti ogni rifornimento risulta NON CENSITA.</p>
       )}
       {canRun && (
-        <Dropzone titolo="Trascina qui l'export Q8" accept=".xlsx" lavoro={lavoro} onFiles={carica}
+        <Dropzone titolo="Trascina qui l'export Q8" aiuto="q8.elabora" accept=".xlsx" lavoro={lavoro} onFiles={carica}
           testo={<>Portale Q8 Flotte → Transazioni → Esporta Excel. Mese e anno si leggono dalla colonna Data; censimento attuale: {censimento.length} carte.</>} />
       )}
       {errore && <p className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">{errore}</p>}
@@ -97,7 +98,7 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
               <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Giornaliero nel Recap per
                 <select className="input h-10 w-36" value={filtro} onChange={(x) => setFiltro(x.target.value)}>{e.stazioni.map((s) => <option key={s}>{s}</option>)}</select>
               </label>
-              <button type="button" className="btn-primary h-10" disabled={lavoro} onClick={genera}>Genera Excel</button>
+              <button type="button" className="btn-primary h-10" disabled={lavoro} onClick={genera}>Genera Excel</button> <Aiuto k="telepass.excel" />
               {canRun && <button type="button" className="btn-secondary h-10" disabled={salvata} onClick={salva}>{salvata ? "Salvata ✓" : "Salva elaborazione"}</button>}
             </div>
             {giaFatto && !salvata && <p className="mb-2 text-sm text-warn">{MESI[e.mese]} {e.anno} è già stato elaborato il {new Date(giaFatto.eseguitoIl).toLocaleDateString("it-IT")} da {giaFatto.eseguitoDa}: salvando ne registri una nuova versione.</p>}

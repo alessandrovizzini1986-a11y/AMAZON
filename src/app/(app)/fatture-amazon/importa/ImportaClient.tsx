@@ -10,6 +10,7 @@ import { excelImport, nomeFileImport } from "@/lib/fatture/excelImport";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { Dropzone } from "@/components/Dropzone";
 import { registraEsportazione, verificaNumeri, type FatturaDaRegistrare } from "./actions";
+import { Aiuto } from "@/components/Aiuto";
 
 const eur = (x: number | null) => (x === null ? "—" : x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const isoD = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -148,7 +149,7 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
       <p className="rounded-control border border-line bg-surface-raised px-4 py-3 text-sm">
         Ultima fattura registrata: <b className="font-mono">{ultimo ?? "nessuna"}</b>{prossimo !== null && <> · prossimo numero da scaricare: <b className="font-mono">{prossimo}</b></>}
       </p>
-      <Dropzone titolo="Trascina qui i PDF delle fatture" accept=".pdf,.zip" multiple lavoro={lavoro} onFiles={carica}
+      <Dropzone titolo="Trascina qui i PDF delle fatture" aiuto="fatture.importa" accept=".pdf,.zip" multiple lavoro={lavoro} onFiles={carica}
         testo={<>Anche 80 insieme, oppure lo zip prodotto dal preferito del browser (<code>DS-INV-IT3JDBF-XXXXXXX.pdf</code>). I PDF si leggono qui nel browser: al sito arrivano solo le righe.</>} />
       {stato && <p className="text-sm text-ink-muted">{stato}</p>}
       {errore && <p className="rounded-control bg-danger-soft px-4 py-3 text-sm text-danger">{errore}</p>}
@@ -164,8 +165,8 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <h2 className="mr-auto text-[19px] font-semibold">File caricati ({esiti.length})</h2>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={precompila} onChange={(e) => setPrecompila(e.target.checked)} /> MICRO/MACROAREA precompilate</label>
-              <button type="button" className="btn-primary h-10" disabled={lavoro || !righe.length} onClick={excel}>Scarica Excel</button>
-              <button type="button" className="btn-secondary h-10" disabled={lavoro || !righe.length} onClick={copia}>Copia righe</button>
+              <button type="button" className="btn-primary h-10" disabled={lavoro || !righe.length} onClick={excel}>Scarica Excel</button> <Aiuto k="fatture.excel" />
+              <button type="button" className="btn-secondary h-10" disabled={lavoro || !righe.length} onClick={copia}>Copia righe</button> <Aiuto k="fatture.copia" />
             </div>
             {msg && <p className="mb-3 rounded-control bg-ok-soft px-3 py-2 text-sm text-ok">{msg}</p>}
             {nonMappate.length > 0 && <p className="mb-3 rounded-control bg-warn-soft px-3 py-2 text-sm text-warn">{nonMappate.length} descrizioni senza MICRO/MACROAREA nel mapping: restano vuote ({nonMappate.slice(0, 5).join("; ")}{nonMappate.length > 5 ? "…" : ""}).</p>}

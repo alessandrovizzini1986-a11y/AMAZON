@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { previewImportAction, commitImportAction, type PreviewResult, type CommitResult } from "./actions";
+import { Aiuto } from "@/components/Aiuto";
 
 type SpecField = { key: string; label: string; required: boolean };
 type SpecInfo = { entity: string; label: string; description: string; fields: SpecField[] };
@@ -86,7 +87,7 @@ export function ImportWizard({ specs }: { specs: SpecInfo[] }) {
           />
           <button className="btn-primary" onClick={() => analyze(false)} disabled={pending}>
             {pending ? "Analisi…" : "Analizza file"}
-          </button>
+          </button> <Aiuto k="import.analizza" />
         </div>
 
         {preview?.error && (
@@ -140,7 +141,7 @@ export function ImportWizard({ specs }: { specs: SpecInfo[] }) {
               </div>
               <button className="btn-secondary mt-3" onClick={() => analyze(true)} disabled={pending}>
                 Rianalizza con questo mapping
-              </button>
+              </button> <Aiuto k="import.conferma" />
             </details>
 
             {preview.issues.length > 0 && (

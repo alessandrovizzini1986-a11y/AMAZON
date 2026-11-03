@@ -10,6 +10,7 @@ import { workbookToGrids } from "@/lib/presenze/excelGrid";
 import { sha256 } from "@/lib/presenze/riconosci";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { aggiungiRigheForecast, concludiForecast, creaForecastFile } from "./actions";
+import { Aiuto } from "@/components/Aiuto";
 
 const COLONNE = ["week", "ofd_date", "station", "cycle", "service_type_scheduling", "routes_output"];
 type Riga = { week: number; data: string; station: string; cycle: string; serviceType: string; routes: number; classe: string };
@@ -65,7 +66,7 @@ export function ForecastUpload({ regole }: { regole: RegolaMappa[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <Dropzone titolo="Trascina qui i forecast Amazon" accept=".xlsx" multiple lavoro={lavoro} onFiles={onFiles}
+      <Dropzone titolo="Trascina qui i forecast Amazon" aiuto="forecast.carica" accept=".xlsx" multiple lavoro={lavoro} onFiles={onFiles}
         testo={<><code>PROF_&lt;settimana&gt;_next.xlsx</code> (ND) e <code>PROF_&lt;settimana&gt;_same.xlsx</code> (SD), foglio PROF. Ogni nuovo file sostituisce il precedente per le stesse date; i vecchi restano in elenco.</>} />
       {chiedi && (
         <div className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">
@@ -94,5 +95,5 @@ export function ExportForecast({ tabelle, nome }: { tabelle: Tab[]; nome: string
     }
     await scarica(wb, nome);
   };
-  return <button type="button" className="btn-secondary h-10" onClick={go}>Scarica Excel</button>;
+  return <span className="inline-flex items-center gap-1"><button type="button" className="btn-secondary h-10" onClick={go}>Scarica Excel</button><Aiuto k="forecast.excel" /></span>;
 }

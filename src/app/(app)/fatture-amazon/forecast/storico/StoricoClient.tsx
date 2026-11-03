@@ -6,6 +6,7 @@ import { scarica, tabella } from "@/lib/presenze/excelUtil";
 import { addGiorni, numeroSettimana } from "@/domain/forecast/settimane";
 import type { PuntoVersione, Precisione } from "@/domain/forecast/storico";
 import type { DatiStorico } from "./dati";
+import { Aiuto } from "@/components/Aiuto";
 
 type Props = Omit<DatiStorico, "oggi"> & { oggi: string };
 type Misura = "eur" | "rotte";
@@ -124,7 +125,7 @@ export function StoricoClient(p: Props) {
         {seg(linea, setLinea, [["TUTTE", "ND + SD"], ["ND", "ND"], ["SD", "SD"]], "Linea")}
         {seg(misura, setMisura, [["eur", "€ previsti"], ["rotte", "Rotte"]], "Misura")}
         <span className="text-sm text-ink-muted">Settimane {wk(finestra[0])} – {wk(finestra[11])} (9 passate + 3)</span>
-        <button type="button" className="btn-secondary ml-auto h-10" onClick={excel}>Scarica Excel</button>
+        <button type="button" className="btn-secondary ml-auto h-10" onClick={excel}>Scarica Excel</button> <Aiuto k="forecast.storico.excel" />
       </section>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-4" aria-label="Sintesi">

@@ -3,6 +3,7 @@ import { assertCan } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { PageHeader, StatusBadge } from "@/components/ui";
 import { NON_GIUSTIFICATIVI, STATIONS } from "@/domain/presenze/regole";
+import { Aiuto } from "@/components/Aiuto";
 import {
   aggiungiDispatcher, aggiungiGiustificativo, attivaDispatcher, attivaGiustificativo,
   eliminaDispatcher, eliminaGiustificativo, salvaReferenti,
@@ -38,7 +39,7 @@ export default async function ConfigurazionePresenzePage() {
               <input className="input h-10" name={s} defaultValue={ref[s] ?? ""} placeholder="es. Marco" maxLength={80} />
             </label>
           ))}
-          <div className="flex items-end"><button className="btn-primary h-10">Salva referenti</button></div>
+          <div className="flex items-end"><button className="btn-primary h-10">Salva referenti</button> <Aiuto k="presenze.config.referenti" /></div>
         </form>
       </section>
 
@@ -52,7 +53,7 @@ export default async function ConfigurazionePresenzePage() {
             <option value="">Station (facoltativa)</option>
             {STATIONS.map((s) => <option key={s}>{s}</option>)}
           </select>
-          <button className="btn-primary h-10">Aggiungi</button>
+          <button className="btn-primary h-10">Aggiungi</button> <Aiuto k="presenze.config.lista" />
         </form>
         <div className="overflow-x-auto">
           <table className="table-base text-sm">
@@ -81,7 +82,7 @@ export default async function ConfigurazionePresenzePage() {
         <form action={aggiungiGiustificativo} className="mb-4 flex flex-wrap items-end gap-3">
           <input className="input h-10 w-40 uppercase" name="codice" placeholder="Codice *" required pattern="[A-Za-z0-9]{1,20}" title="Solo lettere e numeri, senza spazi" />
           <input className="input h-10 w-72" name="descrizione" placeholder="Descrizione" maxLength={100} />
-          <button className="btn-primary h-10">Aggiungi</button>
+          <button className="btn-primary h-10">Aggiungi</button> <Aiuto k="presenze.config.lista" />
         </form>
         <div className="overflow-x-auto">
           <table className="table-base text-sm">

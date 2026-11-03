@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PageHeader, StatusBadge, SourceNote } from "@/components/ui";
 import { createUserAction, toggleUserActiveAction, resetUserPasswordAction } from "./actions";
+import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export default async function UsersPage({
             {stations.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
           </select>
           <input className="input" name="licenseNo" placeholder="N. patente" />
-          <div className="md:col-span-3"><button className="btn-primary">Crea utente</button></div>
+          <div className="md:col-span-3"><button className="btn-primary">Crea utente</button> <Aiuto k="utenti.crea" /></div>
         </form>
       </section>
 
