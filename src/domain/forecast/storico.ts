@@ -23,17 +23,27 @@ export function versioneFile(nome: string, primaData: string): string {
   return s0;
 }
 
-/** Righe del forecast valido alla versione v: per (station, data, classe) vince il file con versione più alta (≤ v), poi il caricato più tardi. */
+/**
+ * Righe del forecast valido alla versione v: per (station, data, linea ND/SD) vince il file con
+ * versione più alta (≤ v), poi il caricato più tardi, e se ne tengono tutte le righe: una classe
+ * che la versione nuova non riporta più non sopravvive dal file vecchio.
+ */
 export function statoAlla(files: FileVersione[], righe: RigaStorico[], v: string): RigaStorico[] {
-  const fv = new Map(files.filter((f) => f.versione <= v).map((f) => [f.id, `${f.versione}|${f.caricatoIl}|${f.id}`]));
+  const fv = new Map(files.filter((f) => f.versione <= v).map((f) => [f.id, { o: `${f.versione}|${f.caricatoIl}|${f.id}`, linea: f.linea }]));
   const best = new Map<string, string>();
+  const key = (r: RigaStorico, linea: string) => `${r.station}|${r.data}|${linea}`;
   for (const r of righe) {
-    const o = fv.get(r.fileId);
-    if (!o) continue;
-    const k = `${r.station}|${r.data}|${r.classe}`;
-    if (!best.has(k) || o > best.get(k)!) best.set(k, o);
+    const f = fv.get(r.fileId);
+    if (!f) continue;
+    const k = key(r, f.linea);
+    if (!best.has(k) || f.o > best.get(k)!) best.set(k, f.o);
   }
-  return righe.filter((r) => { const o = fv.get(r.fileId); return o && best.get(`${r.station}|${r.data}|${r.classe}`) === o; });
+  return righe.filter((r) => { const f = fv.get(r.fileId); return f && best.get(key(r, f.linea)) === f.o; });
+}
+
+/** File ND in uso alla versione v (versione più alta, poi caricato più tardi). */
+export function ultimoNd(files: FileVersione[], v: string): FileVersione | null {
+  return files.filter((f) => f.linea === "ND" && f.versione <= v).sort((a, b) => `${b.versione}|${b.caricatoIl}`.localeCompare(`${a.versione}|${a.caricatoIl}`))[0] ?? null;
 }
 
 export type Giorno = { station: string; data: string; nd: number; ndFurgone: number; swa: number; swaSimulate: number; sdA: number; sdB: number; sdC: number };
@@ -61,24 +71,25 @@ export function giorni(righe: RigaStorico[]): Giorno[] {
 }
 
 /**
- * SWA / MFN pickup oltre l'orizzonte del next: per ogni station, media per giorno della
- * settimana delle ultime 3 settimane con SWA, applicata ai giorni del periodo (fino all'ultima
- * data del forecast) che non hanno SWA dal file. Restituisce anche le righe simulate (per i €).
+ * SWA / MFN pickup oltre l'orizzonte del next: per ogni station, media per giorno della settimana
+ * delle SWA del file ND in uso (`fonte`: le sue righe), applicata dal giorno dopo la sua ultima data
+ * con SWA fino a `fino`, sui giorni senza SWA. Restituisce anche le righe simulate (per i €).
  */
-export function simulaSwa(gs: Giorno[], fino: string): { giorni: Giorno[]; righe: RigaStorico[] } {
+export function simulaSwa(gs: Giorno[], fino: string, fonte: RigaStorico[]): { giorni: Giorno[]; righe: RigaStorico[] } {
   const out = gs.map((g) => ({ ...g }));
   const righe: RigaStorico[] = [];
-  const stations = [...new Set(out.map((g) => g.station))];
-  for (const st of stations) {
-    const conSwa = out.filter((g) => g.station === st && g.swa > 0);
-    if (!conSwa.length) continue;
-    const settimane = [...new Set(conSwa.map((g) => inizioSettimana(g.data)))].sort().slice(-3);
-    const ultimo = settimane[settimane.length - 1];
-    const perDow: number[] = Array(7).fill(0);
-    for (const g of conSwa.filter((x) => settimane.includes(inizioSettimana(x.data)))) perDow[new Date(g.data + "T12:00:00Z").getUTCDay()] += g.swa;
-    const media = perDow.map((x) => Math.round(x / settimane.length));
-    for (let d = addGiorni(ultimo, 7); d <= fino; d = addGiorni(d, 1)) {
-      const q = media[new Date(d + "T12:00:00Z").getUTCDay()];
+  const dow = (d: string) => new Date(d + "T12:00:00Z").getUTCDay();
+  for (const st of [...new Set(fonte.filter((r) => r.classe === "ND_SWA").map((r) => r.station))]) {
+    const nd = fonte.filter((r) => r.station === st);
+    const swa = nd.filter((r) => r.classe === "ND_SWA");
+    const ultimaSwa = swa.reduce((m, r) => (r.data > m ? r.data : m), swa[0].data);
+    // media per giorno della settimana sui giorni coperti dal file (con o senza SWA quel giorno)
+    const giorniFile = [...new Set(nd.map((r) => r.data))].filter((d) => d <= ultimaSwa);
+    const somma = Array(7).fill(0), n = Array(7).fill(0);
+    for (const d of giorniFile) { n[dow(d)]++; somma[dow(d)] += swa.filter((r) => r.data === d).reduce((t, r) => t + r.routes, 0); }
+    const media = somma.map((x, i) => (n[i] ? Math.round(x / n[i]) : 0));
+    for (let d = addGiorni(ultimaSwa, 1); d <= fino; d = addGiorni(d, 1)) {
+      const q = media[dow(d)];
       if (!q) continue;
       let g = out.find((x) => x.station === st && x.data === d);
       if (g?.swa) continue;
@@ -133,7 +144,8 @@ export function storico(files: FileVersione[], righe: RigaStorico[], calPer: (se
     const stato = statoAlla(files, righe, v);
     if (!stato.length) continue;
     const fino = stato.reduce((m, r) => (r.data > m ? r.data : m), stato[0].data);
-    const sim = simulaSwa(giorni(stato), fino);
+    const nd = ultimoNd(files, v);
+    const sim = simulaSwa(giorni(stato), fino, nd ? righe.filter((r) => r.fileId === nd.id) : []);
     const tutte = [...stato, ...sim.righe].filter((r) => inizioSettimana(r.data) >= v);
     const sett = settimane(sim.giorni.filter((g) => inizioSettimana(g.data) >= v));
     const perW = new Map<string, RigaForecast[]>();

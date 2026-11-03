@@ -62,9 +62,12 @@ export function StoricoClient(p: Props) {
 
   // grafico tendenza
   const W = 1280, H = 340, L = 64, R = 1256, T = 16, B = 304;
-  const valori = finestra.flatMap((w) => [...perSett(w).map((a) => a.v), reale(w) ?? 0]).filter((x) => x > 0);
+  const tutti = finestra.flatMap((w) => [...perSett(w).map((a) => a.v), ...(reale(w) !== null ? [reale(w)!] : [])]);
+  const valori = tutti.filter((x) => x > 0);
   const maxV = valori.length ? Math.max(...valori) : 1, minV = valori.length ? Math.min(...valori) : 0;
-  const lo = Math.max(0, minV - (maxV - minV) * 0.15), hi = maxV + (maxV - minV) * 0.1 || maxV * 1.1 || 1;
+  // con valori a zero la scala parte da 0 (niente punti sotto l'asse); con un solo valore, ±10 %
+  let lo = tutti.some((x) => x <= 0) ? 0 : Math.max(0, minV - (maxV - minV) * 0.15), hi = maxV + (maxV - minV) * 0.1;
+  if (hi - lo < 1e-9) { lo = Math.max(0, maxV * 0.9); hi = maxV * 1.1 || 1; }
   const step = (R - L) / finestra.length;
   const X = (i: number) => L + step * (i + 0.5);
   const Y = (v: number) => B - ((B - T) * (v - lo)) / (hi - lo || 1);
@@ -143,7 +146,7 @@ export function StoricoClient(p: Props) {
         </div>
         <div className="overflow-x-auto">
           <svg viewBox={`0 0 ${W} ${H}`} className="block w-full min-w-[760px]" role="img" aria-label={`Tendenza del forecast ${wk(finestra[0])}–${wk(finestra[11])}`}>
-            {tick.map((t) => <g key={t}><line x1={L} x2={R} y1={Y(t)} y2={Y(t)} stroke="#e7e9ee" /><text x={L - 8} y={Y(t) + 4} textAnchor="end" fontSize="11" fill="#5b6778">{misura === "eur" ? `${it(t / 1000)} k€` : it(t)}</text></g>)}
+            {tick.map((t, i) => <g key={i}><line x1={L} x2={R} y1={Y(t)} y2={Y(t)} stroke="#e7e9ee" /><text x={L - 8} y={Y(t) + 4} textAnchor="end" fontSize="11" fill="#5b6778">{misura === "eur" ? `${it(t / 1000)} k€` : it(t)}</text></g>)}
             {iCorr >= 0 && <><rect x={X(iCorr) - step / 2} y={T} width={R - (X(iCorr) - step / 2)} height={B - T} fill="#f0f2f5" /><text x={X(iCorr) - step / 2 + 8} y={T + 14} fontSize="11" fill="#5b6778">settimana in corso e prossime</text></>}
             {finestra.map((w, i) => { const xs = perSett(w).map((a) => a.v); return xs.length > 1 ? <rect key={w} x={X(i) - 6} y={Y(Math.max(...xs))} width={12} height={Math.max(1, Y(Math.min(...xs)) - Y(Math.max(...xs)))} fill={BLU} fillOpacity={0.1} rx={6} /> : null; })}
             {realPath && <path d={realPath} fill="none" stroke={ARANCIO} strokeWidth={2.5} strokeLinejoin="round" />}

@@ -31,15 +31,26 @@ describe("rotte e furgoni", () => {
     expect([s.piccoND, s.piccoSD, s.furgoni, s.piccoStessoGiorno]).toEqual([40, 12, 52, 50]);
     expect(s.rotte).toBe(62 + 30 + 4 + 12);
   });
-  it("SWA simulate oltre l'orizzonte: media per giorno della settimana delle 3 settimane, settimana parziale", () => {
-    const rs: RigaStorico[] = [];
-    for (const w of ["2026-11-01", "2026-11-08", "2026-11-15"]) { rs.push(r("n", w.replace(/01$|08$|15$/, (d) => String(Number(d) + 1).padStart(2, "0")), "ND_SWA", w === "2026-11-08" ? 5 : 2, "SWA_PM")); }
-    rs.push(r("s", "2026-11-30", "SD_A", 6, "CYCLE_SD_A"));
-    const sim = simulaSwa(giorni(rs), "2026-11-30");
+  it("SWA simulate dal file ND in uso: media per giorno della settimana, dal giorno dopo l'ultima SWA, settimana parziale", () => {
+    const nd: RigaStorico[] = [];
+    for (let d = "2026-11-01"; d <= "2026-11-17"; d = addG(d, 1)) { nd.push(r("n", d, "ND_STANDARD", 30)); nd.push(r("n", d, "ND_SWA", new Date(d + "T12:00:00Z").getUTCDay() === 1 ? (d === "2026-11-09" ? 5 : 2) : 3, "SWA_PM")); }
+    const rs = [...nd, r("s", "2026-11-30", "SD_A", 6, "CYCLE_SD_A")];
+    const sim = simulaSwa(giorni(rs), "2026-11-30", nd);
+    expect(sim.righe[0].data).toBe("2026-11-18"); // il mercoledì dopo l'ultima SWA, non la domenica dopo
+    expect(sim.righe.find((x) => x.data === "2026-11-18")!.routes).toBe(3); // mercoledì presente in 2 settimane: media su 2
     const lun = sim.giorni.find((g) => g.data === "2026-11-30")!;
-    expect([lun.swaSimulate, lun.nd, lun.sdA]).toEqual([3, 3, 6]);
-    expect(sim.righe.map((x) => x.data)).toEqual(["2026-11-23", "2026-11-30"]);
-    expect(settimane(sim.giorni).find((s) => s.settimana === "2026-11-29")).toMatchObject({ parziale: true, furgoni: 9, swaSimulate: 3 });
+    expect([lun.swaSimulate, lun.nd, lun.sdA]).toEqual([3, 3, 6]); // lunedì (2 + 5 + 2) / 3
+    expect(settimane(sim.giorni).find((s) => s.settimana === "2026-11-29")).toMatchObject({ parziale: true, swaSimulate: 6 }); // dom 29 (3) + lun 30 (3)
+  });
+  it("nessuna SWA simulata se il file ND in uso non ne ha (anche se un file vecchio sì)", () => {
+    const vecchio = [r("v", "2026-07-06", "ND_SWA", 4, "SWA_PM")];
+    const nuovo = [r("n", "2026-11-02", "ND_STANDARD", 30)];
+    expect(simulaSwa(giorni([...vecchio, ...nuovo]), "2026-11-14", nuovo).righe).toEqual([]);
+  });
+  it("una classe sparita nella versione nuova non sopravvive dal file vecchio", () => {
+    const files = [{ id: "v40", linea: "ND", versione: "2026-09-27", caricatoIl: "x" }, { id: "v44", linea: "ND", versione: "2026-10-25", caricatoIl: "x" }];
+    const rs = [r("v40", "2026-11-02", "ND_STANDARD", 40), r("v40", "2026-11-02", "ND_CARGOBIKE", 3), r("v44", "2026-11-02", "ND_STANDARD", 42)];
+    expect(statoAlla(files, rs, "2026-12-31").map((x) => `${x.fileId} ${x.classe}`)).toEqual(["v44 ND_STANDARD"]);
   });
 });
 
