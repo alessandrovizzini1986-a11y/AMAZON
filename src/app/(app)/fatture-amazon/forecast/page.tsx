@@ -8,6 +8,7 @@ import { versioniForecast } from "@/lib/forecastVersioni";
 import { eliminaRegolaMappa, salvaRegolaMappa } from "./actions";
 import { ExportForecast, ForecastUpload } from "./ForecastClient";
 import { GraficoSettimane } from "./Grafico";
+import { StimaDelMese } from "./StimaDelMese";
 import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,7 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
   const dsCal = Object.keys(d.cal.settimane).sort();
   const export_ = [
     { foglio: "previsione settimana", colonne: ["Settimana", "Dal", "DS", "Rotte ND", "Rotte SD", "SD da media", "Previsto ND", "Previsto SD", "Previsto extra", "Previsto totale", "Fatturato"], righe: d.previsione.map((x) => [x.week, x.settimana, x.ds, x.rotteND, x.rotteSD, x.sdDaMedia ? "sì" : "", x.previstoND, x.previstoSD, x.previstoExtra, x.totale, x.fatturato]) },
+    { foglio: "stima del mese", colonne: ["Mese", "DS", "Fatturato", "Previsto", "Totale stimato", "Quota già fatturata", "Giorni senza dati", "Stesso mese anno prima"], righe: d.stima.map((x) => [x.mese, x.ds, x.fatturato, x.previsto, x.totale, Math.round(x.quotaCerta * 1000) / 10, x.giorniSenza, x.annoPrima]) },
     { foglio: "previsione mese", colonne: ["Mese", "DS", "Previsto"], righe: mesi.flatMap((m) => Object.entries(d.mesi[m]).map(([s, v]) => [m, s, v])) },
     { foglio: "backtest", colonne: ["Settimana", "Dal", "DS", "Previsto", "Fatturato", "Errore %", "Rotte previste", "Rotte fatturate", "Errore rotte %"], righe: d.backtest.map((x) => [x.week, x.settimana, x.ds, x.previsto, x.reale, x.erroreTot, x.rottePreviste, x.rotteFatturate, x.erroreRotte]) },
     { foglio: "tariffe", colonne: ["DS", "Classe", "Rotte", "AVERE", "Tariffa"], righe: d.cal.tariffe.map((t) => [t.ds, t.classe, t.rotte, t.avere, t.tariffa]) },
@@ -65,6 +67,8 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
         <button className="btn-primary h-10">Ricalcola</button>
         <span className="ml-auto"><ExportForecast tabelle={export_} nome={`forecast_${oggi}.xlsx`} /></span>
       </form>
+
+      <StimaDelMese stima={d.stima} />
 
       {puoImport && <ForecastUpload regole={regole} />}
 
