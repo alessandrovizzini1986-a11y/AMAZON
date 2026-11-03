@@ -2,8 +2,10 @@
 title: "Stima costi: parziale e totale"
 order: 8
 category: "Personale"
-updated: "2026-10-27"
+updated: "2026-11-03"
 ---
+
+> **Novità**: la stima totale di Amazon (STD e SIC) ora si fa dal sito, in [Costi del personale a fine mese](/vademecum/15-costi-fine-mese). Questa pagina resta come riferimento per il file Excel e per GLS.
 
 Due momenti, due file, stessa logica: ore per categoria × costo orario = costo del mese. La parziale serve ad Annalisa per la stima; la totale chiude il mese.
 

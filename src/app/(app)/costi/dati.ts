@@ -92,3 +92,38 @@ export async function anagraficaRighe(versione: string) {
     rlm: n(x.rlm), edr: n(x.edr), cdl: Number(x.cdl), savingFeGg: n(x.savingFeGg), savingRolH: n(x.savingRolH), savingExfH: n(x.savingExfH), costoFestNonGodutaGg: n(x.costoFestNonGodutaGg), straoForfait: n(x.straoForfait),
   }));
 }
+
+export async function mesiPayroll() {
+  const r = await db.payrollRiga.groupBy({ by: ["mesePaga"], where: { componente: { notIn: ["RECLASS", "GLS"] } }, _sum: { importo: true }, _count: { _all: true } }).catch(() => []);
+  return r.map((x) => ({ mese: x.mesePaga, importo: Number(x._sum.importo ?? 0), righe: x._count._all })).sort((a, b) => b.mese.localeCompare(a.mese));
+}
+
+/** Componenti payroll per station (RECLASS e GLS esclusi) e dipendenti. */
+export async function payrollPerStation(mesePaga: string) {
+  const where = { mesePaga, componente: { notIn: ["RECLASS", "GLS"] } };
+  const [c, d] = await Promise.all([
+    db.payrollRiga.groupBy({ by: ["station", "componente"], where, _sum: { importo: true } }).catch(() => []),
+    db.payrollRiga.groupBy({ by: ["station", "matr"], where }).catch(() => []),
+  ]);
+  const out: Record<string, Record<string, number> & { TOTALE: number; dipendenti: number }> = {};
+  for (const x of c) { const s = x.station ?? "(non in anagrafica)"; const o = (out[s] ??= { TOTALE: 0, dipendenti: 0 } as never); o[x.componente] = (o[x.componente] ?? 0) + Number(x._sum.importo ?? 0); o.TOTALE += Number(x._sum.importo ?? 0); }
+  for (const x of d) { const s = x.station ?? "(non in anagrafica)"; if (out[s]) out[s].dipendenti++; }
+  return out;
+}
+
+/** € payroll per istituto (STR_FT, STR_PT, SUPP, MAGG, MALATTIA, CARENZA_INTEGR) e per componente, tutti i dipendenti. */
+export async function payrollEuro(mesePaga: string) {
+  const [i, c] = await Promise.all([
+    db.payrollRiga.groupBy({ by: ["istituto"], where: { mesePaga, istituto: { not: null } }, _sum: { importo: true } }).catch(() => []),
+    db.payrollRiga.groupBy({ by: ["componente"], where: { mesePaga }, _sum: { importo: true } }).catch(() => []),
+  ]);
+  return { istituti: Object.fromEntries(i.map((x) => [x.istituto!, Number(x._sum.importo ?? 0)])), componenti: Object.fromEntries(c.map((x) => [x.componente, Number(x._sum.importo ?? 0)])) as Record<string, number> };
+}
+
+/** ADIT del mese per station × voce, competenza del mese separata dai residui. */
+export async function aditConfronto(mese: string) {
+  const r = await db.aditRiga.groupBy({ by: ["station", "voce", "residuo"], where: { meseFattura: mese }, _sum: { quantita: true, costo: true } }).catch(() => []);
+  return r.map((x) => ({ station: x.station, voce: x.voce, residuo: x.residuo, quantita: Number(x._sum.quantita ?? 0), costo: Number(x._sum.costo ?? 0) }));
+}
+
+export const meseSucc = (m: string) => { const [a, b] = m.split("-").map(Number); return b === 12 ? `${a + 1}-01` : `${a}-${String(b + 1).padStart(2, "0")}`; };

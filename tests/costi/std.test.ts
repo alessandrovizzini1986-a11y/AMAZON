@@ -37,6 +37,18 @@ describe.skipIf(!hasKit)("STD settembre 2026 (golden)", () => {
     const ag = aggregaAdit(set.righe);
     expect(ST.map((s) => ag[s].STANDARD!.teste)).toEqual([29, 89, 67, 46, 62, 33, 65]);
     expect(Math.round(set.righe.filter((r) => r.residuo).reduce((a, r) => a + r.costo, 0))).toBe(3196);
+    // riconciliazione: ogni station entro ±1,2 %, totale +0,4 %; la scomposizione somma al delta
+    const { riconciliaStd } = await import("@/domain/costi/riconciliazione");
+    const salvate = stime.flatMap((s) => [...s.righe.map((r) => ({ station: s.station, voce: r.voce, quantita: r.quantita, importo: r.importo })), { station: s.station, voce: "TOTALE", quantita: null, importo: s.totale }]);
+    const agg = new Map<string, { station: string; voce: string; residuo: boolean; quantita: number; costo: number }>();
+    for (const r of set.righe) { const k = `${r.station}|${r.voce}|${r.residuo}`; const x = agg.get(k) ?? { station: r.station, voce: r.voce, residuo: r.residuo, quantita: 0, costo: 0 }; x.quantita += r.quantita; x.costo += r.costo; agg.set(k, x); }
+    const ric = riconciliaStd(salvate, [...agg.values()]);
+    for (const s of ric.sintesi) {
+      expect(Math.abs(s.delta / s.consuntivo), s.station).toBeLessThan(0.0125); // "entro ±1,2 %" (DVN1 1,23 %)
+      expect(s.tariffe + s.ore + s.trasferte + s.nonTracking + s.nonModellate + s.residui, s.station).toBeCloseTo(s.delta, 0);
+    }
+    const S = ric.sintesi.reduce((a, s) => a + s.stima, 0), C = ric.sintesi.reduce((a, s) => a + s.consuntivo, 0);
+    expect(Math.round(((S - C) / C) * 1000) / 10).toBe(0.4);
   }, 120_000);
 });
 

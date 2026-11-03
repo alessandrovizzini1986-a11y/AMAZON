@@ -25,3 +25,11 @@ I file di esempio e gli attesi del kit (`esempi/`, `attesi/`) contengono dati pe
 - `src/domain/costi/teams.ts`: testo per Teams (tabella per station, i 3 avvisi più gravi).
 - Golden settembre 2026: ore e teste SIC, join CDL (387 su 394, 1 corretto O/0, 7 senza CDL), SIC lordo per station = 1.521.066,62, saving 119.452,13, festività non godute 18.565,76; Excel ricalcolato da LibreOffice uguale; trasferta busta da tracking agosto DLO5 14.020,50 / DVN1 17.000,50 = paga reale.
 - Differenze note con gli attesi del kit: "17 in anagrafica non tracciati (45.542 €)" conta anche il lavoratore col CF corretto O/0 (sono 16, 42.023 €, coerente con Σ CDL tracciati 1.214.287); i 26.992 € di trasferta sono su un sottoinsieme di 83 lavoratori; la busta DVN1/DLO5 viene da uno script non incluso (qui: DVN1 +0,5 %, DLO5 +7,8 % sulla paga reale).
+
+## Fase 4 — consuntivo, riconciliazione, vademecum
+- `src/domain/costi/payroll.ts`: "Costi del personale PS" (foglio det): CDC 5569, conti 6*, componente e istituto per riga (STR divisa FT/PT dal contratto dell'anagrafica), riclassifiche a somma zero (Cod1 = 6, tredicesime/liquidazioni) tenute ma non contate; station per nome dall'anagrafica.
+- `src/domain/costi/riconciliazione.ts`: STD stima M vs ADIT M per station × voce con scomposizione del delta (tariffe, ore, trasferte, voci non da tracking, non modellate, residui); SIC stima M vs paga M+1 per station; coefficienti €/h dal payroll / ore del tracking del mese prima, media mobile 3 mesi.
+- `/costi/consuntivo`: import ADIT e payroll riconosciuti dal contenuto, riconciliazione con colori ±5/±15 %, "Salva riconciliazione", "Aggiorna parametri" (prima/dopo, validità dal mese successivo).
+- Vademecum `15-costi-fine-mese.md`.
+- Golden: payroll 0926 = 1.209.420,66 €, 403 dipendenti, componenti e totali per station uguali a Station_SET, 7 non in anagrafica (13.468 €); riconciliazione STD settembre +0,4 %, ogni station entro ±1,2 %.
+- Il coefficiente SIC_CARENZA_PCT non si ricalcola in automatico (in paga carenza/integrazione ≈ 63 % della trattenuta malattia, la spec dice 2,5 %: da confermare).

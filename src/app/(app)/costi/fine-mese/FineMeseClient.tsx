@@ -144,6 +144,14 @@ export function FineMeseClient(p: Props) {
     } catch (e) { setErrore(e instanceof Error ? e.message : String(e)); } finally { setLavoro(false); }
   };
 
+  /** Ore per il ricalcolo dei coefficienti dal payroll del mese dopo (gruppo FT = FT + dispatcher). */
+  const oreSicStation = (st: string): [string, number][] => {
+    const l = ris!.sic!.lav.filter((x) => x.station === st);
+    const S = (f: (x: LavoratoreSic) => number, ll = l) => Math.round(ll.reduce((a, x) => a + f(x), 0) * 100) / 100;
+    const ft = l.filter((x) => x.bucket === "CTI FT" || x.bucket === "DISPATCHER"), pt = l.filter((x) => !ft.includes(x));
+    return [["ORE_STR_FT", S((x) => x.straord, ft)], ["ORE_STR_PT", S((x) => x.straord, pt)], ["ORE_SUPP", S((x) => x.suppl)], ["ORE_DOMFEST", S((x) => x.oreDomFest)], ["ORE_MALATTIA", S((x) => x.malattia + x.infortunio)]];
+  };
+
   const salvaSic = async () => {
     if (!ris?.sic) return;
     setLavoro(true);
@@ -152,7 +160,8 @@ export function FineMeseClient(p: Props) {
         const l = ris.sic!.lordo.find((x) => x.station === b.station)!;
         return [["BASE", b.base], ["TRASFERTA", b.trasferte], ["ISTITUTI", b.istituti], ["ASSENZE", b.assenze], ["FERIE_GODUTE", b.ferieGodute], ["LORDO_V2", l.lordo], ["SAVING_RATEI", l.savingRatei], ["FEST_NON_GODUTE", l.festNonGodute]]
           .map(([voce, importo]) => ({ station: b.station, voce: voce as string, quantita: null as number | null, tariffa: null as number | null, importo: importo as number }))
-          .concat([{ station: b.station, voce: "TESTE", quantita: b.teste, tariffa: null, importo: 0 }, { station: b.station, voce: "CDL_STIMATI", quantita: b.cdlStimati, tariffa: null, importo: 0 }, { station: b.station, voce: "TOTALE", quantita: null, tariffa: null, importo: b.totale }]);
+          .concat([{ station: b.station, voce: "TESTE", quantita: b.teste, tariffa: null, importo: 0 }, { station: b.station, voce: "CDL_STIMATI", quantita: b.cdlStimati, tariffa: null, importo: 0 }, { station: b.station, voce: "TOTALE", quantita: null, tariffa: null, importo: b.totale }])
+          .concat(oreSicStation(b.station).map(([voce, q]) => ({ station: b.station, voce, quantita: q, tariffa: null, importo: 0 })));
       });
       await salvaStima({ mese: p.mese, popolazione: "SIC", righe, versioneAnagrafica: p.anagrafica?.mese ?? null, versioneParametri: `parametri ${p.versioneParametri ?? "—"} · tariffe ADIT ${p.meseTariffe}` });
       setSalvataSic(`Stima SIC ${it(p.mese)} (busta del 27 del mese dopo) salvata: ${eur(ris.sic.perStation.reduce((a, b) => a + b.totaleEsatto, 0))} €.`); router.refresh();
