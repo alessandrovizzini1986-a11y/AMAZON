@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui";
 import { numeroSettimana, addGiorni } from "@/domain/forecast/settimane";
 import { utenteCon } from "../dati";
 import { calcolaForecast } from "./dati";
+import { versioniForecast } from "@/lib/forecastVersioni";
 import { eliminaRegolaMappa, salvaRegolaMappa } from "./actions";
 import { ExportForecast, ForecastUpload } from "./ForecastClient";
 import { GraficoSettimane } from "./Grafico";
@@ -21,11 +22,15 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
   const p = await searchParams;
   const n = Math.min(12, Math.max(1, Number(p.n) || 5));
   const oggi = p.oggi && /^\d{4}-\d{2}-\d{2}$/.test(p.oggi) ? p.oggi : new Date().toISOString().slice(0, 10);
-  const [d, files, regole] = await Promise.all([
+  const [d, files, regole, vers] = await Promise.all([
     calcolaForecast(n, oggi),
     db.forecastFile.findMany({ orderBy: { caricatoIl: "desc" }, include: { _count: { select: { righe: true } } } }),
     db.forecastClasseMap.findMany({ orderBy: [{ serviceType: "asc" }, { cycle: "asc" }, { station: "asc" }] }),
+    versioniForecast(),
   ]);
+  const vMap = new Map(vers.map((f) => [f.id, f]));
+  const ultimoPerLinea = new Map<string, string>();
+  for (const f of [...vers].sort((a, b) => `${a.versione}|${a.caricatoIl}`.localeCompare(`${b.versione}|${b.caricatoIl}`))) ultimoPerLinea.set(f.linea, f.id);
   const nmPerFile = new Map((await db.forecastRoute.groupBy({ by: ["fileId"], where: { classe: "NON_MAPPATO" }, _count: { _all: true } })).map((x) => [x.fileId, x._count._all]));
   const puoImport = can(user, "forecast.import");
   const ds = [...new Set([...d.previsione.map((x) => x.ds), ...d.backtest.map((x) => x.ds)])].sort();
@@ -67,7 +72,7 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
         {files.length === 0 ? <p className="text-sm text-ink-muted">Nessun forecast caricato.</p> : (
           <table className="table-base text-sm">
             <thead><tr><th>File</th><th>Linea</th><th>Righe</th><th>NON_MAPPATO</th><th>Caricato il</th></tr></thead>
-            <tbody>{files.map((f, i) => <tr key={f.id}><td>{f.nome}{i === 0 && <span className="ml-2 badge-ok">ultimo</span>}</td><td>{f.linea}</td><td>{f._count.righe}</td><td className={nmPerFile.get(f.id) ? "font-semibold text-warn" : ""}>{nmPerFile.get(f.id) ?? 0}</td><td>{f.caricatoIl.toLocaleString("it-IT", { timeZone: "Europe/Rome" })}</td></tr>)}</tbody>
+            <tbody>{files.map((f) => <tr key={f.id}><td>{f.nome} <span className="text-xs text-ink-muted">(versione wk {vMap.get(f.id) ? numeroSettimana(vMap.get(f.id)!.versione) : "?"})</span>{ultimoPerLinea.get(f.linea) === f.id && <span className="ml-2 badge-ok">ultimo {f.linea}</span>}</td><td>{f.linea}</td><td>{f._count.righe}</td><td className={nmPerFile.get(f.id) ? "font-semibold text-warn" : ""}>{nmPerFile.get(f.id) ?? 0}</td><td>{f.caricatoIl.toLocaleString("it-IT", { timeZone: "Europe/Rome" })}</td></tr>)}</tbody>
           </table>
         )}
         {d.nonMappate > 0 && <p className="mt-2 text-sm text-warn">{d.nonMappate} rotte con servizio NON_MAPPATO non entrano nella previsione: aggiungi la regola nella mappa in fondo alla pagina.</p>}

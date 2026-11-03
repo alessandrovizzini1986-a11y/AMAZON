@@ -1,4 +1,4 @@
-# Forecast Amazon: storico delle versioni e grafico della tendenza
+# Forecast Amazon: storico delle versioni, tendenza, rotte e furgoni necessari
 
 Prompt per Claude Code, da eseguire sul repository FleetDSP (Next.js 15 / Prisma / Neon), modulo **Fatture Amazon → Forecast** (`src/app/(app)/fatture-amazon/forecast/`, `src/domain/forecast/`).
 
@@ -48,6 +48,13 @@ Filtri in alto: **DS** (tutte o una), **linea** (ND, SD, entrambe), **misura** (
 4. **Agente di review** (code-review) sul diff prima della PR, con attenzione a: regola "ultimo" (file ricaricato), settimane al cambio d'anno (week 52/53 → 1), versioni con anticipo negativo (file caricato dopo la settimana) da escludere dalla precisione.
 5. Migrazione Neon solo con l'ok esplicito di Alessandro.
 
+## 5-bis. Decisioni di Alessandro (03/11/2026, sul mockup)
+- Misura di default **€**, con switch **€ ↔ rotte**; finestra **9 settimane passate + 3 future**; precisione per anticipo **per DS**.
+- **Rotte di un giorno** (misura "rotte"): next day (tutte le classi ND, cargo bike comprese) + same day = **SD_A + max(SD_B, SD_C)**. I cicli si leggono dalla colonna `cycle` (`CYCLE_SD_A/B/C`), non dalla classe: nella mappa `CYCLE_SD_B` → classe SD_C e "Multi-Use" → SD_B. Le rotte della settimana sono la somma dei giorni.
+- **SWA / MFN pickup** (`ND_SWA`, ciclo `SWA_PM`): Amazon le proietta solo per 3 settimane. Per tutto il periodo coperto dal forecast si **simulano** con la media per giorno della settimana delle 3 settimane dell'ultima versione ND, segnate come "simulate".
+- **Furgoni necessari** per station e settimana = **rotta massima del next** (picco giornaliero delle rotte ND con furgone: esclusa la cargo bike) + **rotta massima tra same A, B e C** (un furgone fa A, B e C). È la somma dei due picchi settimanali; il tooltip mostra anche il picco nello stesso giorno.
+- **Cruscotto furgoni**: per station × prossime settimane, furgoni necessari contro flotta del sito (`Vehicle` con stato ATTIVO o SOSTITUTIVO della station; in officina a parte), **delta** colorato (mancano = rosso). Le settimane oltre l'orizzonte del next (solo SD) sono segnate "parziale".
+
 ## 6. Test di accettazione
 | Test | Atteso |
 |---|---|
@@ -56,7 +63,11 @@ Filtri in alto: **DS** (tutte o una), **linea** (ND, SD, entrambe), **misura** (
 | Tendenza su fixture `tests/fixtures/fatture-amazon/forecast/` | per ogni settimana target: n. versioni = file che la coprono; ultima versione = quella usata da `prevedi()` |
 | Precisione per anticipo | errore % calcolato solo su settimane chiuse; anticipo 0 = stessa settimana |
 | Cambio d'anno | settimane 52 → 1 in ordine corretto |
-| Excel | 3 fogli, tabelle native; i totali di `Tendenza` (ultima versione) uguali alla pagina Forecast |
+| Excel | fogli Tendenza, Precisione, Settimana×versione, Furgoni; tabelle native; i totali di `Tendenza` (ultima versione) uguali alla pagina Forecast |
+| Rotte same day | giorno con A=10, B=7, C=9 → 19 rotte SD; furgoni SD = 10 |
+| Furgoni | settimana con picco ND 40 (lun) e picco max(A,B,C) 12 (mar) → 52; cargo bike non contate |
+| SWA simulate | settimana oltre l'orizzonte ND: SWA = media per giorno della settimana delle 3 settimane, flag "simulate" |
+| Delta flotta | furgoni ATTIVO+SOSTITUTIVO della station − necessari; negativo = mancano |
 
 ## 7. A fine lavoro
 Riportare in una tabella: test passati, URL da provare, cosa manca. Aggiornare `docs/moduli/fatture-amazon.md` e la pagina del vademecum 06 (paragrafo forecast).

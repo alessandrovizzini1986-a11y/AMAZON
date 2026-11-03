@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { calibra, finestra, type Calibrazione, type RigaCalibrazione } from "@/domain/forecast/tariffe";
 import { confronta, perMese, prevedi, ultimoForecast, type Backtest, type Previsione, type RigaForecast } from "@/domain/forecast/previsione";
 import { addGiorni, chiusa, inizioSettimana } from "@/domain/forecast/settimane";
+import { versioniForecast } from "@/lib/forecastVersioni";
 
 export type DatiForecast = {
   oggi: string; n: number; cal: Calibrazione; previsione: (Previsione & { fatturato: number | null })[]; mesi: Record<string, Record<string, number>>;
@@ -11,8 +12,10 @@ export type DatiForecast = {
 
 /** Calibrazione, previsione delle settimane aperte e backtest delle settimane chiuse con forecast. */
 export async function calcolaForecast(n: number, oggi: string): Promise<DatiForecast> {
-  const rotte = await db.forecastRoute.findMany({ select: { data: true, station: true, classe: true, routes: true, fileId: true, file: { select: { caricatoIl: true } } } });
-  const fc = ultimoForecast(rotte.map((r) => ({ data: r.data.toISOString().slice(0, 10), station: r.station, classe: r.classe, routes: r.routes, fileId: r.fileId, caricatoIl: r.file.caricatoIl.toISOString() })));
+  const [rotte, vers] = await Promise.all([db.forecastRoute.findMany({ select: { data: true, station: true, classe: true, routes: true, fileId: true } }), versioniForecast()]);
+  // "ultimo" = versione più alta (settimana di emissione), poi caricato più tardi: ricaricare un file vecchio non scavalca i nuovi
+  const ord = new Map(vers.map((f) => [f.id, `${f.versione}|${f.caricatoIl}`]));
+  const fc = ultimoForecast(rotte.map((r) => ({ data: r.data.toISOString().slice(0, 10), station: r.station, classe: r.classe, routes: r.routes, fileId: r.fileId, caricatoIl: ord.get(r.fileId) ?? "" })));
   const primaData = fc.reduce((m, r) => (r.data < m ? r.data : m), addGiorni(oggi, -14));
   const daQuando = addGiorni(inizioSettimana(primaData), -7 * (n + 8));
   const linee = await db.amazonInvoiceLine.findMany({ where: { data: { gte: new Date(daQuando + "T00:00:00Z") } }, select: { ds: true, data: true, classe: true, quantita: true, avere: true } });

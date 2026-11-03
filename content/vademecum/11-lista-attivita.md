@@ -48,7 +48,7 @@ Elenco di tutte le attività seguite dal team Business Analysis (da `Lista attiv
 | Multe | Verbali intestati ai driver / arrivati a casa | Nicola Bellopede + Ufficio Tesoreria + addebito | | | 4b |
 | Multe | Richiesta invio PEC dati conducente (punti) | | servizigenerali@adecco.it | | 4b |
 | Fatture | Inserimento fatture Amazon in AGGREGATO | | | settimanale + entro il 5 | 6 |
-| Van | Controllo rotte max forecast e van disponibili (file Rampa) | | | settimanale | |
+| Van | Controllo rotte max forecast e van disponibili (file Rampa; ora anche dal sito: [Storico forecast e furgoni](/fatture-amazon/forecast/storico)) | | | settimanale | |
 | Van | Pianificazione van su file Rampa in caso di picco | | | settimanale | |
 | Van | Aggiornamento Lista Targhe (`Teste+mezzi`) | | | giornaliero | |
 | Van | Aggiornamento Analisi Flotta: lavorazione mezzi, danni | | | giornaliero | |
