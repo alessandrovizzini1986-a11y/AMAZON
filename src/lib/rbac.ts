@@ -32,7 +32,10 @@ export type Action =
   | "fatture.annulla"
   | "fatturato.view"
   | "forecast.import"
-  | "forecast.view";
+  | "forecast.view"
+  | "costi.view"
+  | "costi.run"
+  | "costi.parametri";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -56,6 +59,9 @@ const MATRIX: Record<Role, Action[]> = {
     "telepass.anagrafiche",
     "fatture.import",
     "fatture.registro",
+    "costi.view",
+    "costi.run",
+    "costi.parametri",
   ],
   ADMIN: [
     "vehicle.view",
@@ -84,6 +90,9 @@ const MATRIX: Record<Role, Action[]> = {
     "fatturato.view",
     "forecast.import",
     "forecast.view",
+    "costi.view",
+    "costi.run",
+    "costi.parametri",
   ],
 };
 

@@ -1,0 +1,58 @@
+import { describe, it, expect } from "vitest";
+import { festiviAnno, pasqua, patrono, domenicaOFestivo, festiviMese } from "@/domain/costi/festivi";
+import { prossimoCambio, trasfertaGiorno, type ValorePerData } from "@/domain/costi/tariffe";
+import { differenzeCDL, leggiAnagraficaCDL, riepilogoCDL, trovaCDL } from "@/domain/costi/anagrafica";
+import { esempio, grids, hasKit } from "./kit";
+
+describe("festivi e patroni", () => {
+  it("Pasqua e patroni 2026", () => {
+    expect(pasqua(2026)).toBe("2026-04-05");
+    expect([patrono("DLO2", 2026), patrono("DLO4", 2026), patrono("DLO5", 2026), patrono("DER2", 2026)]).toEqual(["2026-09-13", "2026-09-20", "2026-05-10", "2026-09-29"]);
+    const f = festiviAnno(2026);
+    expect(f.filter((x) => x.station === "TUTTE").map((x) => x.data)).toEqual(["2026-01-01", "2026-01-06", "2026-04-06", "2026-04-25", "2026-05-01", "2026-06-02", "2026-08-15", "2026-11-01", "2026-12-08", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-31"]);
+    expect(festiviMese(2026, 9, "DLO2", f).map((x) => x.data)).toEqual(["2026-09-13"]);
+    expect(festiviMese(2026, 9, "DER1", f)).toEqual([]);
+    expect([domenicaOFestivo("2026-09-29", "DER2", f), domenicaOFestivo("2026-09-29", "DER1", f), domenicaOFestivo("2026-09-26", "DER1", f)]).toEqual([true, false, false]);
+  });
+});
+
+describe("tariffe trasferta per data", () => {
+  const t: ValorePerData[] = [
+    { voce: "TRASFERTA", validaDal: "2025-05-01", valore: 20.5 }, { voce: "TRASFERTA", validaDal: "2026-01-01", valore: 22.5 },
+    { voce: "TRASFERTA", validaDal: "2027-01-01", valore: 23.5 }, { voce: "TRASFERTA", validaDal: "2027-06-01", valore: 24 },
+    { voce: "TRASFERTA_DOM_EXTRA", validaDal: "2025-05-01", valore: 7 },
+  ];
+  it("valore alla data, domenica +7, prossimo cambio con allerta 60/30/7", () => {
+    expect([trasfertaGiorno(t, "2025-12-31", false), trasfertaGiorno(t, "2026-09-06", true), trasfertaGiorno(t, "2027-06-01", false)]).toEqual([20.5, 29.5, 24]);
+    expect(prossimoCambio(t, "TRASFERTA", "2026-11-04")).toMatchObject({ validaDal: "2027-01-01", valore: 23.5, precedente: 22.5, giorni: 58, allerta: 60 });
+    expect(prossimoCambio(t, "TRASFERTA", "2026-12-10")!.allerta).toBe(30);
+    expect(prossimoCambio(t, "TRASFERTA", "2026-12-28")!.allerta).toBe(7);
+    expect(prossimoCambio(t, "TRASFERTA", "2026-10-01")!.allerta).toBeNull();
+  });
+});
+
+describe.skipIf(!hasKit)("anagrafica CDL 06/2026 (golden)", () => {
+  it("403 teste, CDL totale 1.256.309,94, versione 2026-06", async () => {
+    const a = leggiAnagraficaCDL(await grids(esempio("anagrafica", "DB_CDL_base_0626_AmazonGLS_BO.xlsx")));
+    const r = riepilogoCDL(a.righe);
+    expect(a.meseVersione).toBe("2026-06");
+    expect(r.teste).toBe(403);
+    expect(r.cdl).toBe(1256309.94);
+    expect(Object.keys(r.perStation).sort()).toEqual(["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1"]);
+    // trappola O/0 nel CF (Fiasconaro)
+    const idx = new Map(a.righe.map((x) => [x.cf, x]));
+    expect(trovaCDL("FSCPTR96D11A4940", idx)).toMatchObject({ corretto: true, riga: { cf: "FSCPTR96D11A494O" } });
+    expect(differenzeCDL(a.righe, a.righe)).toEqual({ entrati: [], usciti: [], cambiati: [] });
+  });
+});
+
+describe("coefficienti alla data", async () => {
+  const { parametriAlla, versioneParametri } = await import("@/domain/costi/parametri");
+  it("tetto settimanale 43 → 42 dal 1/6/2026 → 41 da luglio 2027", () => {
+    const t = [{ chiave: "TETTO_SETT_H", validaDal: "2025-01-01", valore: 43 }, { chiave: "TETTO_SETT_H", validaDal: "2026-06-01", valore: 42 }, { chiave: "TETTO_SETT_H", validaDal: "2027-07-01", valore: 41 }, { chiave: "SIC_MOLT_ONERI", validaDal: "2026-01-01", valore: 1.434 }];
+    expect(parametriAlla(t, "2026-05-31")).toEqual({ TETTO_SETT_H: 43, SIC_MOLT_ONERI: 1.434 });
+    expect(parametriAlla(t, "2026-09-30").TETTO_SETT_H).toBe(42);
+    expect(parametriAlla(t, "2027-07-01").TETTO_SETT_H).toBe(41);
+    expect(versioneParametri(t, "2026-09-30")).toBe("2026-06-01");
+  });
+});

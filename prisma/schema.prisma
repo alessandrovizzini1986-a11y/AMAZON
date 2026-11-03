@@ -788,3 +788,135 @@ model MacroareaMap {
   macroarea   String
   microarea   String
 }
+
+// ───────────── Costi del personale (fine mese) ─────────────
+
+// Anagrafica CDL (HR, foglio "SIC Amazon TR"): ogni upload è una nuova versione per mese
+model AnagraficaCDL {
+  id                   String   @id @default(cuid())
+  meseVersione         String // AAAA-MM
+  cf                   String
+  cognome              String
+  nome                 String
+  station              String
+  contratto            String
+  pctPt                Decimal? @db.Decimal(8, 4)
+  hSettim              Decimal? @db.Decimal(8, 2)
+  ggLavorativi         Decimal? @db.Decimal(8, 2)
+  tipologiaPt          String
+  rlm                  Decimal? @db.Decimal(16, 6)
+  edr                  Decimal? @db.Decimal(16, 6)
+  cdl                  Decimal  @db.Decimal(16, 6)
+  savingFeGg           Decimal? @db.Decimal(16, 6)
+  savingRolH           Decimal? @db.Decimal(16, 6)
+  savingExfH           Decimal? @db.Decimal(16, 6)
+  costoFestNonGodutaGg Decimal? @db.Decimal(16, 6)
+  straoForfait         Decimal? @db.Decimal(16, 6)
+  caricatoIl           DateTime @default(now())
+  caricatoDa           String?
+
+  @@unique([meseVersione, cf])
+  @@index([cf])
+}
+
+// Tariffe per data (trasferta, extra domenica): vale l'ultima con validaDal ≤ data
+model Tariffa {
+  id        String   @id @default(cuid())
+  voce      String
+  validaDal DateTime @db.Date
+  valore    Decimal  @db.Decimal(12, 4)
+  fonte     String?
+
+  @@unique([voce, validaDal])
+}
+
+// Coefficienti SIC/STD con storico (ricalcolati dal consuntivo)
+model Parametro {
+  id        String   @id @default(cuid())
+  chiave    String
+  validaDal DateTime @db.Date
+  valore    Decimal  @db.Decimal(14, 6)
+  fonte     String?
+  note      String?
+
+  @@unique([chiave, validaDal])
+}
+
+// Festivi: nazionali (station = TUTTE) e patroni
+model Festivo {
+  id          String   @id @default(cuid())
+  data        DateTime @db.Date
+  descrizione String
+  station     String   @default("TUTTE")
+
+  @@unique([data, station])
+}
+
+// Righe ADIT (CDC 5569, senza Sacchetti) per mese di fattura
+model AditRiga {
+  id             String  @id @default(cuid())
+  meseFattura    String // AAAA-MM
+  meseCompetenza String
+  station        String
+  cf             String
+  cognome        String
+  nome           String
+  voceAdit       String
+  voce           String // STD, MAGG50, STR30, STR65, SUPP18, FESTIVITA, FERIE_PERM_GOD, CARENZA, TRASFERTA, ALTRO…
+  quantita       Decimal @db.Decimal(12, 2)
+  costo          Decimal @db.Decimal(14, 2)
+  residuo        Boolean @default(false)
+
+  @@index([meseFattura, station])
+}
+
+// Righe payroll "Costi del personale PS" (CDC 5569, conti 6*)
+model PayrollRiga {
+  id          String  @id @default(cuid())
+  mesePaga    String // AAAA-MM
+  matr        String
+  dipe        String
+  station     String?
+  cod1        String
+  cod2        String
+  descrizione String
+  conto       String
+  importo     Decimal @db.Decimal(14, 2)
+  componente  String
+  istituto    String?
+
+  @@index([mesePaga, station])
+}
+
+// Stima salvata: righe per station × voce
+model StimaCosti {
+  id                 String   @id @default(cuid())
+  mese               String // AAAA-MM (competenza M)
+  popolazione        String // STD | SIC
+  station            String
+  voce               String
+  quantita           Decimal? @db.Decimal(14, 2)
+  tariffa            Decimal? @db.Decimal(14, 4)
+  importo            Decimal  @db.Decimal(14, 2)
+  versioneAnagrafica String?
+  versioneParametri  String?
+  creataIl           DateTime @default(now())
+  creataDa           String?
+
+  @@index([mese, popolazione])
+}
+
+model Riconciliazione {
+  id          String   @id @default(cuid())
+  mese        String
+  popolazione String
+  station     String
+  voce        String
+  stima       Decimal  @db.Decimal(14, 2)
+  consuntivo  Decimal  @db.Decimal(14, 2)
+  delta       Decimal  @db.Decimal(14, 2)
+  nota        String?
+  creataIl    DateTime @default(now())
+
+  @@index([mese, popolazione])
+}

@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 
 export type Scheda = { href: string; label: string; exact?: boolean };
 
-export function Tabs({ schede }: { schede: Scheda[] }) {
+export function Tabs({ schede, etichetta = "Sezioni Fatture Amazon" }: { schede: Scheda[]; etichetta?: string }) {
   const p = usePathname();
   return (
-    <nav className="mb-6 flex flex-wrap gap-2 print:hidden" aria-label="Sezioni Fatture Amazon">
+    <nav className="mb-6 flex flex-wrap gap-2 print:hidden" aria-label={etichetta}>
       {schede.map((t) => {
         const on = t.exact ? p === t.href : p.startsWith(t.href);
         return (
