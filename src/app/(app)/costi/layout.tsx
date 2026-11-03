@@ -7,6 +7,8 @@ import { allerteTariffe, etaMesi, versioniCDL } from "./dati";
 
 const SCHEDE: (Scheda & { perm: Action })[] = [
   { href: "/costi", label: "Mesi", exact: true, perm: "costi.view" },
+  { href: "/costi/fine-mese", label: "Fine mese", perm: "costi.view" },
+  { href: "/costi/consuntivo", label: "Consuntivo", perm: "costi.view" },
   { href: "/costi/parametri", label: "Parametri e anagrafica", perm: "costi.view" },
 ];
 

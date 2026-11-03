@@ -89,3 +89,43 @@ export async function eliminaFestivo(id: string) {
   await audit({ userId: user.id, action: "costi.festivo.elimina", entity: "Festivo", entityId: f.id, meta: { data: f.data.toISOString().slice(0, 10), station: f.station } });
   revalidatePath(BASE, "layout");
 }
+
+const rigaAdit = z.object({
+  meseCompetenza: z.string().regex(/^\d{4}-\d{2}$/), station: z.string().max(20), cf: z.string().max(20), cognome: z.string().max(100), nome: z.string().max(100),
+  voceAdit: z.string().max(200), voce: z.string().max(30), quantita: z.number().finite(), costo: z.number().finite(), residuo: z.boolean(),
+});
+
+/** Import ADIT a lotti: il primo lotto cancella le righe già presenti per quel mese di fattura. */
+export async function importaAdit(input: { meseFattura: string; righe: z.infer<typeof rigaAdit>[]; primo: boolean }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  const m = mese.parse(input.meseFattura);
+  const righe = z.array(rigaAdit).max(3000).parse(input.righe);
+  if (input.primo) await db.aditRiga.deleteMany({ where: { meseFattura: m } });
+  const r = await db.aditRiga.createMany({ data: righe.map((x) => ({ ...x, meseFattura: m })) });
+  return r.count;
+}
+
+export async function concludiImportAdit(c: { meseFattura: string; file: string; righe: number; costo: number }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  await audit({ userId: user.id, action: "costi.adit", entity: "AditRiga", meta: c });
+  revalidatePath(BASE, "layout");
+}
+
+const rigaStima = z.object({ station: z.string().max(20), voce: z.string().max(40), quantita: z.number().finite().nullable(), tariffa: z.number().finite().nullable(), importo: z.number().finite() });
+
+/** Salva la stima del mese (una nuova versione; l'indice usa la più recente). */
+export async function salvaStima(input: { mese: string; popolazione: "STD" | "SIC"; righe: z.infer<typeof rigaStima>[]; versioneAnagrafica: string | null; versioneParametri: string | null; nota?: string }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  const m = mese.parse(input.mese);
+  const pop = z.enum(["STD", "SIC"]).parse(input.popolazione);
+  const righe = z.array(rigaStima).max(2000).parse(input.righe);
+  const creataIl = new Date();
+  await db.stimaCosti.createMany({ data: righe.map((r) => ({ ...r, mese: m, popolazione: pop, versioneAnagrafica: input.versioneAnagrafica, versioneParametri: input.versioneParametri, creataIl, creataDa: user.name })) });
+  const totale = Math.round(righe.filter((r) => r.voce === "TOTALE").reduce((a, r) => a + r.importo, 0) * 100) / 100;
+  await audit({ userId: user.id, action: "costi.stima", entity: "StimaCosti", meta: { mese: m, popolazione: pop, righe: righe.length, totale } });
+  revalidatePath(BASE, "layout");
+  return { creataIl: creataIl.toISOString(), totale };
+}

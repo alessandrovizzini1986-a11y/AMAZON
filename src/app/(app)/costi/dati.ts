@@ -48,3 +48,37 @@ export function etaMesi(mese: string, oggi = oggiIso()) {
   const [ao, mo] = oggi.split("-").map(Number);
   return (ao - a) * 12 + (mo - m);
 }
+
+export const mesePrec = (m: string) => { const [a, b] = m.split("-").map(Number); return b === 1 ? `${a - 1}-12` : `${a}-${String(b - 1).padStart(2, "0")}`; };
+
+/** Righe ADIT del mese (per le tariffe e i controlli): per station × voce, con CF distinti. */
+export async function aditMese(mese: string) {
+  const r = await db.aditRiga.groupBy({ by: ["station", "voce", "cf"], where: { meseFattura: mese }, _sum: { quantita: true, costo: true } }).catch(() => []);
+  return r.map((x) => ({ station: x.station, voce: x.voce, cf: x.cf, quantita: Number(x._sum.quantita ?? 0), costo: Number(x._sum.costo ?? 0) }));
+}
+
+/** Ultimo mese ADIT caricato ≤ mese. */
+export async function ultimoAdit(finoA: string): Promise<string | null> {
+  const r = await db.aditRiga.findFirst({ where: { meseFattura: { lte: finoA } }, orderBy: { meseFattura: "desc" }, select: { meseFattura: true } }).catch(() => null);
+  return r?.meseFattura ?? null;
+}
+
+export async function mesiAdit() {
+  const r = await db.aditRiga.groupBy({ by: ["meseFattura"], _sum: { costo: true }, _count: { _all: true } }).catch(() => []);
+  return r.map((x) => ({ mese: x.meseFattura, costo: Number(x._sum.costo ?? 0), righe: x._count._all })).sort((a, b) => b.mese.localeCompare(a.mese));
+}
+
+/** Controllo di fine mese presenze (tracking vs Zucchetti) eseguito per il mese? */
+export async function zucchettiControllato(mese: string) {
+  const [a, m] = mese.split("-").map(Number);
+  const r = await db.presenzeRun.findFirst({ where: { tipo: "FINE_MESE", periodoDa: { lte: new Date(Date.UTC(a, m - 1, 28)) }, periodoA: { gte: new Date(Date.UTC(a, m - 1, 1)) } }, orderBy: { eseguitoIl: "desc" }, select: { eseguitoIl: true, eseguitoDa: true } }).catch(() => null);
+  return r ? { il: r.eseguitoIl.toISOString(), da: r.eseguitoDa } : null;
+}
+
+/** Stima salvata più recente del mese per popolazione: righe station × voce. */
+export async function stimaSalvata(mese: string, popolazione: "STD" | "SIC") {
+  const ultima = await db.stimaCosti.findFirst({ where: { mese, popolazione }, orderBy: { creataIl: "desc" }, select: { creataIl: true } }).catch(() => null);
+  if (!ultima) return null;
+  const r = await db.stimaCosti.findMany({ where: { mese, popolazione, creataIl: ultima.creataIl } });
+  return { creataIl: ultima.creataIl.toISOString(), righe: r.map((x) => ({ station: x.station, voce: x.voce, quantita: x.quantita === null ? null : Number(x.quantita), importo: Number(x.importo) })), versioneAnagrafica: r[0]?.versioneAnagrafica ?? null, versioneParametri: r[0]?.versioneParametri ?? null };
+}
