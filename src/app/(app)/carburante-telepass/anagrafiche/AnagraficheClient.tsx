@@ -9,6 +9,7 @@ import { leggiFile, PAGINA } from "@/lib/telepass/riconosci";
 import { aggiornaCarta, aggiornaDispositivo, importaCarte, importaDispositivi, type RisultatoImport } from "../actions";
 import { Dropzone } from "@/components/Dropzone";
 import { Aiuto } from "@/components/Aiuto";
+import { useAvvisoUscita } from "@/components/Percorso";
 
 type DispRiga = Dispositivo & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
 type CartaRiga = Carta & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
@@ -25,6 +26,7 @@ export function AnagraficheClient({ canEdit, dispositivi, carte, imports }: { ca
   const [lavoro, setLavoro] = useState(false);
   const [errori, setErrori] = useState<React.ReactNode[]>([]);
   const [anteprime, setAnteprime] = useState<Anteprima[]>([]);
+  useAvvisoUscita(anteprime.length > 0);
   const [esiti, setEsiti] = useState<{ nome: string; r: RisultatoImport }[]>([]);
   const [vista, setVista] = useState<"TELEPASS" | "CARTE">("TELEPASS");
 

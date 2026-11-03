@@ -7,6 +7,7 @@ import { workbookToGrids } from "@/lib/presenze/excelGrid";
 import { isAnagraficaCDL, leggiAnagraficaCDL, riepilogoCDL, type RigaCDL, type RiepilogoCDL } from "@/domain/costi/anagrafica";
 import { aggiungiFestivo, aggiungiParametro, aggiungiTariffa, anteprimaAnagrafica, eliminaFestivo, importaAnagrafica } from "../actions";
 import { Aiuto } from "@/components/Aiuto";
+import { useAvvisoUscita } from "@/components/Percorso";
 
 const eur = (v: number) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const numIt = (s: string) => Number(s.replace(/\./g, "").replace(",", "."));
@@ -81,6 +82,7 @@ export function AnagraficaCDLClient() {
   const [errore, setErrore] = useState<string | null>(null);
   const [dati, setDati] = useState<{ nome: string; mese: string; righe: RigaCDL[]; scartate: number; riep: RiepilogoCDL; ante: Anteprima } | null>(null);
   const [fatto, setFatto] = useState<string | null>(null);
+  useAvvisoUscita(!!dati);
 
   const leggi = async (files: File[]) => {
     const f = files[0];
