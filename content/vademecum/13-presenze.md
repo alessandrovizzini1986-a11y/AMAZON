@@ -86,7 +86,7 @@ Se un MOG chiude il mese sotto il suo monte ore, Adecco fattura comunque la diff
 
 | Passo | Dove | Cosa fai |
 |---|---|---|
-| 1 | Costi → Parametri → MOG | Carichi il file `ADECCO_PS_AAAA_MM.xlsx` del mese (arriva dal payroll). Se ha più di 40 giorni il sito te lo ricorda. |
+| 1 | Costi → Parametri → MOG | Carichi il file `ADECCO_PS_AAAA_MM.xlsx` del mese (arriva dal payroll). Se ha più di 40 giorni il sito te lo ricorda. Quando arrivano gli aumenti, trascini insieme il PDF `Mog_Cambio_Lavoratore…` e l'Excel `Aumenti MOG PS`: dalla data della lettera il MOG sale. |
 | 2 | Presenze → Settimanale | Il blocco MOG mostra chi è **a rischio** (la proiezione a fine mese è sotto il MOG di oltre 4 h) o a **zero ore**. Copi la riga per Teams: Ops assegna rotte a chi è sotto. |
 | 3 | Presenze → Fine mese | Vedi la tabella completa, scarichi `Controllo_MOG_<DS>_<mese>.xlsx` e salvi gli esiti. |
 | 4 | Costi → Fine mese | La riga "Integrazione MOG" della stima STD usa le ore mancanti × tariffa Standard. |

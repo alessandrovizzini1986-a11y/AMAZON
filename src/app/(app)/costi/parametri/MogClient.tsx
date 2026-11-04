@@ -7,7 +7,9 @@ import { Aiuto } from "@/components/Aiuto";
 import { useAvvisoUscita } from "@/components/Percorso";
 import { leggiFoglio } from "@/lib/fatture/xlsxStream";
 import { consolidamentiPrevisti, contrattoDaRiga, isIntestazioneMog, type ContrattoMog } from "@/domain/mog/mog";
-import { aggiungiVariazioneMog, anteprimaMog, importaMog } from "../actions";
+import { aggiungiVariazioneMog, anteprimaMog, importaMog, importaVariazioniMog } from "../actions";
+import { aumentiDaExcel, aumentiDaPdf, meseDaNomeFile, unisciAumenti, type AumentoLetto, type AumentoUnito } from "@/domain/mog/aumenti";
+import { pagineDaPdf } from "@/lib/fatture/pdf";
 
 const it = (s: string) => s.split("-").reverse().join("/");
 
@@ -86,8 +88,8 @@ export function VariazioneMog({ lavoratori }: { lavoratori: { cf: string; nome: 
 }
 
 /** Consolidamenti previsti dal file MOG salvato, per mese e station. */
-export function ConsolidamentiMog({ contratti, daMese }: { contratti: ContrattoMog[]; daMese: string }) {
-  const cons = consolidamentiPrevisti(contratti, daMese);
+export function ConsolidamentiMog({ contratti, daMese, variazioni }: { contratti: ContrattoMog[]; daMese: string; variazioni: { cf: string; pctNuova: number; validaDal: string }[] }) {
+  const cons = consolidamentiPrevisti(contratti, daMese, variazioni);
   if (!cons.length) return null;
   const mesi = [...new Set(cons.map((c) => c.dal.slice(0, 7)))].sort();
   const st = [...new Set(cons.map((c) => c.station))].sort();
@@ -101,5 +103,64 @@ export function ConsolidamentiMog({ contratti, daMese }: { contratti: ContrattoM
         <tbody>{mesi.map((m) => { const x = cons.filter((c) => c.dal.startsWith(m)); return <tr key={m}><td>{m.split("-").reverse().join("/")}</td>{st.map((s) => <td key={s} className="text-right font-mono">{x.filter((c) => c.station === s).length || ""}</td>)}<td className="text-right font-mono">{x.length}</td><td className="text-right font-mono">{x.filter((c) => c.scadePrima).length || ""}</td><td className="text-right font-mono">{x.reduce((t, c) => t + extra(c), 0).toLocaleString("it-IT", { maximumFractionDigits: 0 })}</td></tr>; })}</tbody>
       </table></div>
     </details>
+  );
+}
+
+/** Aumenti MOG da file: PDF "Mog_Cambio_Lavoratore…" (data, % prima/dopo) + Excel "Aumenti MOG PS" (codice fiscale). */
+export function AumentiMog({ contratti }: { contratti: ContrattoMog[] }) {
+  const router = useRouter();
+  const [lavoro, setLavoro] = useState(false);
+  const [errore, setErrore] = useState<string | null>(null);
+  const [fatto, setFatto] = useState<string | null>(null);
+  const [dati, setDati] = useState<{ file: string[]; righe: AumentoUnito[] } | null>(null);
+  useAvvisoUscita(!!dati);
+  const leggi = async (files: File[]) => {
+    setLavoro(true); setErrore(null); setFatto(null); setDati(null);
+    try {
+      const letti: AumentoLetto[] = []; let dataDefault: string | null = null; const scartati: string[] = [];
+      for (const f of files) {
+        const buf = await f.arrayBuffer();
+        dataDefault ??= meseDaNomeFile(f.name);
+        if (/\.pdf$/i.test(f.name)) {
+          const testo = (await pagineDaPdf(buf)).map((p) => p.map((i) => i.str).join(" ")).join("\n");
+          const x = aumentiDaPdf(testo); if (!x.length) scartati.push(f.name); letti.push(...x);
+        } else {
+          const ExcelJS = (await import("exceljs")).default;
+          const wb = new ExcelJS.Workbook(); await wb.xlsx.load(buf);
+          const righe: (string | number | null)[][] = [];
+          for (const ws of wb.worksheets) ws.eachRow((r) => righe.push((r.values as (string | number | null)[]).slice(1).map((v) => (v && typeof v === "object" && "result" in v ? (v as { result: string | number }).result : v))));
+          const x = aumentiDaExcel(righe); if (!x.length) scartati.push(f.name); letti.push(...x);
+        }
+      }
+      if (scartati.length) setErrore(`Nessun aumento MOG trovato in: ${scartati.join(", ")}. Servono il PDF delle lettere "Mog_Cambio…" o l'Excel con le colonne "Codice fiscale" e "Nuova % MOG".`);
+      if (letti.length) setDati({ file: files.map((f) => f.name), righe: unisciAumenti(letti, contratti, dataDefault) });
+    } catch (e) { setErrore(e instanceof Error ? e.message : String(e)); } finally { setLavoro(false); }
+  };
+  const validi = dati?.righe.filter((r) => r.cf && r.validaDal) ?? [];
+  const salva = async () => {
+    if (!dati) return; setLavoro(true);
+    try {
+      const r = await importaVariazioniMog({ file: dati.file, righe: validi.map((x) => ({ cf: x.cf!, nome: x.nome, pctNuova: x.pctNuova, validaDal: x.validaDal!, fonte: x.fonti.includes("pdf") ? `lettera Adecco (${dati.file.join(", ")})`.slice(0, 200) : `Excel (${dati.file.join(", ")})`.slice(0, 200) })) });
+      setFatto(`${r.righe} aumenti salvati.`); setDati(null); router.refresh();
+    } catch (e) { setErrore(e instanceof Error ? e.message : String(e)); } finally { setLavoro(false); }
+  };
+  return (
+    <div className="mt-3">
+      <Dropzone titolo="Trascina qui gli aumenti MOG (PDF e/o Excel)" accept=".pdf,.xlsx" multiple lavoro={lavoro} onFiles={leggi} aiuto="costi.mog.aumenti"
+        testo={<>PDF <code>Mog_Cambio_Lavoratore_AAAA_MM_PS.pdf</code> e Excel <code>Aumenti MOG PS.xlsx</code>, anche insieme: si leggono nel browser e non si salvano.</>} />
+      {errore && <p className="mt-2 rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">{errore}</p>}
+      {fatto && <p className="mt-2 rounded-control bg-ok-soft px-3 py-2 text-sm text-ok">{fatto}</p>}
+      {dati && (
+        <div className="card mt-3 p-3 text-sm">
+          <p className="font-semibold">{dati.righe.length} aumenti letti · {validi.length} pronti da salvare</p>
+          <div className="mt-2 overflow-x-auto"><table className="table-base text-xs">
+            <thead><tr><th>DS</th><th>Lavoratore</th><th>Contratto</th><th className="text-right">% file MOG</th><th className="text-right">Da (lettera)</th><th className="text-right">Nuova %</th><th className="text-right">Nuovo MOG h</th><th>Dal</th><th>Fonti</th><th>Avvisi</th></tr></thead>
+            <tbody>{dati.righe.map((r, i) => <tr key={i}><td>{r.station ?? "?"}</td><td>{r.nome}</td><td>{r.nContratto ?? ""}</td><td className="text-right font-mono">{r.pctFileMog ?? "—"}</td><td className="text-right font-mono">{r.pctPrima ?? "—"}</td><td className="text-right font-mono font-semibold">{r.pctNuova}</td><td className="text-right font-mono">{(Math.round(r.pctNuova / 100 * 169 * 10) / 10).toLocaleString("it-IT")}</td><td>{it(r.validaDal ?? "")}</td><td>{r.fonti.join(" + ")}</td><td className={r.avvisi.length ? "text-warn" : "text-ok"}>{r.avvisi.length ? r.avvisi.join("; ") : "ok"}</td></tr>)}</tbody>
+          </table></div>
+          {validi.length < dati.righe.length && <p className="mt-2 text-warn">Le righe senza codice fiscale o senza data non si salvano: aggiungile a mano qui sotto.</p>}
+          <div className="mt-3 flex gap-2"><button type="button" className="btn-primary" disabled={lavoro || !validi.length} onClick={salva}>Salva gli aumenti</button> <Aiuto k="costi.mog.aumenti.salva" /><button type="button" className="btn-secondary" onClick={() => setDati(null)}>Annulla</button></div>
+        </div>
+      )}
+    </div>
   );
 }

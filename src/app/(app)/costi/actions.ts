@@ -228,6 +228,17 @@ export async function aggiungiVariazioneMog(input: { cf: string; nome: string; p
   revalidatePath("/costi", "layout"); revalidatePath("/presenze", "layout");
 }
 
+/** Salva gli aumenti MOG letti da PDF/Excel (uno per lavoratore e data: se c'è già, si aggiorna). */
+export async function importaVariazioniMog(input: { file: string[]; righe: { cf: string; nome: string; pctNuova: number; validaDal: string; fonte: string }[] }) {
+  const user = await requireUser();
+  assertCan(user, "costi.parametri");
+  const righe = z.array(z.object({ cf: z.string().min(11).max(20), nome: z.string().max(200), pctNuova: z.number().min(1).max(100), validaDal: iso, fonte: z.string().max(200) })).min(1).max(2000).parse(input.righe);
+  await db.$transaction(righe.map((x) => db.mogVariazione.upsert({ where: { cf_validaDal: { cf: x.cf, validaDal: d(x.validaDal) } }, create: { ...x, validaDal: d(x.validaDal) }, update: { pctNuova: x.pctNuova, fonte: x.fonte, nome: x.nome } })));
+  await audit({ userId: user.id, action: "costi.mog.aumenti", entity: "MogVariazione", meta: { file: z.array(z.string().max(300)).max(20).parse(input.file), righe: righe.length } });
+  revalidatePath("/costi", "layout"); revalidatePath("/presenze", "layout");
+  return { righe: righe.length };
+}
+
 const esitoMog = z.object({
   station: z.string().max(10), cf: z.string().max(20), nome: z.string().max(200), oreLav: z.number(), oreAssRetrib: z.number(), computo: z.number(),
   oreMog: z.number().nullable(), gap: z.number().nullable(), stato: z.string().max(30), proiezioneFineMese: z.number().nullable(), costoIntegrazione: z.number(),

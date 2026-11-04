@@ -4,7 +4,7 @@ import { PARAMETRI } from "@/domain/costi/parametri";
 import { prossimoCambio, valoreAlla } from "@/domain/costi/tariffe";
 import { STATIONS_COSTI } from "@/domain/costi/festivi";
 import { contrattiMog, festivi, oggiIso, parametri, tariffe, utenteCosti, variazioniMog, versioniCDL, versioniMog } from "../dati";
-import { ConsolidamentiMog, MogClient, VariazioneMog } from "./MogClient";
+import { AumentiMog, ConsolidamentiMog, MogClient, VariazioneMog } from "./MogClient";
 import { AnagraficaCDLClient, EliminaFestivo, NuovoFestivo, NuovoParametro, NuovaTariffa } from "./ParametriClient";
 
 export const dynamic = "force-dynamic";
@@ -87,11 +87,13 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
             <tbody>{vMog.map((v, i) => <tr key={v.versione} className={i === 0 ? "font-semibold" : ""}><td>{it(v.versione)}{i === 0 ? " (in uso)" : ""}</td><td className="text-right font-mono">{v.teste}</td><td className="text-xs">{Object.entries(v.perStation).sort().map(([s, n]) => `${s} ${n}`).join(" · ")}</td><td>{v.caricatoIl ? new Date(v.caricatoIl).toLocaleString("it-IT") : ""}</td></tr>)}</tbody>
           </table>
         )}
-        {cMog.contratti.length > 0 && <ConsolidamentiMog contratti={cMog.contratti} daMese={oggiIso().slice(0, 7)} />}
+        {cMog.contratti.length > 0 && <ConsolidamentiMog contratti={cMog.contratti} daMese={oggiIso().slice(0, 7)} variazioni={varMog} />}
         {edit && <MogClient />}
         <h3 className="mb-1 mt-5 font-semibold">Aumenti MOG comunicati</h3>
-        <p className="text-sm text-ink-muted">Dai PDF &quot;Mog_Cambio…&quot; o dall&apos;Excel &quot;Aumenti MOG PS&quot;: dalla data il MOG del mese si ricalcola con la nuova % × 169 h, pro-rata.</p>
+        <p className="text-sm text-ink-muted">Dai PDF &quot;Mog_Cambio…&quot; e dall&apos;Excel &quot;Aumenti MOG PS&quot;: dalla data il MOG del mese si ricalcola con la nuova % × 169 h, pro-rata. Trascina i due file insieme: dal PDF si prendono data e % prima/dopo, dall&apos;Excel il codice fiscale.</p>
         {varMog.length > 0 && <table className="table-base mt-2 text-sm"><thead><tr><th>Lavoratore</th><th className="text-right">Nuova %</th><th>Dal</th><th>Fonte</th></tr></thead><tbody>{varMog.map((v) => <tr key={v.id}><td>{v.nome}</td><td className="text-right font-mono">{v.pctNuova}</td><td>{it(v.validaDal)}</td><td>{v.fonte ?? ""}</td></tr>)}</tbody></table>}
+        {edit && cMog.contratti.length > 0 && <AumentiMog contratti={cMog.contratti} />}
+        {edit && cMog.contratti.length > 0 && <p className="mt-3 text-sm text-ink-muted">Oppure a mano, uno per volta:</p>}
         {edit && cMog.contratti.length > 0 && <VariazioneMog lavoratori={cMog.contratti.map((c) => ({ cf: c.cf, nome: `${c.cognome} ${c.nome}`, station: c.station, pct: c.pctMog }))} />}
       </section>
 
