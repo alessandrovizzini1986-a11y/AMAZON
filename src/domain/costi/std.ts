@@ -61,7 +61,8 @@ export type RigaStima = { voce: string; quantita: number | null; tariffa: number
 export type StimaStdStation = { station: string; righe: RigaStima[]; costoOre: number; trasferte: number; core: number; nonTracking: number; totale: number; /** non arrotondato, per sommare le station */ totaleEsatto: number; nFestivi: number };
 
 /** Costo STD della station: ore × tariffe ADIT + trasferte + voci non da tracking. */
-export function stimaStd(o: OreStation, t: TariffeStd, p: ParametriStd, nFestivi: number, nStation = 7): StimaStdStation {
+/** `mogEuro`: integrazione MOG della station dal controllo MOG (se assente, il parametro STD_MOG diviso per le station). */
+export function stimaStd(o: OreStation, t: TariffeStd, p: ParametriStd, nFestivi: number, nStation = 7, mogEuro?: number): StimaStdStation {
   const ore: [string, number, number][] = [
     ["STANDARD", o.standard - o.standardDF, t.STANDARD], ["STR30", o.straord - o.straordDom, t.STR30], ["SUPP18", o.suppl - o.supplDom, t.SUPP18],
     ["MAGG50", o.standardDF, t.MAGG50], ["STR65", o.straordDom, t.STR65], ["SUPP65", o.supplDom, t.SUPP65],
@@ -76,7 +77,7 @@ export function stimaStd(o: OreStation, t: TariffeStd, p: ParametriStd, nFestivi
     { voce: "CARENZA", quantita: null, tariffa: t.CARENZA_PCT, importo: costoOre * t.CARENZA_PCT },
     { voce: "CTRB_DIGNITA", quantita: r2(o.standard + o.straord + o.suppl), tariffa: p.CTRB_H, importo: (o.standard + o.straord + o.suppl) * p.CTRB_H },
     { voce: "ALTRO", quantita: null, tariffa: p.ALTRO_PCT, importo: costoOre * p.ALTRO_PCT },
-    { voce: "INTEGR_MOG", quantita: null, tariffa: null, importo: p.MOG / nStation },
+    { voce: "INTEGR_MOG", quantita: null, tariffa: null, importo: mogEuro ?? p.MOG / nStation },
   ];
   righe.push(...nt);
   const nonTracking = nt.reduce((s, r) => s + r.importo, 0);

@@ -17,6 +17,8 @@ import { CopiaMessaggio } from "../CopiaMessaggio";
 import type { RunSalvata } from "../settimanale/SettimanaleClient";
 import { Aiuto } from "@/components/Aiuto";
 import { useAvvisoUscita } from "@/components/Percorso";
+import { BloccoMog, type DatiMogClient } from "../BloccoMog";
+import type { TrackingInput } from "@/domain/presenze/controlloSettimanale";
 
 const oggiIso = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const mesePrecedente = () => {
@@ -26,7 +28,7 @@ const mesePrecedente = () => {
 };
 const n2 = (x: number) => (Math.round(x * 100) / 100).toLocaleString("it-IT");
 
-export function FineMeseClient({ referenti, runs, canRun }: { referenti: Record<string, string>; runs: RunSalvata[]; canRun: boolean }) {
+export function FineMeseClient({ referenti, runs, canRun, mog }: { referenti: Record<string, string>; runs: RunSalvata[]; canRun: boolean; mog: DatiMogClient }) {
   const router = useRouter();
   const [mese, setMese] = useState(mesePrecedente);
   const [stato, setStato] = useState("");
@@ -35,6 +37,7 @@ export function FineMeseClient({ referenti, runs, canRun }: { referenti: Record<
   const [lavoro, setLavoro] = useState(false);
   const [vista, setVista] = useState<"" | "consec" | "6dom">("");
   const [stMatrice, setStMatrice] = useState<Station | "">("");
+  const [mogIn, setMogIn] = useState<{ mese: string; finoA: string; tracking: TrackingInput[] } | null>(null);
   const [salvata, setSalvata] = useState<string | null>(null);
   useAvvisoUscita(!!esito && !salvata);
 
@@ -42,6 +45,7 @@ export function FineMeseClient({ referenti, runs, canRun }: { referenti: Record<
     setLavoro(true); setErrori([]); setEsito(null); setSalvata(null);
     try {
       const dati = await caricaDatiMese(mese, setStato);
+      setMogIn({ mese: mese, finoA: `${mese}-31`, tracking: dati.tracking.filter((t) => t.tipo === "STD") });
       const err = [...dati.avvisi];
       const map = (tipo: "SIC" | "STD") => Object.fromEntries(dati.tracking.filter((t) => t.tipo === tipo).map((t) => [t.station, t.sheets])) as Partial<Record<Station, SheetGrid[]>>;
       const sic = map("SIC");
@@ -231,6 +235,8 @@ export function FineMeseClient({ referenti, runs, canRun }: { referenti: Record<
           </section>
         </>
       )}
+
+      {mogIn && !lavoro && <BloccoMog mese={mogIn.mese} finoA={mogIn.finoA} tracking={mogIn.tracking} mog={mog} modo="finemese" canSave={canRun} />}
 
       <section className="card p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">Esecuzioni salvate</h2>

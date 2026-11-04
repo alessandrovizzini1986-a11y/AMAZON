@@ -127,3 +127,49 @@ export async function aditConfronto(mese: string) {
 }
 
 export const meseSucc = (m: string) => { const [a, b] = m.split("-").map(Number); return b === 12 ? `${a + 1}-01` : `${a}-${String(b + 1).padStart(2, "0")}`; };
+
+/** Versioni del file MOG (data chiusura payroll) con teste per station. */
+export async function versioniMog() {
+  const r = await db.mogContratto.groupBy({ by: ["versione", "station"], _count: { _all: true }, _max: { caricatoIl: true } }).catch(() => []);
+  const per = new Map<string, { versione: string; teste: number; perStation: Record<string, number>; caricatoIl: string | null }>();
+  for (const x of r) {
+    const v = per.get(x.versione) ?? { versione: x.versione, teste: 0, perStation: {}, caricatoIl: null };
+    v.teste += x._count._all; v.perStation[x.station ?? "?"] = x._count._all; v.caricatoIl = x._max.caricatoIl?.toISOString() ?? v.caricatoIl;
+    per.set(x.versione, v);
+  }
+  return [...per.values()].sort((a, b) => b.versione.localeCompare(a.versione));
+}
+
+/** Contratti MOG dell'ultima versione (o di quella indicata), nel formato del dominio. */
+export async function contrattiMog(versione?: string) {
+  const v = versione ?? (await db.mogContratto.findFirst({ orderBy: { versione: "desc" }, select: { versione: true } }).catch(() => null))?.versione;
+  if (!v) return { versione: null as string | null, contratti: [] };
+  const r = await db.mogContratto.findMany({ where: { versione: v } });
+  const d = (x: Date | null) => (x ? x.toISOString().slice(0, 10) : null);
+  const n = (x: unknown) => (x === null || x === undefined ? null : Number(x));
+  return {
+    versione: v,
+    contratti: r.map((x) => ({ cf: x.cf, nome: x.nome, cognome: x.cognome, station: x.station, sito: x.sito, dataInizio: d(x.dataInizio), dataFine: d(x.dataFine), pctMog: n(x.pctMog), oreMogMese: n(x.oreMogMese), oreMogSett: n(x.oreMogSett), giaConsolidato: x.giaConsolidato, rischioConsolidamento: x.rischioConsolidamento, mediaOreSemestre: n(x.mediaOreSemestre), ventiPctMog: n(x.ventiPctMog), meseProssimoConsolidamento: d(x.meseProssimoConsolidamento) })),
+  };
+}
+
+export async function variazioniMog() {
+  const r = await db.mogVariazione.findMany({ orderBy: { validaDal: "desc" } }).catch(() => []);
+  return r.map((x) => ({ id: x.id, cf: x.cf, nome: x.nome, pctNuova: Number(x.pctNuova), validaDal: x.validaDal.toISOString().slice(0, 10), fonte: x.fonte }));
+}
+
+/** Tariffa Standard STD dell'ultimo ADIT caricato (costo/ore Stipendio), per il costo dell'integrazione MOG. */
+export async function tariffaStandardAttuale(): Promise<{ tariffa: number; mese: string | null }> {
+  const u = await db.aditRiga.findFirst({ orderBy: { meseFattura: "desc" }, select: { meseFattura: true } }).catch(() => null);
+  if (!u) return { tariffa: 20.86, mese: null };
+  const a = await db.aditRiga.aggregate({ where: { meseFattura: u.meseFattura, voce: "STANDARD" }, _sum: { quantita: true, costo: true } });
+  const q = Number(a._sum.quantita ?? 0), c = Number(a._sum.costo ?? 0);
+  return { tariffa: q ? Math.round((c / q) * 100) / 100 : 20.86, mese: u.meseFattura };
+}
+
+/** Tutto quello che serve ai controlli MOG nel browser. */
+export async function datiMog() {
+  const [{ versione, contratti }, variazioni, t] = await Promise.all([contrattiMog(), variazioniMog(), tariffaStandardAttuale()]);
+  return { versione, contratti, variazioni: variazioni.map((v) => ({ cf: v.cf, pctNuova: v.pctNuova, validaDal: v.validaDal })), tariffa: t.tariffa, meseTariffa: t.mese };
+}
+export type DatiMog = Awaited<ReturnType<typeof datiMog>>;

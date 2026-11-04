@@ -33,3 +33,12 @@ I file di esempio e gli attesi del kit (`esempi/`, `attesi/`) contengono dati pe
 - Vademecum `15-costi-fine-mese.md`.
 - Golden: payroll 0926 = 1.209.420,66 €, 403 dipendenti, componenti e totali per station uguali a Station_SET, 7 non in anagrafica (13.468 €); riconciliazione STD settembre +0,4 %, ogni station entro ±1,2 %.
 - Il coefficiente SIC_CARENZA_PCT non si ricalcola in automatico (in paga carenza/integrazione ≈ 63 % della trattenuta malattia, la spec dice 2,5 %: da confermare).
+
+## Controllo MOG (addendum `docs/costi-kit/ADDENDUM_claude_code_modulo_MOG.md`)
+- `src/domain/mog/mog.ts`: contratti dal file `ADECCO_PS_AAAA_MM.xlsx` (foglio PS, intestazione in riga 3, A3 = chiusura payroll), Sito → station, match per CF e poi per nome (token, ordine indifferente). MOG del mese pro-rata sui giorni di contratto; aumenti = % × 169 h dalla data di validità.
+- Computo = ore lavorate + assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi retribuiti). Stati: OK, SOTTO MOG, A RISCHIO (proiezione < MOG − 4 h), ZERO ORE, NON IN FILE MOG, NON NEL TRACKING. Costo = ore mancanti × tariffa Standard ADIT.
+- Tabelle `MogContratto`, `MogVariazione`, `MogEsito` (migrazione `20261105120000_mog`).
+- `/costi/parametri#mog`: import del file con anteprima (teste per sito, chiusura payroll, % cambiate rispetto alla versione prima), aumenti inseriti a mano. Avviso in testa al modulo se il file ha più di 40 giorni.
+- `/presenze/settimanale`: blocco MOG con i lavoratori a rischio e la riga per Teams. `/presenze/fine-mese`: tabella completa, Excel `Controllo_MOG_<DS>_<mese>.xlsx`, "Salva esiti MOG".
+- `/costi/fine-mese`: la riga "Integrazione MOG" della stima STD = Σ costo SOTTO MOG + ZERO ORE della station (senza file MOG resta il parametro STD_MOG).
+- Golden DLO4 ottobre 2026: 31 OK, 5 SOTTO MOG (64 h = 1.335 €), 19 non in file, 2 non nel tracking. Il kit dice 30/3 perché mette a ZERO ORE un lavoratore con 171 h di malattia; qui la malattia conta (§3).

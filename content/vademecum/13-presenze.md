@@ -80,3 +80,15 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 - File che il sito non riconosce e non capisci perché → Alessandro, con il messaggio di errore.
 - Driver A senza altra station in nota e non confermati dagli Ops come nuovi assunti → Alessandro (possibile uso improprio dell'account).
 - Qualsiasi caso di 7 o più giorni consecutivi → Alessandro subito.
+
+## Controllo MOG (somministrati con monte ore garantito)
+Se un MOG chiude il mese sotto il suo monte ore, Adecco fattura comunque la differenza come "Integrazione MOG" (20,86 €/h). Il controllo serve a vederlo **durante** il mese.
+
+| Passo | Dove | Cosa fai |
+|---|---|---|
+| 1 | Costi → Parametri → MOG | Carichi il file `ADECCO_PS_AAAA_MM.xlsx` del mese (arriva dal payroll). Se ha più di 40 giorni il sito te lo ricorda. |
+| 2 | Presenze → Settimanale | Il blocco MOG mostra chi è **a rischio** (la proiezione a fine mese è sotto il MOG di oltre 4 h) o a **zero ore**. Copi la riga per Teams: Ops assegna rotte a chi è sotto. |
+| 3 | Presenze → Fine mese | Vedi la tabella completa, scarichi `Controllo_MOG_<DS>_<mese>.xlsx` e salvi gli esiti. |
+| 4 | Costi → Fine mese | La riga "Integrazione MOG" della stima STD usa le ore mancanti × tariffa Standard. |
+
+Nel computo contano le ore lavorate e le assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi retribuiti). Non contano permessi non retribuiti, assenze ingiustificate, riposi. "Non in file MOG" = assunto dopo la chiusura del payroll: chiedi il MOG. "Non nel tracking" = nel file ma senza righe: cessato o dimenticato.
