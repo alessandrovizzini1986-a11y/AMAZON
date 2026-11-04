@@ -177,8 +177,11 @@ export type ConsolidamentoMog = { station: string; cf: string; nome: string; pct
  * ("SI") e il file calcola la nuova % e il nuovo monte ore dal "Mese prossimo possibile consolidamento".
  * È un rischio, non un cambio: il MOG del mese non cambia finché non arriva il file aggiornato o un aumento.
  */
-export function consolidamentiPrevisti(contratti: ContrattoMog[], daMese?: string): ConsolidamentoMog[] {
+export function consolidamentiPrevisti(contratti: ContrattoMog[], daMese?: string, variazioni: VariazioneMog[] = []): ConsolidamentoMog[] {
+  // chi ha già avuto un aumento almeno alla nuova % (lettera Adecco) non è più un rischio
+  const giaAumentati = new Set(variazioni.filter((v) => contratti.some((c) => c.cf === v.cf && c.nuovaPct !== null && v.pctNuova >= c.nuovaPct - 0.005)).map((v) => v.cf));
   return contratti
+    .filter((c) => !giaAumentati.has(c.cf))
     .filter((c) => /^s/i.test(c.supera20 ?? "") && c.nuovaPct !== null && c.meseProssimoConsolidamento && (!daMese || c.meseProssimoConsolidamento >= `${daMese}-01`))
     .map((c) => ({ station: c.station ?? c.sito, cf: c.cf, nome: `${c.nome} ${c.cognome}`.trim(), pctMog: c.pctMog, nuovaPct: c.nuovaPct!, oreMogMese: c.oreMogMese, nuovoMonteOre: c.nuovoMonteOre, dal: c.meseProssimoConsolidamento!, giaConsolidato: /^s/i.test(c.giaConsolidato ?? ""), scadePrima: !!c.dataFine && c.dataFine < c.meseProssimoConsolidamento! }))
     .sort((a, b) => a.dal.localeCompare(b.dal) || a.station.localeCompare(b.station));

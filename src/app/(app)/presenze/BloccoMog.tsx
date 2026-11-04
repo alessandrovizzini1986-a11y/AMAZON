@@ -33,7 +33,7 @@ export function BloccoMog({ mese, finoA, tracking, mog, modo, canSave }: { mese:
   const visibili = modo === "settimanale" ? esiti.filter((e) => e.stato === "A RISCHIO" || e.stato === "ZERO ORE" || e.stato === "NON IN FILE MOG") : esiti;
   // consolidamenti previsti nei 3 mesi dopo questo (dal file PS: media 6 mesi oltre il MOG + 20 %)
   const limite = (() => { const d = new Date(Date.UTC(anno, mm + 2, 1)); return d.toISOString().slice(0, 10); })();
-  const cons = consolidamentiPrevisti(mog.contratti, mese).filter((c) => stations.includes(c.station) && c.dal <= limite);
+  const cons = consolidamentiPrevisti(mog.contratti, mese, mog.variazioni).filter((c) => stations.includes(c.station) && c.dal <= limite);
   const vecchio = (Date.parse(finoA) - Date.parse(mog.versione)) / 864e5 > 40;
 
   const teams = (st: string) => {
