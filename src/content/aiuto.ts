@@ -23,6 +23,7 @@ export const AIUTO: Record<string, VoceAiuto> = {
   "presenze.salva": { fa: "Salva il controllo: le anomalie restano e potrai segnare gli esiti quando gli Ops rispondono.", prima: "Esegui il controllo e leggi le anomalie.", dove: "SITO" },
   "presenze.finemese.esegui": { fa: "Confronta le ore dei tracking con Zucchetti per ogni lavoratore e giorno del mese.", prima: "Carica nell'archivio i tracking del mese e gli export Zucchetti delle 7 station.", dove: "TEMP", nota: "Il risultato resta finché non premi Salva esecuzione." },
   "presenze.finemese.excel": { fa: "Scarica l'Excel del controllo di fine mese.", prima: "Esegui prima il controllo.", dove: "FILE" },
+  "presenze.mog.salva": { fa: "Salva gli esiti MOG del mese per lavoratore: la riga Integrazione MOG della stima STD prende da qui il costo.", prima: "Controlla i SOTTO MOG e i NON IN FILE (MOG da chiedere a Erika).", dove: "SITO" },
   "presenze.config.referenti": { fa: "Salva il nome del referente Ops di ogni station, usato nei messaggi (\"Ciao …\").", prima: "Scrivi un nome per station.", dove: "SITO" },
   "presenze.config.lista": { fa: "Aggiunge o toglie una voce dall'elenco (dispatcher esclusi dagli alert, codici che giustificano il giorno).", prima: "Controlla nome e station.", dove: "SITO" },
 
@@ -61,6 +62,9 @@ export const AIUTO: Record<string, VoceAiuto> = {
   "costi.teams": { fa: "Prepara la tabella per station con i totali e i 3 avvisi principali e la copia negli appunti.", prima: "Calcola prima i costi.", dove: "FILE", nota: "Incollala nella chat Teams." },
   "costi.consuntivo": { fa: "Legge la fattura ADIT o i Costi del personale PS, li riconosce dal contenuto e tiene solo il CDC 5569.", prima: "ADIT: arriva circa 5 settimane dopo il mese. Costi del personale: dopo il 27.", dove: "TEMP", nota: "Finché non premi Salva non cambia niente." },
   "costi.consuntivo.salva": { fa: "Salva le righe del consuntivo: da qui partono riconciliazione e tariffe.", prima: "Per il payroll controlla il mese di paga. Lo stesso mese viene sostituito.", dove: "SITO" },
+  "costi.mog": { fa: "Legge il file MOG di Adecco (ADECCO_PS, foglio PS): per ogni somministrato la % e le ore MOG del mese, il contratto e il rischio consolidamento.", prima: "Chiedi a Erika il file del mese: serve aggiornato (al massimo 40 giorni).", dove: "TEMP", nota: "Finché non premi Salva il file MOG non cambia niente." },
+  "costi.mog.salva": { fa: "Salva la versione del file MOG: i controlli MOG di Presenze e la riga Integrazione MOG dei costi useranno questa.", prima: "Controlla teste per station e % cambiate.", dove: "SITO" },
+  "costi.mog.variazione": { fa: "Registra un aumento MOG comunicato da Adecco: dalla data indicata il MOG del mese si ricalcola con la nuova % (× 169 h).", prima: "Prendi nome, nuova % e data dal PDF \"Mog_Cambio…\" o dall'Excel \"Aumenti MOG PS\".", dove: "SITO" },
   "costi.riconciliazione": { fa: "Salva il confronto stima/consuntivo del mese.", prima: "Leggi i delta rossi e annota il motivo.", dove: "SITO" },
   "costi.aggiorna": { fa: "Salva i coefficienti SIC ricalcolati dalla paga, validi dal mese successivo.", prima: "Premilo solo se Alessandro ha confermato i valori \"dopo\".", dove: "SITO" },
 

@@ -178,3 +178,69 @@ export async function aggiornaParametri(input: { validaDal: string; valori: Reco
   await audit({ userId: user.id, action: "costi.parametri.aggiorna", entity: "Parametro", meta: { validaDal: dal, valori, fonte } });
   revalidatePath(BASE, "layout");
 }
+
+const contrattoMog = z.object({
+  cf: z.string().min(11).max(20), nome: z.string().max(100), cognome: z.string().max(100), sito: z.string().max(100), station: z.string().max(10).nullable(),
+  dataInizio: iso.nullable(), dataFine: iso.nullable(), pctMog: n, oreMogMese: n, oreMogSett: n, giaConsolidato: z.string().max(40).nullable(),
+  rischioConsolidamento: z.string().max(40).nullable(), mediaOreSemestre: n, ventiPctMog: n, meseProssimoConsolidamento: iso.nullable(),
+  proroghe: n, oreRetribuite6m: n, oreEccedenti6m: n, mediaOreAnzianita: n, mesePrimoConsolidamento: iso.nullable(), meseConsolidato: iso.nullable(),
+  supera20: z.string().max(40).nullable(), pctDaConsolidare: n, nuovoMonteOre: n, nuovaPct: n, orarioSettConsolidato: n,
+});
+
+/** Anteprima import MOG: % cambiate rispetto all'ultima versione precedente (= aumenti applicati). */
+export async function anteprimaMog(input: { versione: string; righe: z.infer<typeof contrattoMog>[] }) {
+  const user = await requireUser();
+  assertCan(user, "costi.parametri");
+  const v = iso.parse(input.versione);
+  const righe = z.array(contrattoMog).max(5000).parse(input.righe);
+  const prec = await db.mogContratto.findFirst({ where: { versione: { lt: v } }, orderBy: { versione: "desc" }, select: { versione: true } });
+  const prima = prec ? await db.mogContratto.findMany({ where: { versione: prec.versione }, select: { cf: true, nome: true, cognome: true, station: true, pctMog: true } }) : [];
+  const p = new Map(prima.map((x) => [x.cf, x]));
+  const cambi = righe.filter((r) => p.has(r.cf) && r.pctMog !== null && Math.abs(Number(p.get(r.cf)!.pctMog ?? 0) - r.pctMog) > 0.01)
+    .map((r) => ({ nome: `${r.cognome} ${r.nome}`, station: r.station, prima: Number(p.get(r.cf)!.pctMog), dopo: r.pctMog }));
+  const nuovi = righe.filter((r) => !p.has(r.cf)).length, usciti = prima.filter((x) => !righe.some((r) => r.cf === x.cf)).length;
+  const esiste = (await db.mogContratto.count({ where: { versione: v } })) > 0;
+  return { precedente: prec?.versione ?? null, cambi: cambi.slice(0, 200), nCambi: cambi.length, nuovi, usciti, esiste };
+}
+
+export async function importaMog(input: { versione: string; nomeFile: string; righe: z.infer<typeof contrattoMog>[] }) {
+  const user = await requireUser();
+  assertCan(user, "costi.parametri");
+  const v = iso.parse(input.versione);
+  const righe = z.array(contrattoMog).max(5000).parse(input.righe);
+  const unici = new Map(righe.map((r) => [r.cf, r]));
+  const dd = (s: string | null) => (s ? d(s) : null);
+  await db.$transaction(async (tx) => {
+    await tx.mogContratto.deleteMany({ where: { versione: v } });
+    await tx.mogContratto.createMany({ data: [...unici.values()].map((r) => ({ ...r, versione: v, dataInizio: dd(r.dataInizio), dataFine: dd(r.dataFine), meseProssimoConsolidamento: dd(r.meseProssimoConsolidamento), mesePrimoConsolidamento: dd(r.mesePrimoConsolidamento), meseConsolidato: dd(r.meseConsolidato), proroghe: r.proroghe === null ? null : Math.round(r.proroghe), caricatoDa: user.name })) });
+  }, { timeout: 60_000 });
+  await audit({ userId: user.id, action: "costi.mog.import", entity: "MogContratto", meta: { versione: v, file: z.string().max(300).parse(input.nomeFile), righe: unici.size } });
+  revalidatePath("/costi", "layout"); revalidatePath("/presenze", "layout");
+  return { righe: unici.size };
+}
+
+export async function aggiungiVariazioneMog(input: { cf: string; nome: string; pctNuova: number; validaDal: string; fonte?: string }) {
+  const user = await requireUser();
+  assertCan(user, "costi.parametri");
+  const x = z.object({ cf: z.string().min(11).max(20), nome: z.string().max(200), pctNuova: z.number().min(1).max(100), validaDal: iso, fonte: z.string().max(200).optional() }).parse(input);
+  await db.mogVariazione.upsert({ where: { cf_validaDal: { cf: x.cf, validaDal: d(x.validaDal) } }, create: { ...x, validaDal: d(x.validaDal) }, update: { pctNuova: x.pctNuova, fonte: x.fonte } });
+  await audit({ userId: user.id, action: "costi.mog.variazione", entity: "MogVariazione", meta: { nome: x.nome, pctNuova: x.pctNuova, validaDal: x.validaDal } });
+  revalidatePath("/costi", "layout"); revalidatePath("/presenze", "layout");
+}
+
+const esitoMog = z.object({
+  station: z.string().max(10), cf: z.string().max(20), nome: z.string().max(200), oreLav: z.number(), oreAssRetrib: z.number(), computo: z.number(),
+  oreMog: z.number().nullable(), gap: z.number().nullable(), stato: z.string().max(30), proiezioneFineMese: z.number().nullable(), costoIntegrazione: z.number(),
+});
+
+/** Salva gli esiti MOG del mese (sostituisce quelli già salvati per le stesse station). */
+export async function salvaEsitiMog(input: { mese: string; righe: z.infer<typeof esitoMog>[] }) {
+  const user = await requireUser();
+  assertCan(user, "presenze.run");
+  const m = mese.parse(input.mese);
+  const righe = z.array(esitoMog).max(5000).parse(input.righe);
+  const st = [...new Set(righe.map((r) => r.station))];
+  await db.$transaction([db.mogEsito.deleteMany({ where: { mese: m, station: { in: st } } }), db.mogEsito.createMany({ data: righe.map((r) => ({ ...r, mese: m })) })]);
+  await audit({ userId: user.id, action: "presenze.mog", entity: "MogEsito", meta: { mese: m, righe: righe.length, costo: Math.round(righe.reduce((t, r) => t + r.costoIntegrazione, 0)) } });
+  revalidatePath("/costi", "layout");
+}

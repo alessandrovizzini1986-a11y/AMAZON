@@ -113,8 +113,12 @@ const colIdx = (ref: string) => {
 export async function leggiFoglio(
   data: ArrayBuffer | Uint8Array,
   nome: string,
-  opz: { colonne?: string[]; onRiga?: (riga: Record<string, CellaX>, n: number) => void; onProgress?: (fase: string, byte: number) => void } = {},
-): Promise<{ intestazioni: string[]; righe: number; mancanti: string[] }> {
+  opz: {
+    colonne?: string[]; onRiga?: (riga: Record<string, CellaX>, n: number) => void; onProgress?: (fase: string, byte: number) => void;
+    /** riga di intestazione: la prima per cui restituisce true (default: la prima riga) */
+    intestazione?: (celle: CellaX[]) => boolean;
+  } = {},
+): Promise<{ intestazioni: string[]; righe: number; mancanti: string[]; rigaIntestazione: CellaX[] }> {
   const zip = await JSZip.loadAsync(data);
   const path = await percorsoFoglio(zip, nome);
   if (!path) throw new Error(`foglio "${nome}" non trovato (fogli: ${(await nomiFogli(zip)).join(", ")})`);
@@ -122,6 +126,7 @@ export async function leggiFoglio(
   if (zip.file("xl/sharedStrings.xml")) await streamTag(zip, "xl/sharedStrings.xml", "si", (x) => shared.push(testoT(x)), (b) => opz.onProgress?.("testi", b));
 
   let intest: string[] | null = null;
+  let rigaInt: CellaX[] = [];
   let tenere: Map<number, string> | null = null;
   const mancanti: string[] = [];
   let n = 0;
@@ -150,6 +155,8 @@ export async function leggiFoglio(
       if (celle[i] !== null && celle[i] !== "") piena = true;
     }
     if (!intest) {
+      if (opz.intestazione && !opz.intestazione(Array.from(celle, (v) => v ?? null))) return;
+      rigaInt = Array.from(celle, (v) => v ?? null);
       intest = Array.from(celle, (v) => (v === null || v === undefined ? "" : String(v).trim()));
       if (opz.colonne) {
         tenere = new Map();
@@ -168,7 +175,7 @@ export async function leggiFoglio(
     n++;
     opz.onRiga?.(riga, n);
   }, (b) => opz.onProgress?.("foglio", b));
-  return { intestazioni: intest ?? [], righe: n, mancanti };
+  return { intestazioni: intest ?? [], righe: n, mancanti, rigaIntestazione: rigaInt };
 }
 
 /** Seriale Excel → data UTC (sistema 1900). */

@@ -3,7 +3,8 @@ import { PageHeader } from "@/components/ui";
 import { PARAMETRI } from "@/domain/costi/parametri";
 import { prossimoCambio, valoreAlla } from "@/domain/costi/tariffe";
 import { STATIONS_COSTI } from "@/domain/costi/festivi";
-import { festivi, oggiIso, parametri, tariffe, utenteCosti, versioniCDL } from "../dati";
+import { contrattiMog, festivi, oggiIso, parametri, tariffe, utenteCosti, variazioniMog, versioniCDL, versioniMog } from "../dati";
+import { ConsolidamentiMog, MogClient, VariazioneMog } from "./MogClient";
 import { AnagraficaCDLClient, EliminaFestivo, NuovoFestivo, NuovoParametro, NuovaTariffa } from "./ParametriClient";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
   const edit = can(user, "costi.parametri");
   const oggi = oggiIso();
   const anno = Number((await searchParams).anno) || Number(oggi.slice(0, 4));
-  const [tar, par, fest, versioni] = await Promise.all([tariffe(), parametri(), festivi(anno), versioniCDL()]);
+  const [tar, par, fest, versioni, vMog, cMog, varMog] = await Promise.all([tariffe(), parametri(), festivi(anno), versioniCDL(), versioniMog(), contrattiMog(), variazioniMog()]);
   const voci = [...new Set(tar.map((t) => t.voce))];
   const chiavi = [...new Set([...Object.keys(PARAMETRI), ...par.map((p) => p.chiave)])];
   return (
@@ -76,6 +77,22 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
         </table></div>
         {fest.length === 0 && <p className="text-sm text-warn">Nessun festivo per il {anno}: aggiungili (nazionali con station TUTTE, patroni con la station).</p>}
         {edit && <NuovoFestivo stations={[...STATIONS_COSTI]} />}
+      </section>
+
+      <section id="mog" className="card p-4 md:p-5">
+        <h2 className="mb-3 text-[19px] font-semibold">File MOG Adecco (somministrati STD)</h2>
+        <p className="mb-3 text-sm text-ink-muted">Monte ore garantito: se un somministrato chiude il mese sotto le sue ore MOG, Adecco fattura la differenza come &quot;Integrazione MOG&quot;. Il file serve ai controlli MOG di Presenze (settimanale e fine mese) e alla riga Integrazione MOG dei costi. Va aggiornato ogni mese: oltre 40 giorni il sito lo segnala.</p>
+        {vMog.length > 0 && (
+          <table className="table-base mb-4 text-sm"><thead><tr><th>Chiusura payroll</th><th className="text-right">Lavoratori</th><th>Per station</th><th>Caricato il</th></tr></thead>
+            <tbody>{vMog.map((v, i) => <tr key={v.versione} className={i === 0 ? "font-semibold" : ""}><td>{it(v.versione)}{i === 0 ? " (in uso)" : ""}</td><td className="text-right font-mono">{v.teste}</td><td className="text-xs">{Object.entries(v.perStation).sort().map(([s, n]) => `${s} ${n}`).join(" · ")}</td><td>{v.caricatoIl ? new Date(v.caricatoIl).toLocaleString("it-IT") : ""}</td></tr>)}</tbody>
+          </table>
+        )}
+        {cMog.contratti.length > 0 && <ConsolidamentiMog contratti={cMog.contratti} daMese={oggiIso().slice(0, 7)} />}
+        {edit && <MogClient />}
+        <h3 className="mb-1 mt-5 font-semibold">Aumenti MOG comunicati</h3>
+        <p className="text-sm text-ink-muted">Dai PDF &quot;Mog_Cambio…&quot; o dall&apos;Excel &quot;Aumenti MOG PS&quot;: dalla data il MOG del mese si ricalcola con la nuova % × 169 h, pro-rata.</p>
+        {varMog.length > 0 && <table className="table-base mt-2 text-sm"><thead><tr><th>Lavoratore</th><th className="text-right">Nuova %</th><th>Dal</th><th>Fonte</th></tr></thead><tbody>{varMog.map((v) => <tr key={v.id}><td>{v.nome}</td><td className="text-right font-mono">{v.pctNuova}</td><td>{it(v.validaDal)}</td><td>{v.fonte ?? ""}</td></tr>)}</tbody></table>}
+        {edit && cMog.contratti.length > 0 && <VariazioneMog lavoratori={cMog.contratti.map((c) => ({ cf: c.cf, nome: `${c.cognome} ${c.nome}`, station: c.station, pct: c.pctMog }))} />}
       </section>
 
       <section id="anagrafica" className="card p-4 md:p-5">

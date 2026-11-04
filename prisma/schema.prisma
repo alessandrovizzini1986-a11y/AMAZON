@@ -920,3 +920,75 @@ model Riconciliazione {
 
   @@index([mese, popolazione])
 }
+
+// ───────────── MOG (monte ore garantito somministrati STD) ─────────────
+
+// Righe del file ADECCO_PS (foglio PS): una versione per data di chiusura payroll
+model MogContratto {
+  id                         String    @id @default(cuid())
+  versione                   String // AAAA-MM-GG = data chiusura payroll del file
+  cf                         String
+  nome                       String
+  cognome                    String
+  sito                       String
+  station                    String?
+  dataInizio                 DateTime? @db.Date
+  dataFine                   DateTime? @db.Date
+  pctMog                     Decimal?  @db.Decimal(8, 4)
+  oreMogMese                 Decimal?  @db.Decimal(10, 2)
+  oreMogSett                 Decimal?  @db.Decimal(10, 2)
+  giaConsolidato             String?
+  rischioConsolidamento      String?
+  mediaOreSemestre           Decimal?  @db.Decimal(10, 4)
+  ventiPctMog                Decimal?  @db.Decimal(10, 4)
+  meseProssimoConsolidamento DateTime? @db.Date
+  proroghe                   Int?
+  oreRetribuite6m            Decimal?  @db.Decimal(10, 2)
+  oreEccedenti6m             Decimal?  @db.Decimal(10, 2)
+  mediaOreAnzianita          Decimal?  @db.Decimal(10, 4)
+  mesePrimoConsolidamento    DateTime? @db.Date
+  meseConsolidato            DateTime? @db.Date
+  supera20                   String?
+  pctDaConsolidare           Decimal?  @db.Decimal(8, 4)
+  nuovoMonteOre              Decimal?  @db.Decimal(10, 2)
+  nuovaPct                   Decimal?  @db.Decimal(8, 4)
+  orarioSettConsolidato      Decimal?  @db.Decimal(10, 2)
+  caricatoIl                 DateTime  @default(now())
+  caricatoDa                 String?
+
+  @@unique([versione, cf])
+  @@index([station])
+}
+
+// Aumenti MOG comunicati (PDF / Excel "Aumenti MOG PS" o inseriti a mano)
+model MogVariazione {
+  id        String   @id @default(cuid())
+  cf        String
+  nome      String
+  pctNuova  Decimal  @db.Decimal(8, 4)
+  validaDal DateTime @db.Date
+  fonte     String?
+  creataIl  DateTime @default(now())
+
+  @@unique([cf, validaDal])
+}
+
+// Esito del controllo MOG di fine mese per lavoratore
+model MogEsito {
+  id                 String   @id @default(cuid())
+  mese               String
+  station            String
+  cf                 String
+  nome               String
+  oreLav             Decimal  @db.Decimal(10, 2)
+  oreAssRetrib       Decimal  @db.Decimal(10, 2)
+  computo            Decimal  @db.Decimal(10, 2)
+  oreMog             Decimal? @db.Decimal(10, 2)
+  gap                Decimal? @db.Decimal(10, 2)
+  stato              String
+  proiezioneFineMese Decimal? @db.Decimal(10, 2)
+  costoIntegrazione  Decimal  @db.Decimal(12, 2)
+  creatoIl           DateTime @default(now())
+
+  @@index([mese, station])
+}

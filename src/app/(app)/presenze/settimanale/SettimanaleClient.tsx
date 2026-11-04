@@ -15,6 +15,8 @@ import { salvaEsecuzione } from "../actions";
 import { CopiaMessaggio } from "../CopiaMessaggio";
 import { Aiuto } from "@/components/Aiuto";
 import { useAvvisoUscita } from "@/components/Percorso";
+import { BloccoMog, type DatiMogClient } from "../BloccoMog";
+import type { TrackingInput } from "@/domain/presenze/controlloSettimanale";
 
 export type RunSalvata = { id: string; station: string | null; da: string; a: string; nAlert: number; eseguitoDa: string; eseguitoIl: string; aperti: number };
 
@@ -40,8 +42,8 @@ function periodoDefault() {
   return { da: a.slice(0, 8) + "01", a };
 }
 
-export function SettimanaleClient({ utente, giustificativi, dispatcher, referenti, runs, canRun }: {
-  utente: string; giustificativi: string[]; dispatcher: string[]; referenti: Record<string, string>; runs: RunSalvata[]; canRun: boolean;
+export function SettimanaleClient({ utente, giustificativi, dispatcher, referenti, runs, canRun, mog }: {
+  utente: string; giustificativi: string[]; dispatcher: string[]; referenti: Record<string, string>; runs: RunSalvata[]; canRun: boolean; mog: DatiMogClient;
 }) {
   const router = useRouter();
   const [p, setP] = useState(periodoDefault);
@@ -54,6 +56,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
   const [filtroSt, setFiltroSt] = useState("TUTTE");
   const [filtroEsito, setFiltroEsito] = useState("ALERT");
   const [vistaDom, setVistaDom] = useState<"" | "consec" | "6dom">("");
+  const [mogIn, setMogIn] = useState<{ mese: string; finoA: string; tracking: TrackingInput[] } | null>(null);
   const [salvata, setSalvata] = useState<string | null>(null);
   useAvvisoUscita(esiti.length > 0 && !salvata);
 
@@ -63,6 +66,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
     setLavoro(true); setErrori([]); setEsiti([]); setDom([]); setSalvata(null);
     try {
       const dati = await caricaDatiMese(p.a.slice(0, 7), setStato);
+      setMogIn({ mese: p.a.slice(0, 7), finoA: p.a, tracking: dati.tracking.filter((t) => t.tipo === "STD") });
       const err = [...dati.avvisi];
       if (!dati.flex.length) err.push("Nessun CSV Amazon nell'archivio: caricali nel passo 1.");
       const stations = station === "TUTTE" ? STATIONS.filter((s) => dati.tracking.some((t) => t.station === s) || dati.flex.some((f) => f.station === s)) : [station];
@@ -267,6 +271,8 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
           </section>
         </>
       )}
+
+      {mogIn && !lavoro && <BloccoMog mese={mogIn.mese} finoA={mogIn.finoA} tracking={mogIn.tracking} mog={mog} modo="settimanale" canSave={canRun} />}
 
       <section className="card p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">Esecuzioni salvate</h2>
