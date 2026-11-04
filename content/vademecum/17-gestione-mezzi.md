@@ -95,7 +95,7 @@ Alcuni fornitori mandano un riepilogo mensile o bimensile, altri lavorano a ordi
 
 ### Portali
 
-Ogni portale ha il suo account: **chiedi il tuo**, non usare quelli di altri. Le password condivise durante il passaggio di consegne vanno cambiate.
+Ogni portale ha il suo account: **chiedi il tuo** appena puoi. Gli accessi condivisi (utente e password) sono sul sito in [Portali e credenziali](/portali): le password sono cifrate e le vede solo un ADMIN, dopo aver riscritto la propria password. Ogni visualizzazione resta nel log. Le password condivise durante il passaggio di consegne vanno cambiate e poi aggiornate lì.
 
 | Portale | A cosa serve | Come avere l'accesso |
 |---|---|---|

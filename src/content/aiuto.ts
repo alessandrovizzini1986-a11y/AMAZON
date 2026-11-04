@@ -67,6 +67,8 @@ export const AIUTO: Record<string, VoceAiuto> = {
   "costi.mog.variazione": { fa: "Registra un aumento MOG comunicato da Adecco: dalla data indicata il MOG del mese si ricalcola con la nuova % (× 169 h).", prima: "Prendi nome, nuova % e data dal PDF \"Mog_Cambio…\" o dall'Excel \"Aumenti MOG PS\".", dove: "SITO" },
   "costi.mog.aumenti": { fa: "Legge gli aumenti MOG dal PDF \"Mog_Cambio_Lavoratore…\" (data e % prima/dopo) e dall'Excel \"Aumenti MOG PS\" (codice fiscale): trascinali insieme, li unisce per numero di contratto.", prima: "Carica prima il file MOG del mese: serve a riconoscere i lavoratori e controllare la % \"prima\".", dove: "TEMP" },
   "costi.mog.aumenti.salva": { fa: "Salva gli aumenti letti: dalla data di ognuno il controllo MOG usa la nuova % × 169 h.", prima: "Guarda la colonna Avvisi: se c'è qualcosa in giallo controllalo sul PDF.", dove: "SITO" },
+  "portali.importa": { fa: "Legge il foglio Portali (Portale, URL, Username, Password, Note) e salva gli accessi: le password vengono cifrate.", prima: "Usa il file del passaggio di consegne o un Excel con quelle colonne.", dove: "SITO" },
+  "portali.salva": { fa: "Salva un portale; se il nome esiste già lo aggiorna. La password viene cifrata.", prima: "Lascia la password vuota se non cambia.", dove: "SITO" },
   "costi.riconciliazione": { fa: "Salva il confronto stima/consuntivo del mese.", prima: "Leggi i delta rossi e annota il motivo.", dove: "SITO" },
   "costi.aggiorna": { fa: "Salva i coefficienti SIC ricalcolati dalla paga, validi dal mese successivo.", prima: "Premilo solo se Alessandro ha confermato i valori \"dopo\".", dove: "SITO" },
 

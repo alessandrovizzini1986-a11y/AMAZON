@@ -8,7 +8,7 @@ const { chromium, devices } = require("playwright-core");
 const fs = require("fs");
 const PAGINE = ["/dashboard", "/vehicles", "/vehicles/listini", "/vehicles/new", "/officine", "/orders", "/vademecum", "/presenze", "/presenze/settimanale", "/presenze/fine-mese", "/presenze/archivio", "/presenze/configurazione",
   "/carburante-telepass", "/carburante-telepass/anagrafiche", "/carburante-telepass/telepass", "/carburante-telepass/q8", "/fatture-amazon", "/fatture-amazon/importa", "/fatture-amazon/registro", "/fatture-amazon/allinea",
-  "/fatture-amazon/fatturato", "/fatture-amazon/forecast", "/fatture-amazon/forecast/storico", "/costi", "/costi/fine-mese", "/costi/consuntivo", "/costi/parametri", "/import", "/users", "/config", "/audit", "/account"];
+  "/fatture-amazon/fatturato", "/fatture-amazon/forecast", "/fatture-amazon/forecast/storico", "/costi", "/costi/fine-mese", "/costi/consuntivo", "/costi/parametri", "/import", "/users", "/config", "/portali", "/audit", "/account"];
 const exe = ["/opt/pw-browsers/chromium-1243/chrome-linux64/chrome", "/opt/pw-browsers/chromium"].find((p) => fs.existsSync(p));
 (async () => {
   const [base, email, pw, out] = process.argv.slice(2);
