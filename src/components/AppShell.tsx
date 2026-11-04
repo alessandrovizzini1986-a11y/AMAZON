@@ -39,7 +39,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
             <div className="text-[17px] font-bold tracking-tight md:text-lg">FleetDSP</div>
           </Link>
 
-          <nav className="hidden flex-1 items-center gap-1 2xl:flex" aria-label="Menu principale">
+          <nav className="hidden flex-1 items-center gap-1 min-[1800px]:flex" aria-label="Menu principale">
             {nav.main.map((item) => (
               <TopNavLink key={item.href} {...item} />
             ))}
@@ -48,7 +48,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
               <TopNavLink key={item.href} {...item} />
             ))}
           </nav>
-          <nav className="hidden flex-1 items-center gap-1 xl:flex 2xl:hidden" aria-label="Menu principale">
+          <nav className="hidden flex-1 items-center gap-1 xl:flex min-[1800px]:hidden" aria-label="Menu principale">
             {nav.main.map((item) => (
               <TopNavLink key={item.href} {...item} />
             ))}
