@@ -18,6 +18,7 @@ export default async function ConfigPage() {
       <PageHeader
         title="Configurazione"
         subtitle="Zero valori hardcoded: soglie, termini e coefficienti vivono qui, non nel codice. Ogni modifica è tracciata."
+        action={<a href="/portali" className="btn-secondary">Portali e credenziali</a>}
       />
       <div className="space-y-3">
         {configs.map((c) => (

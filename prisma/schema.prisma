@@ -992,3 +992,17 @@ model MogEsito {
 
   @@index([mese, station])
 }
+
+// Credenziali dei portali (noleggiatori, Telepass, …): password cifrata AES-256-GCM con chiave dal
+// server (CREDENZIALI_KEY, oppure derivata da AUTH_SECRET). Si vede in chiaro solo da ADMIN, dopo
+// aver riscritto la propria password; ogni visualizzazione va nel log di audit.
+model PortaleCredenziale {
+  id              String   @id @default(cuid())
+  portale         String   @unique
+  url             String?
+  username        String?
+  passwordCifrata String?
+  note            String?
+  aggiornatoIl    DateTime @updatedAt
+  aggiornatoDa    String?
+}

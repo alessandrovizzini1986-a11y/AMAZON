@@ -92,7 +92,7 @@ export default async function VehiclesPage({
       <PageHeader
         eyebrow="Flotta"
         title={scope.stationId ? "Le targhe della tua stazione" : "Dove si trova ogni targa"}
-        action={can(user, "vehicle.manage") ? <span className="inline-flex items-center gap-1"><Link href="/vehicles/new" className="btn-primary">+ Nuovo veicolo</Link><Aiuto k="flotta.nuovo" /></span> : undefined}
+        action={can(user, "vehicle.manage") ? <span className="inline-flex flex-wrap items-center gap-2"><Link href="/vehicles/listini" className="btn-secondary">Listini noleggiatori</Link><Link href="/vehicles/new" className="btn-primary">+ Nuovo veicolo</Link><Aiuto k="flotta.nuovo" /></span> : undefined}
       />
 
       {params.error && (
