@@ -18,6 +18,7 @@ const GESTIONE: NavItem[] = [
   { href: "/import", label: "Import", icon: "import" },
   { href: "/users", label: "Utenti", icon: "users" },
   { href: "/config", label: "Configurazione", icon: "settings" },
+  { href: "/portali", label: "Portali", icon: "settings" },
   { href: "/audit", label: "Audit", icon: "audit" },
 ];
 
