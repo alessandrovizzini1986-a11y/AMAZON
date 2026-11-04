@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import Link from "next/link";
 import { leggiLavoratori } from "@/domain/presenze/lavoratori";
 import type { TrackingInput } from "@/domain/presenze/controlloSettimanale";
-import { controlloMog, riepilogoMog, type ContrattoMog, type EsitoMog, type VariazioneMog } from "@/domain/mog/mog";
+import { consolidamentiPrevisti, controlloMog, riepilogoMog, type ContrattoMog, type EsitoMog, type VariazioneMog } from "@/domain/mog/mog";
 import { scarica, tabella } from "@/lib/presenze/excelUtil";
 import { Aiuto } from "@/components/Aiuto";
 import { salvaEsitiMog } from "../costi/actions";
@@ -31,6 +31,9 @@ export function BloccoMog({ mese, finoA, tracking, mog, modo, canSave }: { mese:
   if (!mog.versione) return <section className="card p-4 text-sm"><h2 className="mb-1 text-[19px] font-semibold">MOG</h2><p className="text-warn">Nessun file MOG di Adecco caricato: caricalo in <Link className="underline" href="/costi/parametri#mog">Costi → Parametri e anagrafica</Link>.</p></section>;
   const stations = [...new Set(esiti.map((e) => e.station))].sort();
   const visibili = modo === "settimanale" ? esiti.filter((e) => e.stato === "A RISCHIO" || e.stato === "ZERO ORE" || e.stato === "NON IN FILE MOG") : esiti;
+  // consolidamenti previsti nei 3 mesi dopo questo (dal file PS: media 6 mesi oltre il MOG + 20 %)
+  const limite = (() => { const d = new Date(Date.UTC(anno, mm + 2, 1)); return d.toISOString().slice(0, 10); })();
+  const cons = consolidamentiPrevisti(mog.contratti, mese).filter((c) => stations.includes(c.station) && c.dal <= limite);
   const vecchio = (Date.parse(finoA) - Date.parse(mog.versione)) / 864e5 > 40;
 
   const teams = (st: string) => {
@@ -50,7 +53,7 @@ export function BloccoMog({ mese, finoA, tracking, mog, modo, canSave }: { mese:
   };
   const riga = (e: EsitoMog) => (
     <tr key={`${e.station}|${e.cf}|${e.nome}`}>
-      <td>{e.station}</td><td>{e.nome}{e.abbinatoPerNome && <span className="ml-1 text-xs text-ink-muted">(per nome)</span>}{e.soloAssenze && <span className="ml-1 text-xs text-warn">(solo assenze)</span>}{e.rischioConsolidamento && <span className="ml-1 badge-warn">consolidamento</span>}</td>
+      <td>{e.station}</td><td>{e.nome}{e.abbinatoPerNome && <span className="ml-1 text-xs text-ink-muted">(per nome)</span>}{e.soloAssenze && <span className="ml-1 text-xs text-warn">(solo assenze: nessuna ora lavorata)</span>}{e.rischioConsolidamento && <span className="ml-1 badge-warn">consolidamento</span>}</td>
       <td className="text-right font-mono">{h(e.oreMog)}</td><td className="text-right font-mono">{e.pctMog ?? "—"}</td><td>{it(e.dataFine)}</td>
       <td className="text-right font-mono">{h(e.oreLavorate)}</td><td className="text-right font-mono">{h(e.assenzeRetribuite)}</td><td className="text-right font-mono">{h(e.computo)}</td>
       {modo === "settimanale" && <><td className="text-right font-mono">{h(e.proiezione)}</td><td className="text-right font-mono">{e.giorniResidui}</td></>}
@@ -78,7 +81,15 @@ export function BloccoMog({ mese, finoA, tracking, mog, modo, canSave }: { mese:
           <tbody>{visibili.sort((a, b) => a.station.localeCompare(b.station) || (a.gap ?? 999) - (b.gap ?? 999)).map(riga)}</tbody>
         </table></div>
       </details>
-      <p className="text-xs text-ink-muted">Computo = ore lavorate (Standard, Straordinario, Supplementare, Accordo) + assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi sindacali e altri). Non contano permessi non retribuiti e assenze ingiustificate. {modo === "settimanale" ? "A rischio = la proiezione a fine mese resta sotto il MOG di oltre 4 h: chiedi agli Ops di assegnare rotte." : "Non in file MOG = assunto dopo la chiusura payroll del file: MOG da chiedere a Erika."}</p>
+      <p className="text-xs text-ink-muted">Computo = ore lavorate (Standard, Straordinario, Supplementare, Accordo) + assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi sindacali e altri). Non contano permessi non retribuiti e assenze ingiustificate. Chi nel mese ha solo assenze (es. malattia tutto il mese) e nessuna ora lavorata è a ZERO ORE: Adecco integra tutto il MOG. {modo === "settimanale" ? "A rischio = la proiezione a fine mese resta sotto il MOG di oltre 4 h: chiedi agli Ops di assegnare rotte." : "Non in file MOG = assunto dopo la chiusura payroll del file: MOG da chiedere a Erika."}</p>
+      {cons.length > 0 && <details>
+        <summary className="cursor-pointer text-sm font-semibold">Consolidamenti previsti entro {it(limite.slice(0, 7))} ({cons.length})</summary>
+        <p className="mt-1 text-xs text-ink-muted">Dal file MOG: la media delle ore retribuite degli ultimi 6 mesi supera il MOG di oltre il 20 %. Dal mese indicato il contratto può consolidarsi alla nuova % (monte ore più alto). Il controllo usa ancora la % attuale finché non arriva il file aggiornato.</p>
+        <div className="mt-2 overflow-x-auto"><table className="table-base text-xs">
+          <thead><tr><th>DS</th><th>Lavoratore</th><th className="text-right">% oggi</th><th className="text-right">Nuova %</th><th className="text-right">MOG h oggi</th><th className="text-right">Nuovo MOG h</th><th>Dal</th></tr></thead>
+          <tbody>{cons.map((c) => <tr key={c.cf}><td>{c.station}</td><td>{c.nome}</td><td className="text-right font-mono">{c.pctMog ?? "—"}</td><td className="text-right font-mono">{c.nuovaPct}</td><td className="text-right font-mono">{h(c.oreMogMese)}</td><td className="text-right font-mono">{h(c.nuovoMonteOre)}</td><td>{it(c.dal)}{c.scadePrima && <span className="ml-1 text-ink-muted">(solo se prorogato)</span>}</td></tr>)}</tbody>
+        </table></div>
+      </details>}
       {modo === "finemese" && <div className="flex flex-wrap items-center gap-2"><button type="button" className="btn-secondary" onClick={excel}>Excel MOG</button>{canSave && <><button type="button" className="btn-primary" onClick={salva} disabled={!!salvato}>{salvato ? "Salvati ✓" : "Salva esiti MOG"}</button> <Aiuto k="presenze.mog.salva" /></>}{salvato && <span className="text-sm text-ok">{salvato}</span>}</div>}
     </section>
   );

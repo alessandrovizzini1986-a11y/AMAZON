@@ -6,7 +6,7 @@ import { Dropzone } from "@/components/Dropzone";
 import { Aiuto } from "@/components/Aiuto";
 import { useAvvisoUscita } from "@/components/Percorso";
 import { leggiFoglio } from "@/lib/fatture/xlsxStream";
-import { contrattoDaRiga, isIntestazioneMog, type ContrattoMog } from "@/domain/mog/mog";
+import { consolidamentiPrevisti, contrattoDaRiga, isIntestazioneMog, type ContrattoMog } from "@/domain/mog/mog";
 import { aggiungiVariazioneMog, anteprimaMog, importaMog } from "../actions";
 
 const it = (s: string) => s.split("-").reverse().join("/");
@@ -59,6 +59,7 @@ export function MogClient() {
           <p className="mb-2">{dati.righe.length} lavoratori: {Object.entries(per).sort().map(([s, n]) => `${s} ${n}`).join(" · ")}</p>
           {Object.keys(per).some((s) => s.startsWith("?")) && <p className="mb-2 text-warn">Alcuni siti non hanno una station: controlla la colonna Sito.</p>}
           {dati.ante.precedente ? <p>Rispetto al file del {it(dati.ante.precedente)}: <b>{dati.ante.nCambi}</b> % MOG cambiate (aumenti applicati), <b>{dati.ante.nuovi}</b> nuovi, <b>{dati.ante.usciti}</b> usciti.</p> : <p className="text-ink-muted">Primo file MOG: nessun confronto.</p>}
+          {(() => { const k = dati.righe.filter((r) => /^s/i.test(r.supera20 ?? "") && r.nuovaPct !== null); return k.length > 0 && <p>Consolidamenti previsti dal file (media 6 mesi oltre il MOG + 20 %): <b>{k.length}</b>, già consolidati in passato: <b>{dati.righe.filter((r) => /^s/i.test(r.giaConsolidato ?? "")).length}</b>.</p>; })()}
           {dati.ante.cambi.length > 0 && <details className="mt-1"><summary className="cursor-pointer">% cambiate</summary><ul className="ml-4 text-xs">{dati.ante.cambi.map((c) => <li key={c.nome}>{c.nome} · {c.station}: {c.prima} % → {c.dopo} %</li>)}</ul></details>}
           <div className="mt-3 flex gap-2"><button type="button" className="btn-primary" disabled={lavoro} onClick={salva}>Salva il file MOG</button> <Aiuto k="costi.mog.salva" /><button type="button" className="btn-secondary" onClick={() => setDati(null)}>Annulla</button></div>
         </div>
@@ -81,5 +82,24 @@ export function VariazioneMog({ lavoratori }: { lavoratori: { cf: string; nome: 
       <button className="btn-primary" disabled={!sel}>Aggiungi aumento</button> <Aiuto k="costi.mog.variazione" />
       {msg && <span className="text-ok">{msg}</span>}
     </form>
+  );
+}
+
+/** Consolidamenti previsti dal file MOG salvato, per mese e station. */
+export function ConsolidamentiMog({ contratti, daMese }: { contratti: ContrattoMog[]; daMese: string }) {
+  const cons = consolidamentiPrevisti(contratti, daMese);
+  if (!cons.length) return null;
+  const mesi = [...new Set(cons.map((c) => c.dal.slice(0, 7)))].sort();
+  const st = [...new Set(cons.map((c) => c.station))].sort();
+  const extra = (c: (typeof cons)[number]) => (c.nuovoMonteOre ?? 0) - (c.oreMogMese ?? 0);
+  return (
+    <details className="mt-3">
+      <summary className="cursor-pointer text-sm font-semibold">Consolidamenti previsti ({cons.length})</summary>
+      <p className="mt-1 text-xs text-ink-muted">Chi ha una media di ore retribuite degli ultimi 6 mesi oltre il MOG + 20 % può consolidarsi a una % più alta dal mese indicato: è un costo nascosto (monte ore garantito più alto). Il controllo MOG usa la % del file finché non arriva quello nuovo o un aumento. Se il contratto scade prima, il consolidamento scatta solo con una proroga.</p>
+      <div className="mt-2 overflow-x-auto"><table className="table-base text-xs">
+        <thead><tr><th>Dal</th>{st.map((s) => <th key={s} className="text-right">{s}</th>)}<th className="text-right">Totale</th><th className="text-right">di cui contratto in scadenza prima</th><th className="text-right">+ ore MOG/mese</th></tr></thead>
+        <tbody>{mesi.map((m) => { const x = cons.filter((c) => c.dal.startsWith(m)); return <tr key={m}><td>{m.split("-").reverse().join("/")}</td>{st.map((s) => <td key={s} className="text-right font-mono">{x.filter((c) => c.station === s).length || ""}</td>)}<td className="text-right font-mono">{x.length}</td><td className="text-right font-mono">{x.filter((c) => c.scadePrima).length || ""}</td><td className="text-right font-mono">{x.reduce((t, c) => t + extra(c), 0).toLocaleString("it-IT", { maximumFractionDigits: 0 })}</td></tr>; })}</tbody>
+      </table></div>
+    </details>
   );
 }

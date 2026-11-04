@@ -41,6 +41,7 @@ File MOG Buccinasco: 38 righe. Match per CF, poi per cognome+nome (ordine indiff
 Settembre 2026 (riferimento di costo a consuntivo): ADIT "INTEGRAZIONE MOG" 746 € su 7 DS (DER1 152 € gen; DVN1 e DER2 i più frequenti).
 
 ## 6. Stato dell'implementazione (04/11/2026)
-- Golden DLO4 ottobre ricalcolato dal sito: **31 OK** (uno con sole ore di malattia), **5 SOTTO MOG = 64,0 h = 1.335 €**, 19 NON IN FILE MOG, **2 NON NEL TRACKING** (cessati 1/10 e 9/10), 0 ZERO ORE.
-- Differenza col kit: il lavoratore F è nel tracking con 171 h di MALATTIA. Per il §3 la malattia è assenza retribuita, quindi il computo supera il MOG ed è OK. Il kit lo dà ZERO ORE (2.084 €). Il sito applica il §3: da confermare.
+- Golden DLO4 ottobre ricalcolato dal sito, uguale al kit: **30 OK**, **5 SOTTO MOG = 64,0 h = 1.335 €**, 19 NON IN FILE MOG, 2 NON NEL TRACKING (cessati 1/10 e 9/10), **1 ZERO ORE** (lavoratore F, 99,9 h = 2.084 €).
+- Regola confermata il 04/11/2026: chi nel mese ha solo assenze (es. malattia tutto il mese) e nessuna ora lavorata è ZERO ORE e Adecco integra tutto il MOG. Con ore lavorate, le assenze retribuite contano nel computo come da §3.
+- Consolidamento: il sito legge anche Proroghe, anzianità, ore retribuite ed eccedenti degli ultimi 6 mesi, "supera il 20 %", % da consolidare, nuovo monte ore, nuova % MOG, orario consolidato e i mesi di consolidamento. I consolidamenti previsti (supera = SI) si vedono in Parametri e nel blocco MOG di Presenze; non cambiano il MOG del mese finché non arriva il file nuovo o un aumento.
 - Gli aumenti MOG (PDF/Excel) si inseriscono a mano in Parametri: non c'erano file di esempio per leggerli in automatico.

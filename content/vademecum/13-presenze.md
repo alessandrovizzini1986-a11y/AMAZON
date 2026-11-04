@@ -91,4 +91,6 @@ Se un MOG chiude il mese sotto il suo monte ore, Adecco fattura comunque la diff
 | 3 | Presenze → Fine mese | Vedi la tabella completa, scarichi `Controllo_MOG_<DS>_<mese>.xlsx` e salvi gli esiti. |
 | 4 | Costi → Fine mese | La riga "Integrazione MOG" della stima STD usa le ore mancanti × tariffa Standard. |
 
-Nel computo contano le ore lavorate e le assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi retribuiti). Non contano permessi non retribuiti, assenze ingiustificate, riposi. "Non in file MOG" = assunto dopo la chiusura del payroll: chiedi il MOG. "Non nel tracking" = nel file ma senza righe: cessato o dimenticato.
+Nel computo contano le ore lavorate e le assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi retribuiti). Non contano permessi non retribuiti, assenze ingiustificate, riposi. Attenzione: chi nel mese ha **solo** assenze (es. malattia tutto il mese) e nessuna ora lavorata è a **zero ore** e Adecco integra tutto il MOG.
+
+**Consolidamento:** se la media delle ore retribuite degli ultimi 6 mesi supera il MOG di oltre il 20 %, il contratto può consolidarsi a una % più alta. Il sito legge la previsione dal file MOG e la mostra in Parametri e nel blocco MOG. "Non in file MOG" = assunto dopo la chiusura del payroll: chiedi il MOG. "Non nel tracking" = nel file ma senza righe: cessato o dimenticato.

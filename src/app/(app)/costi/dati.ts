@@ -149,7 +149,7 @@ export async function contrattiMog(versione?: string) {
   const n = (x: unknown) => (x === null || x === undefined ? null : Number(x));
   return {
     versione: v,
-    contratti: r.map((x) => ({ cf: x.cf, nome: x.nome, cognome: x.cognome, station: x.station, sito: x.sito, dataInizio: d(x.dataInizio), dataFine: d(x.dataFine), pctMog: n(x.pctMog), oreMogMese: n(x.oreMogMese), oreMogSett: n(x.oreMogSett), giaConsolidato: x.giaConsolidato, rischioConsolidamento: x.rischioConsolidamento, mediaOreSemestre: n(x.mediaOreSemestre), ventiPctMog: n(x.ventiPctMog), meseProssimoConsolidamento: d(x.meseProssimoConsolidamento) })),
+    contratti: r.map((x) => ({ cf: x.cf, nome: x.nome, cognome: x.cognome, station: x.station, sito: x.sito, dataInizio: d(x.dataInizio), dataFine: d(x.dataFine), pctMog: n(x.pctMog), oreMogMese: n(x.oreMogMese), oreMogSett: n(x.oreMogSett), giaConsolidato: x.giaConsolidato, rischioConsolidamento: x.rischioConsolidamento, mediaOreSemestre: n(x.mediaOreSemestre), ventiPctMog: n(x.ventiPctMog), meseProssimoConsolidamento: d(x.meseProssimoConsolidamento), proroghe: x.proroghe, oreRetribuite6m: n(x.oreRetribuite6m), oreEccedenti6m: n(x.oreEccedenti6m), mediaOreAnzianita: n(x.mediaOreAnzianita), mesePrimoConsolidamento: d(x.mesePrimoConsolidamento), meseConsolidato: d(x.meseConsolidato), supera20: x.supera20, pctDaConsolidare: n(x.pctDaConsolidare), nuovoMonteOre: n(x.nuovoMonteOre), nuovaPct: n(x.nuovaPct), orarioSettConsolidato: n(x.orarioSettConsolidato) })),
   };
 }
 

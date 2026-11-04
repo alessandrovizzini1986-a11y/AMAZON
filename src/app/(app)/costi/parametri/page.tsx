@@ -4,7 +4,7 @@ import { PARAMETRI } from "@/domain/costi/parametri";
 import { prossimoCambio, valoreAlla } from "@/domain/costi/tariffe";
 import { STATIONS_COSTI } from "@/domain/costi/festivi";
 import { contrattiMog, festivi, oggiIso, parametri, tariffe, utenteCosti, variazioniMog, versioniCDL, versioniMog } from "../dati";
-import { MogClient, VariazioneMog } from "./MogClient";
+import { ConsolidamentiMog, MogClient, VariazioneMog } from "./MogClient";
 import { AnagraficaCDLClient, EliminaFestivo, NuovoFestivo, NuovoParametro, NuovaTariffa } from "./ParametriClient";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +87,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
             <tbody>{vMog.map((v, i) => <tr key={v.versione} className={i === 0 ? "font-semibold" : ""}><td>{it(v.versione)}{i === 0 ? " (in uso)" : ""}</td><td className="text-right font-mono">{v.teste}</td><td className="text-xs">{Object.entries(v.perStation).sort().map(([s, n]) => `${s} ${n}`).join(" · ")}</td><td>{v.caricatoIl ? new Date(v.caricatoIl).toLocaleString("it-IT") : ""}</td></tr>)}</tbody>
           </table>
         )}
+        {cMog.contratti.length > 0 && <ConsolidamentiMog contratti={cMog.contratti} daMese={oggiIso().slice(0, 7)} />}
         {edit && <MogClient />}
         <h3 className="mb-1 mt-5 font-semibold">Aumenti MOG comunicati</h3>
         <p className="text-sm text-ink-muted">Dai PDF &quot;Mog_Cambio…&quot; o dall&apos;Excel &quot;Aumenti MOG PS&quot;: dalla data il MOG del mese si ricalcola con la nuova % × 169 h, pro-rata.</p>

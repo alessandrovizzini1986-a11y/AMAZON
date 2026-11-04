@@ -20,6 +20,10 @@ export type ContrattoMog = {
   cf: string; nome: string; cognome: string; station: string | null; sito: string; dataInizio: string | null; dataFine: string | null;
   pctMog: number | null; oreMogMese: number | null; oreMogSett: number | null; giaConsolidato: string | null;
   rischioConsolidamento: string | null; mediaOreSemestre: number | null; ventiPctMog: number | null; meseProssimoConsolidamento: string | null;
+  /** colonne del consolidamento (file PS, foglio PS) */
+  proroghe: number | null; oreRetribuite6m: number | null; oreEccedenti6m: number | null; mediaOreAnzianita: number | null;
+  mesePrimoConsolidamento: string | null; meseConsolidato: string | null; supera20: string | null;
+  pctDaConsolidare: number | null; nuovoMonteOre: number | null; nuovaPct: number | null; orarioSettConsolidato: number | null;
 };
 
 const testo = (v: CellaX) => (v === null || v === undefined ? "" : String(v).trim());
@@ -50,6 +54,11 @@ export function contrattoDaRiga(riga: Record<string, CellaX>, intestazioni: stri
     pctMog: num(g("% MOG da contratto")), oreMogMese: num(g("OreMog sul mese")), oreMogSett: num(g("OreMog settimanali")), giaConsolidato: testo(g("Già consolidato")) || null,
     rischioConsolidamento: testo(g("Rischio consolidamento")) || null, mediaOreSemestre: num(g("Media delle ore settimanali retribuite")), ventiPctMog: num(g("Quanto è il 20% del mog")),
     meseProssimoConsolidamento: dataIso(g("Mese prossimo possibile")),
+    proroghe: num(g("Proroghe")), oreRetribuite6m: num(g("Ore retribuite negli ultimi 6")), oreEccedenti6m: num(g("Ore eccedenti MOG")),
+    mediaOreAnzianita: num(g("Media delle ore settimanali retribuite mesi")), mesePrimoConsolidamento: dataIso(g("Mese primo possibile")),
+    meseConsolidato: dataIso(g("Mese in cui è stato consolidato")), supera20: testo(g("La media delle ore dei 6 mesi")) || null,
+    // "Nessuna Modifica" = nessun consolidamento previsto
+    pctDaConsolidare: num(g("Quanto è la % da consolidare")), nuovoMonteOre: num(g("Nuovo Monte ore")), nuovaPct: num(g("Nuova % MOG")), orarioSettConsolidato: num(g("Orario settimanale mog consolidato")),
   };
 }
 
@@ -128,6 +137,12 @@ export function controlloMog(x: { station: string; mese: string; lavoratori: Lav
     if (!c) { out.push({ ...base, cf, pctMog: null, oreMog: null, dataFine: null, gap: null, stato: "NON IN FILE MOG", proiezione: null, giorniResidui: 0, oreMancanti: 0, costo: 0, rischioConsolidamento: false }); continue; }
     usati.add(c.cf);
     const mog = mogDelMese(c, x.mese, x.variazioni);
+    // solo assenze (es. malattia tutto il mese) e nessuna ora lavorata: Adecco integra tutto il MOG
+    if (!lav && mog !== null && mog > 0) {
+      out.push({ ...base, cf: c.cf, pctMog: c.pctMog, oreMog: mog, dataFine: c.dataFine, gap: r1(-mog), stato: "ZERO ORE", proiezione: null, giorniResidui: 0, oreMancanti: mog,
+        costo: Math.round(mog * tariffa * 100) / 100, rischioConsolidamento: /^s/i.test(c.rischioConsolidamento ?? "") });
+      continue;
+    }
     // proiezione: media ore per giorno lavorato × giorni lavorativi residui (5 su 7 dei giorni di calendario fino alla fine del contratto/mese)
     const fineEff = c.dataFine && c.dataFine < fine ? c.dataFine : fine;
     const residui = chiuso ? 0 : Math.max(0, Math.round(giorni(addG(finoA, 1), fineEff) * 5 / 7));
@@ -153,6 +168,20 @@ export function controlloMog(x: { station: string; mese: string; lavoratori: Lav
     });
   }
   return out;
+}
+
+export type ConsolidamentoMog = { station: string; cf: string; nome: string; pctMog: number | null; nuovaPct: number; oreMogMese: number | null; nuovoMonteOre: number | null; dal: string; giaConsolidato: boolean; /** il contratto scade prima del mese di consolidamento (vale solo con una proroga) */ scadePrima: boolean };
+
+/**
+ * Consolidamenti previsti dal file: la media delle ore retribuite degli ultimi 6 mesi supera il MOG del 20 %
+ * ("SI") e il file calcola la nuova % e il nuovo monte ore dal "Mese prossimo possibile consolidamento".
+ * È un rischio, non un cambio: il MOG del mese non cambia finché non arriva il file aggiornato o un aumento.
+ */
+export function consolidamentiPrevisti(contratti: ContrattoMog[], daMese?: string): ConsolidamentoMog[] {
+  return contratti
+    .filter((c) => /^s/i.test(c.supera20 ?? "") && c.nuovaPct !== null && c.meseProssimoConsolidamento && (!daMese || c.meseProssimoConsolidamento >= `${daMese}-01`))
+    .map((c) => ({ station: c.station ?? c.sito, cf: c.cf, nome: `${c.nome} ${c.cognome}`.trim(), pctMog: c.pctMog, nuovaPct: c.nuovaPct!, oreMogMese: c.oreMogMese, nuovoMonteOre: c.nuovoMonteOre, dal: c.meseProssimoConsolidamento!, giaConsolidato: /^s/i.test(c.giaConsolidato ?? ""), scadePrima: !!c.dataFine && c.dataFine < c.meseProssimoConsolidamento! }))
+    .sort((a, b) => a.dal.localeCompare(b.dal) || a.station.localeCompare(b.station));
 }
 
 export function riepilogoMog(es: EsitoMog[]) {

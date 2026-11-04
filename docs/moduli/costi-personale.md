@@ -41,4 +41,6 @@ I file di esempio e gli attesi del kit (`esempi/`, `attesi/`) contengono dati pe
 - `/costi/parametri#mog`: import del file con anteprima (teste per sito, chiusura payroll, % cambiate rispetto alla versione prima), aumenti inseriti a mano. Avviso in testa al modulo se il file ha più di 40 giorni.
 - `/presenze/settimanale`: blocco MOG con i lavoratori a rischio e la riga per Teams. `/presenze/fine-mese`: tabella completa, Excel `Controllo_MOG_<DS>_<mese>.xlsx`, "Salva esiti MOG".
 - `/costi/fine-mese`: la riga "Integrazione MOG" della stima STD = Σ costo SOTTO MOG + ZERO ORE della station (senza file MOG resta il parametro STD_MOG).
-- Golden DLO4 ottobre 2026: 31 OK, 5 SOTTO MOG (64 h = 1.335 €), 19 non in file, 2 non nel tracking. Il kit dice 30/3 perché mette a ZERO ORE un lavoratore con 171 h di malattia; qui la malattia conta (§3).
+- Chi ha solo assenze e nessuna ora lavorata nel mese è ZERO ORE: integrazione di tutto il MOG (regola confermata il 04/11/2026).
+- Consolidamenti previsti (colonna "supera il 20 % del MOG" = SI, nuova % e nuovo monte ore del file): tabella per mese e station in Parametri, elenco dei prossimi 3 mesi nel blocco MOG di Presenze. Non cambiano il MOG del mese.
+- Golden DLO4 ottobre 2026 (uguale al kit): 30 OK, 5 SOTTO MOG (64 h = 1.335 €), 1 ZERO ORE (solo malattia, 2.084 €), 19 non in file, 2 non nel tracking.

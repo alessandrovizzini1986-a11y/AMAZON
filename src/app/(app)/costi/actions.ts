@@ -183,6 +183,8 @@ const contrattoMog = z.object({
   cf: z.string().min(11).max(20), nome: z.string().max(100), cognome: z.string().max(100), sito: z.string().max(100), station: z.string().max(10).nullable(),
   dataInizio: iso.nullable(), dataFine: iso.nullable(), pctMog: n, oreMogMese: n, oreMogSett: n, giaConsolidato: z.string().max(40).nullable(),
   rischioConsolidamento: z.string().max(40).nullable(), mediaOreSemestre: n, ventiPctMog: n, meseProssimoConsolidamento: iso.nullable(),
+  proroghe: n, oreRetribuite6m: n, oreEccedenti6m: n, mediaOreAnzianita: n, mesePrimoConsolidamento: iso.nullable(), meseConsolidato: iso.nullable(),
+  supera20: z.string().max(40).nullable(), pctDaConsolidare: n, nuovoMonteOre: n, nuovaPct: n, orarioSettConsolidato: n,
 });
 
 /** Anteprima import MOG: % cambiate rispetto all'ultima versione precedente (= aumenti applicati). */
@@ -210,7 +212,7 @@ export async function importaMog(input: { versione: string; nomeFile: string; ri
   const dd = (s: string | null) => (s ? d(s) : null);
   await db.$transaction(async (tx) => {
     await tx.mogContratto.deleteMany({ where: { versione: v } });
-    await tx.mogContratto.createMany({ data: [...unici.values()].map((r) => ({ ...r, versione: v, dataInizio: dd(r.dataInizio), dataFine: dd(r.dataFine), meseProssimoConsolidamento: dd(r.meseProssimoConsolidamento), caricatoDa: user.name })) });
+    await tx.mogContratto.createMany({ data: [...unici.values()].map((r) => ({ ...r, versione: v, dataInizio: dd(r.dataInizio), dataFine: dd(r.dataFine), meseProssimoConsolidamento: dd(r.meseProssimoConsolidamento), mesePrimoConsolidamento: dd(r.mesePrimoConsolidamento), meseConsolidato: dd(r.meseConsolidato), proroghe: r.proroghe === null ? null : Math.round(r.proroghe), caricatoDa: user.name })) });
   }, { timeout: 60_000 });
   await audit({ userId: user.id, action: "costi.mog.import", entity: "MogContratto", meta: { versione: v, file: z.string().max(300).parse(input.nomeFile), righe: unici.size } });
   revalidatePath("/costi", "layout"); revalidatePath("/presenze", "layout");

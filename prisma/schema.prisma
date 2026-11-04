@@ -942,6 +942,17 @@ model MogContratto {
   mediaOreSemestre           Decimal?  @db.Decimal(10, 4)
   ventiPctMog                Decimal?  @db.Decimal(10, 4)
   meseProssimoConsolidamento DateTime? @db.Date
+  proroghe                   Int?
+  oreRetribuite6m            Decimal?  @db.Decimal(10, 2)
+  oreEccedenti6m             Decimal?  @db.Decimal(10, 2)
+  mediaOreAnzianita          Decimal?  @db.Decimal(10, 4)
+  mesePrimoConsolidamento    DateTime? @db.Date
+  meseConsolidato            DateTime? @db.Date
+  supera20                   String?
+  pctDaConsolidare           Decimal?  @db.Decimal(8, 4)
+  nuovoMonteOre              Decimal?  @db.Decimal(10, 2)
+  nuovaPct                   Decimal?  @db.Decimal(8, 4)
+  orarioSettConsolidato      Decimal?  @db.Decimal(10, 2)
   caricatoIl                 DateTime  @default(now())
   caricatoDa                 String?
 
