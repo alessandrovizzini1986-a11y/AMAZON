@@ -58,6 +58,22 @@ I file con nomi, CF e importi stanno in `docs/costi-kit/esempi/fo/` (non va su g
   - accantonamenti di ottobre e di settembre (righe 60–61) per la formula P60.
 - Il consuntivo FO Valerio separa "CDL SIC" (effettivo, pagato) e "ACCANTONAMENTO SIC" (rettifica di competenza). Il confronto va fatto voce per voce.
 
+### 3.1 Quando il CDL del mese non c'è ancora (caso normale)
+Il DB CDL base del mese M arriva a fine M+1 (quello di ottobre a fine novembre), ma la stima del F.O. si fa a inizio M+1. Si stima così:
+1. **CDL base stimato di M** = per ogni lavoratore SIC presente nel **tracking di M**, il CDL dell'**ultima versione disponibile** (oggi 0926), con queste correzioni:
+   - lavoratore nel tracking ma non in anagrafica (assunto dopo): media del suo bucket di contratto nella DS (lo fa già il sito, "CDL stimato");
+   - lavoratore in anagrafica ma non nel tracking (cessato o spostato): escluso;
+   - assunti o cessati a metà mese: pro-rata sui giorni di presenza nel tracking.
+   - Eventuali aumenti noti con data (rinnovo CCNL, scatti, passaggi di livello) si applicano come parametro "variazione CDL %" con validità, finché non arriva il CDL vero.
+2. Le **variabili di M−1** (trasferte, straordinari, supplementari, istituti) e gli **accantonamenti** (righe 60–61) non dipendono dal CDL del mese: si calcolano subito dai tracking.
+3. Il **saving ferie/ROL/ExF** (riga 61) usa i costi rateo dell'ultima versione del CDL; quando arriva quella vera si ricalcola.
+4. Sul foglio e in pagina è scritto chiaramente: "CDL base **stimato** dalla versione AAAA-MM (n lavoratori, di cui x stimati con la media e y esclusi)".
+5. **A fine M+1**, quando si carica il DB CDL di M:
+   - il sito ricalcola la riga e mostra **stima / CDL vero / delta per DS**;
+   - il delta va nello storico per migliorare la stima del mese dopo (es. un coefficiente medio di crescita mensile per DS);
+   - il foglio F.O. già mandato non si tocca; il delta entra nella nota del mese dopo o nella rettifica (come il "−160.000" di settembre, che va documentato).
+6. Test: stimare settembre con il CDL di giugno (versione 2026-06 sul sito) e confrontarlo con il CDL vero di settembre (2026-09). Il delta per DS misura l'errore che ci si aspetta.
+
 ## 4. Consuntivo (FO Valerio): confronto
 - Si legge il foglio Outsourcing, solo CDC che inizia per "5569".
 - Mappa per voce e per Zona (DS):
