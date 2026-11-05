@@ -61,11 +61,13 @@ export function leggiLavoratori(sheets: SheetGrid[], anno: number, mese: number)
   const ts = findTrackingSheet(sheets, anno, mese);
   const prefix = `${anno}-${String(mese).padStart(2, "0")}-`;
   const days = ts.dayCols.filter((d) => d.date.startsWith(prefix));
-  const cNome = headerCol(ts, ["lavorat"]);
+  // nome: "Lavoratore", "Nominativo" o, in alcuni tracking (DLZ2 STD), la colonna "Driver" accanto a "Driver ID"
+  const esatta = (h: string) => { const i = ts.header.findIndex((v) => v.trim() === h); return i >= 0 ? i : null; };
+  const cNome = headerCol(ts, ["lavorat", "nominativ"]) ?? esatta("driver") ?? esatta("cognome e nome") ?? esatta("nome");
   const cCf = headerCol(ts, ["codice f"]);
   const cMatr = headerCol(ts, ["codice m"]);
   const cContr = headerCol(ts, ["tipo c"]);
-  const cId = headerCol(ts, ["driver"]);
+  const cId = headerCol(ts, ["driver id", "id driver", "driver_id"]) ?? (esatta("driver") !== cNome ? headerCol(ts, ["driver"]) : null);
   const g = ts.grid;
   const str = (r: number, c: number | null) => (c === null ? "" : text(at(g, r, c)).trim());
   const out: Lavoratore[] = [];

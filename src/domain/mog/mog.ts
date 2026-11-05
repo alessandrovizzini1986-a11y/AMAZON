@@ -96,7 +96,8 @@ export function mogDelMese(c: ContrattoMog, mese: string, variazioni: Variazione
 }
 const addG = (iso: string, k: number) => new Date(Date.parse(iso + "T00:00:00Z") + k * 864e5).toISOString().slice(0, 10);
 
-export type StatoMog = "OK" | "SOTTO MOG" | "A RISCHIO" | "ZERO ORE" | "NON IN FILE MOG" | "NON NEL TRACKING";
+/** SU GLS: nel file MOG della station ma lavora su GLS Castel Maggiore (foglio GLS del tracking): fuori dalla stima Amazon. */
+export type StatoMog = "OK" | "SOTTO MOG" | "A RISCHIO" | "ZERO ORE" | "NON IN FILE MOG" | "NON NEL TRACKING" | "SU GLS";
 
 export type EsitoMog = {
   station: string; nome: string; cf: string; pctMog: number | null; oreMog: number | null; dataFine: string | null;
@@ -113,7 +114,7 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
  * Esiti MOG della station per il mese. `finoA` = ultimo giorno considerato (fine mese per il controllo
  * di fine mese, oggi per quello settimanale): prima della fine del mese il gap si valuta sulla proiezione.
  */
-export function controlloMog(x: { station: string; mese: string; lavoratori: Lavoratore[]; contratti: ContrattoMog[]; variazioni?: VariazioneMog[]; finoA?: string; tariffa?: number }): EsitoMog[] {
+export function controlloMog(x: { station: string; mese: string; lavoratori: Lavoratore[]; contratti: ContrattoMog[]; variazioni?: VariazioneMog[]; finoA?: string; tariffa?: number; suGls?: { nome: string; cf: string }[] }): EsitoMog[] {
   const fine = `${x.mese}-${String(giorniMese(x.mese)).padStart(2, "0")}`;
   const finoA = x.finoA && x.finoA < fine ? x.finoA : fine;
   const chiuso = finoA >= fine;
@@ -157,8 +158,17 @@ export function controlloMog(x: { station: string; mese: string; lavoratori: Lav
     });
   }
   // nel file ma non nel tracking: con contratto attivo fino a fine mese = ZERO ORE (rischio integrazione piena)
+  const gls = (x.suGls ?? []).map((g) => ({ nome: g.nome, cf: normCf(g.cf) }));
   for (const c of contratti.filter((k) => !usati.has(k.cf))) {
     const mog = mogDelMese(c, x.mese, x.variazioni);
+    // lavora su GLS (foglio GLS del tracking): il MOG si controlla sul tracking GLS, non è un costo Amazon
+    if (gls.some((g) => (g.cf && g.cf === c.cf) || stessoNome(`${c.cognome} ${c.nome}`, g.nome))) {
+      out.push({
+        station: x.station, nome: `${c.nome} ${c.cognome}`.trim(), cf: c.cf, pctMog: c.pctMog, oreMog: mog, dataFine: c.dataFine, oreLavorate: 0, assenzeRetribuite: 0, nonRetribuite: 0, computo: 0,
+        gap: null, stato: "SU GLS", proiezione: null, giorniResidui: 0, oreMancanti: 0, costo: 0, rischioConsolidamento: /^s/i.test(c.rischioConsolidamento ?? ""), abbinatoPerNome: false, soloAssenze: false,
+      });
+      continue;
+    }
     const attivoAFine = !c.dataFine || c.dataFine >= fine;
     const zero = attivoAFine && (mog ?? 0) > 0;
     out.push({
@@ -190,9 +200,31 @@ export function consolidamentiPrevisti(contratti: ContrattoMog[], daMese?: strin
 export function riepilogoMog(es: EsitoMog[]) {
   const per = (s: StatoMog) => es.filter((e) => e.stato === s);
   return {
-    ok: per("OK").length, sotto: per("SOTTO MOG").length, aRischio: per("A RISCHIO").length, zeroOre: per("ZERO ORE").length, nonInFile: per("NON IN FILE MOG").length, nonNelTracking: per("NON NEL TRACKING").length,
+    ok: per("OK").length, sotto: per("SOTTO MOG").length, aRischio: per("A RISCHIO").length, zeroOre: per("ZERO ORE").length, nonInFile: per("NON IN FILE MOG").length, nonNelTracking: per("NON NEL TRACKING").length, suGls: per("SU GLS").length,
     oreMancanti: r1(es.filter((e) => e.stato === "SOTTO MOG").reduce((t, e) => t + e.oreMancanti, 0)),
     costo: Math.round(es.filter((e) => e.stato === "SOTTO MOG").reduce((t, e) => t + e.costo, 0) * 100) / 100,
     costoZeroOre: Math.round(es.filter((e) => e.stato === "ZERO ORE").reduce((t, e) => t + e.costo, 0) * 100) / 100,
   };
+}
+
+/**
+ * Lavoratori dei fogli GLS di un tracking (nome del foglio con "gls", di qualunque mese): servono solo a
+ * sapere chi lavora su GLS Castel Maggiore. Intestazione con "Tipo" e "Codice fiscale"; una riga Standard per lavoratore.
+ */
+export function lavoratoriGls(sheets: { name: string; rows: unknown[][] }[]): { nome: string; cf: string }[] {
+  const out = new Map<string, { nome: string; cf: string }>();
+  for (const g of sheets.filter((s) => /gls/i.test(s.name))) {
+    const t = (v: unknown) => (v === null || v === undefined ? "" : String(v).trim());
+    const hi = g.rows.slice(0, 10).findIndex((r) => (r ?? []).some((v) => t(v).toLowerCase() === "tipo"));
+    if (hi < 0) continue;
+    const h = (g.rows[hi] ?? []).map((v) => t(v).toLowerCase());
+    const cTipo = h.indexOf("tipo"), cCf = h.findIndex((v) => v.startsWith("codice f"));
+    const cNome = [h.findIndex((v) => v.startsWith("lavorat")), h.indexOf("driver"), h.findIndex((v) => v.startsWith("nominativ"))].find((i) => i >= 0) ?? -1;
+    for (const r of g.rows.slice(hi + 1)) {
+      if (!r || t(r[cTipo]).toLowerCase() !== "standard") continue;
+      const nome = cNome >= 0 ? t(r[cNome]) : "", cf = cCf >= 0 ? normCf(t(r[cCf])) : "";
+      if (nome || cf) out.set(cf || nome.toLowerCase(), { nome, cf });
+    }
+  }
+  return [...out.values()];
 }
