@@ -41,7 +41,7 @@ describe.skipIf(!hasKit)("SIC settembre 2026 (golden)", () => {
     expect(lordo.reduce((s, x) => s + x.festNonGodute, 0)).toBeCloseTo(18565.76, 1);
   }, 180_000);
 
-  it("busta 27/09 da tracking agosto: DVN1 / DLO5 e trasferta 26.992", async () => {
+  it("busta 27/09 da tracking agosto: DVN1 / DLO5 e trasferte", async () => {
     const fest = festiviAnno(2026);
     const a = leggiAnagraficaCDL(await grids(esempio("anagrafica", "DB_CDL_base_0626_AmazonGLS_BO.xlsx")));
     const idx = new Map(a.righe.map((r) => [r.cf, r]));
@@ -53,15 +53,15 @@ describe.skipIf(!hasKit)("SIC settembre 2026 (golden)", () => {
       const b = bustaStation(st, l, PSIC);
       out[st] = b.totale; trasf[st] = b.trasferte;
     }
-    // trasferta pagata a settembre (foglio Station_SET dell'analisi), dispatcher esclusi: esatta all'euro
-    expect(trasf).toEqual({ DLO5: 14020.5, DVN1: 17000.5 });
+    // trasferta pagata a settembre, dispatcher e cessati ad agosto esclusi: uguale al payroll 09 (anagrafica 0926)
+    expect(trasf).toEqual({ DLO5: 13631, DVN1: 16836 });
     // busta vs paga reale (Station_SET TOTALE): DVN1 175.207,37, DLO5 147.758,93
     expect(Math.abs(out.DVN1 / 175207.37 - 1)).toBeLessThan(0.03);
     expect(Math.abs(out.DLO5 / 147758.93 - 1)).toBeLessThan(0.09);
   }, 180_000);
 
   const ago = esempio("tracking_sic_ago26");
-  it.skipIf(!fs.existsSync(ago))("busta 27/09 da tutti i tracking di agosto vs payroll 09/2026: −1,1 % sul totale", async () => {
+  it.skipIf(!fs.existsSync(ago))("busta 27/09 da tutti i tracking di agosto vs payroll 09/2026: −1,0 % sul totale (CDL SIC Valerio 1.214.338,51)", async () => {
     const fest = festiviAnno(2026);
     const a = leggiAnagraficaCDL(await grids(esempio("fo", "DB_CDL_base_0926_AmazonGLS_BO.xlsx")));
     const idx = new Map(a.righe.map((r) => [r.cf, r]));
@@ -73,7 +73,7 @@ describe.skipIf(!hasKit)("SIC settembre 2026 (golden)", () => {
       tot[st] = Math.round(b.totale); trasf[st] = Math.round(b.trasferte);
     }
     // DLO2/DLO4 partono dal 27/07: agosto intero, trasferte = paga di settembre
-    expect([trasf.DLO4, trasf.DLO5, trasf.DER1]).toEqual([11854, 14021, 11706]);
+    expect([trasf.DLO4, trasf.DLO5, trasf.DER1, trasf.DVN1]).toEqual([11854, 13631, 11706, 16836]);
     const somma = Object.values(tot).reduce((s, x) => s + x, 0);
     expect(Math.abs(somma / 1209420.66 - 1)).toBeLessThan(0.02);
     for (const st of ST) expect(Math.abs(tot[st] / { DER1: 144118, DER2: 138964, DLO2: 265219, DLO4: 147438, DLO5: 149754, DLZ2: 188225, DVN1: 174989 }[st]! - 1)).toBeLessThan(0.07);
