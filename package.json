@@ -14,7 +14,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "prebuild": "node scripts/copia-pdf-worker.mjs"
+    "prebuild": "node scripts/copia-pdf-worker.mjs && tsx --tsconfig tsconfig.json scripts/check-training.mts"
   },
   "dependencies": {
     "@prisma/client": "^6.2.0",

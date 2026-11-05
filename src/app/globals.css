@@ -359,3 +359,28 @@ body {
     mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
   }
 }
+
+/* ── Training: accento = info del design system, spunta animata, confetti leggeri, timeline a scatti */
+.tr-accent { color: var(--color-info); }
+.tr-bar { height: 8px; border-radius: 999px; background: var(--color-surface-sunken); overflow: hidden; }
+.tr-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--color-info); transition: width 0.5s ease; }
+.tr-bar.tr-ok > span { background: var(--color-ok); }
+.tr-snap { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tr-snap::-webkit-scrollbar { display: none; }
+.tr-snap > * { scroll-snap-align: start; }
+.tr-check { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 2px solid var(--color-line); background: var(--color-surface-raised); display: inline-flex; align-items: center; justify-content: center; transition: background 0.15s, border-color 0.15s, transform 0.15s; }
+.tr-check:hover:not(:disabled) { border-color: var(--color-info); }
+.tr-check:active:not(:disabled) { transform: scale(0.92); }
+.tr-check[aria-checked="true"] { background: var(--color-ok); border-color: var(--color-ok); }
+.tr-check svg path { stroke-dasharray: 24; stroke-dashoffset: 24; }
+.tr-check[aria-checked="true"] svg path { animation: tr-spunta 0.35s ease-out forwards; }
+@keyframes tr-spunta { to { stroke-dashoffset: 0; } }
+.tr-acceso { animation: tr-acceso 0.9s ease-out; }
+@keyframes tr-acceso { 0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgb(23 117 74 / 0.5); } 60% { transform: scale(1.06); box-shadow: 0 0 0 10px rgb(23 117 74 / 0); } 100% { transform: scale(1); } }
+.tr-confetti { pointer-events: none; position: fixed; inset: 0; overflow: hidden; z-index: 50; }
+.tr-confetti i { position: absolute; top: -12px; width: 8px; height: 14px; border-radius: 2px; opacity: 0; animation: tr-cade 1.8s ease-in forwards; }
+@keyframes tr-cade { 0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); } 100% { opacity: 0; transform: translate3d(var(--dx, 0), 105vh, 0) rotate(var(--rot, 540deg)); } }
+@media (prefers-reduced-motion: reduce) {
+  .tr-check svg path, .tr-acceso, .tr-confetti i { animation: none !important; stroke-dashoffset: 0; }
+  .tr-confetti { display: none; }
+}

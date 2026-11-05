@@ -20,6 +20,7 @@ enum Role {
   RESP_MEZZI
   DRIVER
   CONTROLLO // controlli presenze (stagista): solo modulo Presenze e vademecum
+  STAGISTA // percorso di training: solo /training e /vademecum
 }
 
 enum VehicleStatus {
@@ -1005,4 +1006,46 @@ model PortaleCredenziale {
   note            String?
   aggiornatoIl    DateTime @updatedAt
   aggiornatoDa    String?
+}
+
+// ── Training (percorso stagista): il piano è in content/training/piano.json, qui solo lo stato
+model TrainingProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  activityId  String // id del piano (d1a1…), "x-<id>" per le extra, "d<N>-sera" per la lettura serale
+  done        Boolean   @default(false)
+  doneAt      DateTime?
+  note        String?
+  validatedBy String? // userId dell'admin
+  validatedAt DateTime?
+
+  @@unique([userId, activityId])
+  @@index([userId])
+}
+
+model TrainingNote {
+  id        String   @id @default(cuid())
+  userId    String
+  day       Int
+  text      String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, day])
+}
+
+/**
+ * Attività aggiunte al volo dall'admin, in coda a quelle del piano.
+ */
+model TrainingExtra {
+  id        String   @id @default(cuid())
+  day       Int
+  tipo      String // tell | show | do | check
+  chi       String
+  durata    Int
+  testo     String
+  sezioni   String[]
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([day])
 }

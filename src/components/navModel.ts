@@ -16,6 +16,7 @@ const OPERATIVO: NavItem[] = [
 
 const GESTIONE: NavItem[] = [
   { href: "/import", label: "Import", icon: "import" },
+  { href: "/training/admin", label: "Training", icon: "book" },
   { href: "/users", label: "Utenti", icon: "users" },
   { href: "/config", label: "Configurazione", icon: "settings" },
   { href: "/portali", label: "Portali", icon: "settings" },
@@ -31,6 +32,13 @@ export const NAV_BY_ROLE: Record<Role, { main: NavItem[]; admin: NavItem[] }> = 
       { href: "/carburante-telepass", label: "Telepass e carburante", short: "Telepass", icon: "fuel" },
       { href: "/fatture-amazon", label: "Fatture Amazon", short: "Fatture", icon: "receipt" },
       { href: "/costi", label: "Costi del personale", short: "Costi", icon: "euro" },
+      { href: "/vademecum", label: "Vademecum", icon: "book" },
+    ],
+    admin: [],
+  },
+  STAGISTA: {
+    main: [
+      { href: "/training", label: "Training", icon: "book" },
       { href: "/vademecum", label: "Vademecum", icon: "book" },
     ],
     admin: [],

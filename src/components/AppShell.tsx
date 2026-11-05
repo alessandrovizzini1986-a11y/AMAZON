@@ -6,12 +6,14 @@ import { NavIcon } from "./icons";
 import { NAV_BY_ROLE, vociBarra } from "./navModel";
 import { MenuMobile, AltroTablet } from "./MenuMobile";
 import { MarcaScroll } from "./MarcaScroll";
+import { GuardiaStagista } from "./GuardiaStagista";
 
 const ROLE_LABEL: Record<SessionUser["role"], string> = {
   ADMIN: "Fleet Manager",
   RESP_MEZZI: "Responsabile Mezzi",
   DRIVER: "Driver",
   CONTROLLO: "Controllo presenze",
+  STAGISTA: "Stagista",
 };
 
 function initials(name: string): string {
@@ -32,6 +34,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
   return (
     <div className="min-h-screen">
+      {user.role === "STAGISTA" && <GuardiaStagista />}
       <header className="sticky top-0 z-20 border-b border-line bg-surface-raised print:hidden">
         <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-6 px-4 md:h-[68px] md:gap-10 md:px-8">
           <Link href="/" className="flex items-center gap-3">
