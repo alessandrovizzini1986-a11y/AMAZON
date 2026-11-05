@@ -91,3 +91,20 @@ export function leggiZtl(righe: unknown[][]): PermessoZtl[] {
 const MESI_FO = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
 export const foglioFO = (mese: string) => `AMZ ${MESI_FO[Number(mese.slice(5, 7)) - 1]} ${mese.slice(0, 4)}`;
 export const mesePrima = (mese: string) => { const [a, m] = mese.split("-").map(Number); return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, "0")}`; };
+
+/** Righe della scomposizione della busta SIC (tabellina del foglio F.O.): etichetta e € per DS. */
+export function vociBusta(righe: { station: string; voce: string; importo: number }[], fonte: "stima" | "payroll") {
+  const has = (v: string) => righe.some((r) => r.voce === v);
+  const mappa: [string, string[]][] = fonte === "payroll"
+    ? [["Retribuzione, oneri, ratei 13ª/14ª, TFR, altro", ["BASE", "ONERI", "RATEI_13_14", "TFR", "INDENNITA_FISSE", "UNA_TANTUM", "ALTRO_VOCI", "ALTRO"]], ["+ Trasferte (mese prima)", ["TRASFERTA"]],
+      ["+ Straordinari, supplementari, maggiorazioni (lordo)", ["STR_SUPP_MAGG"]], ["+ Festività non godute (lordo)", ["FESTIVITA"]], ["− Assenze e carenza/integrazione (lordo)", ["ASSENZE", "CARENZA_INTEGR"]], ["Ferie/permessi: maturati − goduti (con contributi)", ["RATEI_FERIE"]]]
+    : has("STRAORDINARI")
+      ? [["CDL (retribuzione, oneri, ratei, TFR, ferie maturate)", ["BASE"]], ["+ Trasferte (mese prima)", ["TRASFERTA"]], ["+ Straordinari, supplementari, ore dom/festive (× oneri)", ["STRAORDINARI"]], ["+ Festività non godute (× oneri)", ["FESTIVITA"]],
+        ["− Malattia/infortunio, al netto della carenza (× oneri)", ["MALATTIA"]], ["− Permessi non retribuiti, 104, congedi (× oneri)", ["ALTRE_ASSENZE"]], ["− Ferie/ROL/ExF godute", ["FERIE_GODUTE"]]]
+      : [["CDL (retribuzione, oneri, ratei, TFR, ferie maturate)", ["BASE"]], ["+ Trasferte (mese prima)", ["TRASFERTA"]], ["+ Straordinari, supplementari, festività (× oneri)", ["ISTITUTI", "-TRASFERTA"]], ["− Assenze (malattia, permessi)", ["ASSENZE"]], ["− Ferie/ROL/ExF godute", ["FERIE_GODUTE"]]];
+  return mappa.map(([etichetta, voci]) => {
+    const perDs: Record<string, number> = {};
+    for (const v of voci) { const segno = v.startsWith("-") ? -1 : 1, nome = v.replace(/^-/, ""); for (const r of righe.filter((x) => x.voce === nome && x.station !== "TOTALE")) { const k = r.station || "senza DS"; perDs[k] = (perDs[k] ?? 0) + segno * r.importo; } }
+    return { etichetta, perDs };
+  });
+}

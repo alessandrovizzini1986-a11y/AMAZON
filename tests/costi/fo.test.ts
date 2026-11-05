@@ -51,3 +51,22 @@ describe("F.O.: foglio", () => {
     expect(ws.getCell("C40").value).toBe("Multe 2026");
   });
 });
+
+describe("F.O.: tabellina della busta SIC", async () => {
+  const { vociBusta } = await import("@/domain/costi/fo");
+  it("stima salvata: le voci sommano al TOTALE per DS; payroll: tutte le componenti", () => {
+    const righe = [["BASE", 1000], ["TRASFERTA", 100], ["ISTITUTI", 180], ["STRAORDINARI", 50], ["FESTIVITA", 30], ["ASSENZE", -40], ["MALATTIA", -25], ["ALTRE_ASSENZE", -15], ["FERIE_GODUTE", -60], ["TOTALE", 1080]].map(([voce, importo]) => ({ station: "DER1", voce: voce as string, importo: importo as number }));
+    const v = vociBusta(righe, "stima");
+    expect(v.length).toBe(7);
+    expect(v.reduce((a, x) => a + (x.perDs.DER1 ?? 0), 0)).toBe(1080);
+    // stima salvata prima della scomposizione: istituti senza trasferta
+    const vecchia = vociBusta(righe.filter((r) => !["STRAORDINARI", "FESTIVITA", "MALATTIA", "ALTRE_ASSENZE"].includes(r.voce)), "stima");
+    expect(vecchia.map((x) => x.perDs.DER1)).toEqual([1000, 100, 80, -40, -60]);
+    const pay = vociBusta([{ station: "DER1", voce: "BASE", importo: 500 }, { station: "DER1", voce: "ONERI", importo: 200 }, { station: "", voce: "RATEI_FERIE", importo: -10 }], "payroll");
+    expect([pay[0].perDs.DER1, pay[5].perDs["senza DS"]]).toEqual([700, -10]);
+    const wb = excelFO({ mese: "2026-10", carburante: null, noleggi: [], telepass: null, ztl: null, accStraord: null, accFerie: null, bustaSic: 1080, bustaNota: "", bustaVoci: v, costoStd: null, fatturato: null, fatturatoNota: "", wind: 0, elmec: 0 });
+    const ws = wb.getWorksheet("AMZ Ott 2026")!;
+    expect([ws.getCell("C78").value, ws.getCell("D80").value, ws.getCell("C87").value]).toEqual(["Busta SIC del mese (P58): da cosa nasce", 1000, "= Busta del mese"]);
+    expect((ws.getCell("L88").value as { formula: string }).formula).toBe("ROUND(L87-P58,2)");
+  });
+});

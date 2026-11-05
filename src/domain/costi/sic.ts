@@ -99,7 +99,8 @@ export function sicLordo(station: string, l: LavoratoreSic[], t: TariffeStd, opz
 
 export type ParametriSic = { MOLT_ONERI: number; STR_FT: number; STR_PT: number; SUPP: number; DOMFEST: number; MALATTIA_H: number; CARENZA_PCT: number };
 
-export type BustaLavoratore = { base: number; trasferta: number; istitutiLordi: number; istituti: number; assenze: number; ferieGodute: number; totale: number };
+/** istituti = trasferta + straordinari + festività; assenze = malattia + altreAssenze (tutto già × oneri) */
+export type BustaLavoratore = { base: number; trasferta: number; istitutiLordi: number; istituti: number; straordinari: number; festivita: number; assenze: number; malattia: number; altreAssenze: number; ferieGodute: number; totale: number };
 
 /**
  * Busta 27/M+1 del lavoratore: base CDL + istituti di M (trasferta esente ×1, gli
@@ -108,14 +109,15 @@ export type BustaLavoratore = { base: number; trasferta: number; istitutiLordi: 
  */
 export function bustaLavoratore(x: LavoratoreSic, p: ParametriSic): BustaLavoratore {
   // cessato nel mese: tutto (variabili comprese) è nella busta di chiusura dello stesso mese
-  if (x.cessato) return { base: 0, trasferta: 0, istitutiLordi: 0, istituti: 0, assenze: 0, ferieGodute: 0, totale: 0 };
+  if (x.cessato) return { base: 0, trasferta: 0, istitutiLordi: 0, istituti: 0, straordinari: 0, festivita: 0, assenze: 0, malattia: 0, altreAssenze: 0, ferieGodute: 0, totale: 0 };
   const a = x.anag;
   const pct = a?.pctPt ? (a.pctPt > 1 ? a.pctPt / 100 : a.pctPt) : 1;
   const trasferta = x.bucket === "DISPATCHER" ? 0 : x.trasfEuro;
   const strTar = x.bucket === "CTI FT" || x.bucket === "DISPATCHER" ? p.STR_FT : p.STR_PT;
   // festività non goduta lorda = RLM × %PT / 22 (paga 09/2026); il costo dell'anagrafica ha già INPS/INAIL
   const festGg = a?.rlm ? (a.rlm * pct) / 22 : (a?.costoFestNonGodutaGg ?? 0) / 1.379;
-  const lordi = x.straord * strTar + x.suppl * p.SUPP + x.oreDomFest * p.DOMFEST + x.festNonGoduteGg * festGg;
+  const straordLordi = x.straord * strTar + x.suppl * p.SUPP + x.oreDomFest * p.DOMFEST, festLordi = x.festNonGoduteGg * festGg;
+  const lordi = straordLordi + festLordi;
   const mal = (x.malattia + x.infortunio) * p.MALATTIA_H * p.MOLT_ONERI;
   const carenza = -mal * p.CARENZA_PCT;
   const hMese = a?.hSettim ? (a.hSettim * 52) / 12 : null;
@@ -125,14 +127,14 @@ export function bustaLavoratore(x: LavoratoreSic, p: ParametriSic): BustaLavorat
   const ferie = a ? -(x.ggFerie * (a.savingFeGg ?? 0) + x.rol * (a.savingRolH ?? 0) + x.exf * (a.savingExfH ?? 0)) : 0;
   const istituti = trasferta + lordi * p.MOLT_ONERI;
   const assenze = mal + carenza + nonRetr;
-  return { base: x.cdl, trasferta, istitutiLordi: lordi, istituti, assenze, ferieGodute: ferie, totale: x.cdl + istituti + assenze + ferie };
+  return { base: x.cdl, trasferta, istitutiLordi: lordi, istituti, straordinari: straordLordi * p.MOLT_ONERI, festivita: festLordi * p.MOLT_ONERI, assenze, malattia: mal + carenza, altreAssenze: nonRetr, ferieGodute: ferie, totale: x.cdl + istituti + assenze + ferie };
 }
 
-export type BustaStation = { station: string; teste: number; cdlStimati: number; base: number; trasferte: number; istituti: number; assenze: number; ferieGodute: number; totale: number; totaleEsatto: number };
+export type BustaStation = { station: string; teste: number; cdlStimati: number; base: number; trasferte: number; istituti: number; straordinari: number; festivita: number; assenze: number; malattia: number; altreAssenze: number; ferieGodute: number; totale: number; totaleEsatto: number };
 
 export function bustaStation(station: string, l: LavoratoreSic[], p: ParametriSic): BustaStation {
   const b = l.map((x) => bustaLavoratore(x, p));
   const S = (f: (y: BustaLavoratore) => number) => b.reduce((s, y) => s + f(y), 0);
   const tot = S((y) => y.totale);
-  return { station, teste: l.length, cdlStimati: l.filter((x) => x.cdlStimato).length, base: r2(S((y) => y.base)), trasferte: r2(S((y) => y.trasferta)), istituti: r2(S((y) => y.istituti)), assenze: r2(S((y) => y.assenze)), ferieGodute: r2(S((y) => y.ferieGodute)), totale: r2(tot), totaleEsatto: tot };
+  return { station, teste: l.length, cdlStimati: l.filter((x) => x.cdlStimato).length, base: r2(S((y) => y.base)), trasferte: r2(S((y) => y.trasferta)), istituti: r2(S((y) => y.istituti)), straordinari: r2(S((y) => y.straordinari)), festivita: r2(S((y) => y.festivita)), assenze: r2(S((y) => y.assenze)), malattia: r2(S((y) => y.malattia)), altreAssenze: r2(S((y) => y.altreAssenze)), ferieGodute: r2(S((y) => y.ferieGodute)), totale: r2(tot), totaleEsatto: tot };
 }

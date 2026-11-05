@@ -21,6 +21,8 @@ export type InputFO = {
   accFerie: Record<string, number> | null;
   /** busta SIC pagata nel mese (payroll del mese, o stima SIC salvata del mese prima) */
   bustaSic: number | null; bustaNota: string;
+  /** scomposizione della busta per DS (tabellina sotto il foglio) */
+  bustaVoci?: { etichetta: string; perDs: Record<string, number> }[] | null;
   costoStd: number | null;
   fatturato: number | null; fatturatoNota: string;
   wind: number; elmec: number;
@@ -97,6 +99,25 @@ export function excelFO(x: InputFO): ExcelJS.Workbook {
   set("O72", "ML"); set("P72", f("P71-P69"), eur);
   set("O73", "ML %"); set("P73", f("IFERROR(1-P69/P71,0)"), "0.00%");
   for (const ref of ["O60", "O69", "O71", "P69"]) ws.getCell(ref).font = { bold: true };
+
+  // tabellina: da cosa nasce la busta SIC (P58)
+  if (x.bustaVoci?.length) {
+    const r0 = 79;
+    set(`C${r0 - 1}`, "Busta SIC del mese (P58): da cosa nasce"); ws.getCell(`C${r0 - 1}`).font = { bold: true };
+    set(`C${r0}`, "Voce"); DS_FO.forEach((ds, i) => set(`${COL[i]}${r0}`, ds)); set(`K${r0}`, "senza DS"); set(`L${r0}`, "Totale");
+    x.bustaVoci.forEach((v, j) => {
+      const r = r0 + 1 + j;
+      set(`C${r}`, v.etichetta);
+      DS_FO.forEach((ds, i) => set(`${COL[i]}${r}`, r2(v.perDs[ds] ?? 0), eur));
+      const altro = Object.entries(v.perDs).filter(([k]) => !(DS_FO as readonly string[]).includes(k)).reduce((a, [, n]) => a + n, 0);
+      if (altro) set(`K${r}`, r2(altro), eur);
+      set(`L${r}`, f(`SUM(D${r}:K${r})`), eur);
+    });
+    const rt = r0 + 1 + x.bustaVoci.length;
+    set(`C${rt}`, "= Busta del mese"); for (const c of [...COL, "K", "L"]) set(`${c}${rt}`, f(`SUM(${c}${r0 + 1}:${c}${rt - 1})`), eur);
+    set(`C${rt + 1}`, "Controllo: Totale − P58 (deve essere 0)"); set(`L${rt + 1}`, f(`ROUND(L${rt}-P58,2)`), eur);
+    for (const c of ["C", ...COL, "K", "L"]) ws.getCell(`${c}${rt}`).font = { bold: true };
+  }
 
   set("C75", "Compilato da FleetDSP (Costi a fine mese). Celle gialle = dati dal sito; le celle vuote nelle righe dei fornitori, multe, DPI, PDR e danni si compilano a mano.");
   set("C76", "Riga 17 nuova: altre società di noleggio (nel modello non c'era una riga). P62 MEZZI somma D6:J17.");

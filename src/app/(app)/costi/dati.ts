@@ -1,4 +1,5 @@
 import "server-only";
+import { vociBusta } from "@/domain/costi/fo";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
@@ -192,12 +193,12 @@ export async function datiFO(mese: string) {
       select: { stato: true, leasingCompany: true, canoneMese: true, contrattoDataInizio: true, contrattoDataFine: true, station: { select: { code: true } } },
     }).catch(() => []),
     stimaSalvata(mesePrec(mese), "SIC"),
-    db.payrollRiga.aggregate({ where: { mesePaga: mese, componente: { notIn: ["RECLASS", "GLS"] } }, _sum: { importo: true }, _count: { _all: true } }).catch(() => null),
+    db.payrollRiga.groupBy({ by: ["station", "componente"], where: { mesePaga: mese, componente: { notIn: ["RECLASS", "GLS"] } }, _sum: { importo: true } }).catch(() => []),
   ]);
   // busta SIC pagata nel mese: payroll del mese se caricato, altrimenti la stima SIC salvata del mese prima (busta 27/M)
   const stimaPrec = prec ? prec.righe.filter((r) => r.voce === "TOTALE" && r.station !== "TOTALE").reduce((a, r) => a + r.importo, 0) : null;
-  const bustaSic = pay?._count._all ? { importo: Number(pay._sum.importo ?? 0), fonte: "payroll" as const, il: null }
-    : stimaPrec !== null ? { importo: stimaPrec, fonte: "stima" as const, il: prec!.creataIl } : null;
+  const bustaSic = pay.length ? { importo: pay.reduce((a, r) => a + Number(r._sum.importo ?? 0), 0), fonte: "payroll" as const, il: null, voci: vociBusta(pay.map((r) => ({ station: r.station ?? "", voce: r.componente, importo: Number(r._sum.importo ?? 0) })), "payroll") }
+    : stimaPrec !== null ? { importo: stimaPrec, fonte: "stima" as const, il: prec!.creataIl, voci: vociBusta(prec!.righe, "stima") } : null;
   const trasfPrec = prec ? prec.righe.filter((r) => r.voce === "TRASFERTA").reduce((a, r) => a + r.importo, 0) : null;
   return {
     q8: q8 ? { file: q8.nomeFile, il: q8.eseguitoIl.toISOString(), perStation: perStationRun(q8.totaliJson) } : null,
