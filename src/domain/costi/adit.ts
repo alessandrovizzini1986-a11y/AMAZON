@@ -82,13 +82,14 @@ export function aggregaAdit(righe: Pick<RigaAdit, "station" | "voce" | "quantita
   return out;
 }
 
-export type TariffeStd = { STANDARD: number; MAGG50: number; SUPP18: number; STR30: number; STR65: number; SUPP65: number; FESTIVITA: number; FERIE_PERM_GOD: number; CARENZA_PCT: number };
+export type TariffeStd = { STANDARD: number; MAGG50: number; SUPP18: number; STR30: number; STR65: number; SUPP65: number; FESTIVITA: number; FERIE_PERM_GOD: number; CARENZA_PCT: number; /** CTRB Decr. Dignità €/h = costo CTRB / ore fatturate (null se l'ADIT non ha ore) */ CTRB_H?: number | null };
 
-/** Tariffe STD = costo / quantità dell'ADIT (tutte le station insieme); SUPP65 = STR65; carenza = % sul costo ore. */
+/** Tariffe STD = costo / quantità dell'ADIT (tutte le station insieme); SUPP65 = STR65; carenza = % sul costo ore; CTRB = € / ore fatturate. */
 export function tariffeDaAdit(righe: Pick<RigaAdit, "voce" | "quantita" | "costo">[]): TariffeStd {
   const q: Partial<Record<VoceAdit, number>> = {}, c: Partial<Record<VoceAdit, number>> = {};
   for (const r of righe) { q[r.voce] = (q[r.voce] ?? 0) + r.quantita; c[r.voce] = (c[r.voce] ?? 0) + r.costo; }
   const t = (v: VoceAdit) => (q[v] ? (c[v] ?? 0) / q[v]! : 0);
   const costoOre = VOCI_ORE.reduce((s, v) => s + (c[v] ?? 0), 0);
-  return { STANDARD: t("STANDARD"), MAGG50: t("MAGG50"), SUPP18: t("SUPP18"), STR30: t("STR30"), STR65: t("STR65"), SUPP65: t("STR65"), FESTIVITA: t("FESTIVITA"), FERIE_PERM_GOD: t("FERIE_PERM_GOD"), CARENZA_PCT: costoOre ? (c.CARENZA ?? 0) / costoOre : 0 };
+  const oreFatt = VOCI_ORE.reduce((s, v) => s + (q[v] ?? 0), 0);
+  return { STANDARD: t("STANDARD"), MAGG50: t("MAGG50"), SUPP18: t("SUPP18"), STR30: t("STR30"), STR65: t("STR65"), SUPP65: t("STR65"), FESTIVITA: t("FESTIVITA"), FERIE_PERM_GOD: t("FERIE_PERM_GOD"), CARENZA_PCT: costoOre ? (c.CARENZA ?? 0) / costoOre : 0, CTRB_H: oreFatt ? (c.CTRB_DIGNITA ?? 0) / oreFatt : null };
 }

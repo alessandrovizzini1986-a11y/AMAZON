@@ -97,6 +97,8 @@ export function FineMeseClient(p: Props) {
       const par = parametriAlla(p.parametri.map((x) => ({ chiave: x.voce, validaDal: x.validaDal, valore: x.valore })), p.fineMese);
       const ore: OreStation[] = [], stime: StimaStdStation[] = [], ctrl: ControlliStation[] = [];
       const mogPer: Record<string, number> = {};
+      // CTRB Decr. Dignità alla tariffa dell'ADIT (€ / ore fatturate); il parametro solo se l'ADIT non ha ore
+      const parStd = { CTRB_H: p.tariffeStd.CTRB_H ?? par.STD_CTRB_H ?? 0.1, ALTRO_PCT: par.STD_ALTRO_PCT ?? 0.002, GG_MESE: par.STD_GG_MESE ?? 26, MOG: par.STD_MOG ?? 0 };
       const testeStd: Record<string, { ft: number; pt: number; mog: number }> = {};
       for (const t of dati.tracking.filter((x) => x.tipo === "STD").sort((a, b) => a.station.localeCompare(b.station))) {
         setStato(`Calcolo ${t.station} STD…`);
@@ -110,7 +112,9 @@ export function FineMeseClient(p: Props) {
         // integrazione MOG dal controllo MOG (sotto MOG + zero ore × tariffa Standard), se c'è il file MOG
         const mogEs = p.mog.versione ? controlloMog({ station: t.station, mese: p.mese, lavoratori, contratti: p.mog.contratti, variazioni: p.mog.variazioni, tariffa: p.tariffeStd.STANDARD, suGls: lavoratoriGls(t.sheets) }) : null;
         if (mogEs) mogPer[t.station] = mogEs.filter((e) => e.stato === "SOTTO MOG" || e.stato === "ZERO ORE").reduce((a, e) => a + e.costo, 0);
-        stime.push(stimaStd(o, p.tariffeStd, { CTRB_H: par.STD_CTRB_H ?? 0.1, ALTRO_PCT: par.STD_ALTRO_PCT ?? 0.002, GG_MESE: par.STD_GG_MESE ?? 26, MOG: par.STD_MOG ?? 0 }, nf, 7, mogPer[t.station]));
+        // integrazione MOG nel costo STD = quella fatturata da Adecco nell'ADIT del mese tariffe (il controllo MOG resta un controllo)
+        const mogAdit = p.aditDwh.filter((r) => r.station === t.station && r.voce === "INTEGR_MOG").reduce((a, r) => a + r.costo, 0);
+        stime.push(stimaStd(o, p.tariffeStd, parStd, nf, 7, mogAdit));
         const l = letturaFile(t.sheets, anno, mm);
         const oreL = o.standard + o.straord + o.suppl + o.accordo;
         ctrl.push({
@@ -230,8 +234,8 @@ export function FineMeseClient(p: Props) {
     for (const st of stations) for (const a of avvisiStation(st)) rett.push([st, "controllo", a.testo]);
     const wb = excelStima({
       mese: p.mese, stations, oreStd: ris.ore, stimeStd: ris.stime, tariffeStd: p.tariffeStd, meseTariffe: p.meseTariffe ?? "", aditDwh: p.aditDwh,
-      parStd: { TRASF: tr, TRASFDOM: tr + ex, CTRB: par.STD_CTRB_H ?? 0.1, ALTRO: par.STD_ALTRO_PCT ?? 0.002, GGMESE: par.STD_GG_MESE ?? 26, MOG: par.STD_MOG ?? 0 },
-      // integrazione MOG per station uguale a quella a schermo (controllo MOG), non il parametro diviso per 7
+      parStd: { TRASF: tr, TRASFDOM: tr + ex, CTRB: p.tariffeStd?.CTRB_H ?? par.STD_CTRB_H ?? 0.1, ALTRO: par.STD_ALTRO_PCT ?? 0.002, GGMESE: par.STD_GG_MESE ?? 26, MOG: par.STD_MOG ?? 0 },
+      // integrazione MOG per station uguale a quella a schermo (fatturata nell'ADIT), non il parametro diviso per 7
       mogPerStation: Object.fromEntries(ris.stime.map((s) => [s.station, s.righe.find((r) => r.voce === "INTEGR_MOG")?.importo ?? 0])),
       sic: ris.sic ? { lav: ris.sic.lav, busta: ris.sic.busta } : null, sicLordo: ris.sic?.lordo ?? [], parSic: ris.sic?.par ?? null, dispTrasferta: true,
       festivi: p.festivi, nFestivi: Object.fromEntries(stations.map((s) => [s, festiviMese(anno, mm, s, p.festivi).length])), rettifiche: rett.length ? rett : [["—", "nessuna rettifica", ""]], versioneAnagrafica: p.anagrafica?.mese ?? null,
@@ -280,7 +284,7 @@ export function FineMeseClient(p: Props) {
     const primo = `${p.mese}-01`;
     const tr = valoreAlla(p.tariffe, "TRASFERTA", primo) ?? 0, ex = valoreAlla(p.tariffe, "TRASFERTA_DOM_EXTRA", primo) ?? 0;
     const wb = foglioStimaPersonale({
-      mese: p.mese, blocchi: blocchiDaCalcolo({ sic: ris.sic?.lav ?? [], std: ris.ore, testeStd: ris.testeStd }), cdlBase: (ris.sic?.lav ?? []).reduce((a, y) => a + y.cdl, 0),
+      mese: p.mese, blocchi: blocchiDaCalcolo({ sic: ris.sic?.lav ?? [], std: ris.ore, testeStd: ris.testeStd, altreStd: Object.fromEntries(ris.stime.map((s) => [s.station, s.nonTracking])) }), cdlBase: (ris.sic?.lav ?? []).reduce((a, y) => a + y.cdl, 0),
       tariffe: { trasf: tr, trasfDom: tr + ex, ...p.tariffeStd }, fonte: `tracking di ${it(p.mese)}, anagrafica CDL ${p.anagrafica ? it(p.anagrafica.mese) : "—"}, tariffe ADIT ${p.meseTariffe ? it(p.meseTariffe) : "—"}`,
     });
     await scarica(wb, `${nomeFoglio(p.mese)}_per_Stima_Costo_personale.xlsx`);
@@ -292,7 +296,7 @@ export function FineMeseClient(p: Props) {
     ["Ore STR30", (o) => o.straord - o.straordDom, "h"], ["Ore STR65 (dom/festivi)", (o) => o.straordDom, "h"], ["Ore SUPP18", (o) => o.suppl - o.supplDom, "h"], ["Ore SUPP65 (dom/festivi)", (o) => o.supplDom, "h"],
     ["Ore Accordo 39-44 h (esposte, non valorizzate)", (o) => o.accordo, "h"], ["Trasferta gg (di cui dom)", (o) => o.trasfGg, "n"],
     ["€ Ore × tariffe ADIT", (_o, s) => s.costoOre, "€"], ["€ Trasferte", (_o, s) => s.trasferte, "€"],
-    ...(["FESTIVITA", "FERIE_PERM_GOD", "CARENZA", "CTRB_DIGNITA", "ALTRO", "INTEGR_MOG"] as const).map((v) => [`€ ${{ FESTIVITA: "Festività", FERIE_PERM_GOD: "Ferie/ROL/ExF godute", CARENZA: "Carenza malattia", CTRB_DIGNITA: "CTRB Decr. Dignità", ALTRO: "Altro", INTEGR_MOG: p.mog.versione ? "Integrazione MOG (controllo MOG)" : "Integrazione MOG (nessun file MOG: 0)" }[v]}`, (_o: OreStation, s: StimaStdStation) => s.righe.find((r) => r.voce === v)!.importo, "€"] as [string, (o: OreStation, s: StimaStdStation) => number, "€"]),
+    ...(["FESTIVITA", "FERIE_PERM_GOD", "CARENZA", "CTRB_DIGNITA", "ALTRO", "INTEGR_MOG"] as const).map((v) => [`€ ${{ FESTIVITA: "Festività", FERIE_PERM_GOD: "Ferie/ROL/ExF godute", CARENZA: "Carenza malattia", CTRB_DIGNITA: "CTRB Decr. Dignità", ALTRO: "Altro", INTEGR_MOG: `Integrazione MOG (fatturata in ADIT ${p.meseTariffe ? it(p.meseTariffe) : "—"})` }[v]}`, (_o: OreStation, s: StimaStdStation) => s.righe.find((r) => r.voce === v)!.importo, "€"] as [string, (o: OreStation, s: StimaStdStation) => number, "€"]),
     ["€ TOTALE STD competenza", (_o, s) => s.totale, "€"],
   ];
   const fmt = (v: number, u: string) => (u === "€" ? eur(v) : u === "h" ? h1(v) : v.toLocaleString("it-IT"));

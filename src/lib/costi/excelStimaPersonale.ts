@@ -11,7 +11,8 @@ export type OreBlocco = { standardTot: number; magg: number; strTot: number; str
 export type BloccoStation = {
   station: string;
   sic: (OreBlocco & { teste: Record<Bucket, number>; costoMedio: Record<Bucket, number> }) | null;
-  std: (OreBlocco & { ft: number; pt: number; mog: number }) | null;
+  /** altre: voci ADIT non da ore (festività, ferie godute, carenza, CTRB, altro, integrazione MOG) come nella stima del sito */
+  std: (OreBlocco & { ft: number; pt: number; mog: number; altre: number }) | null;
 };
 export type InputStimaPersonale = {
   mese: string; blocchi: BloccoStation[]; cdlBase: number;
@@ -54,7 +55,7 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   set("B2", "ORE TOT"); set("E2", "costo sic (ERIKA) cdl base"); input("F2", x.cdlBase, "#,##0.00");
   set("A3", "TOTALE STATION");
   set("A4", "TOT. COSTO SIC"); set("B4", f("=+F8+F12+F14"));
-  set("A5", "TOT. COSTO STD"); set("B5", f("=+F22+F28"));
+  set("A5", "TOT. COSTO STD"); set("B5", f("=+F22+F28+F32"));
   set("A6", "ROTTE"); set("F6", f(`=${STATION_ORDINE.map((_, i) => `${col(i, 4)}6`).join("+")}`));
   set("C7", "#teste/ore"); set("D7", "Costo");
   const t = x.tariffe;
@@ -70,6 +71,7 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   set("A22", "STD");
   for (const [r, lab, v] of stdRighe) { set(`B${r}`, lab); set(`C${r}`, f(`=+${tutte(r)}`)); input(`D${r}`, v, "0.00"); if (r <= 29) set(`E${r}`, f(`=+D${r}*C${r}`), "#,##0.00"); }
   set("F22", f("=SUM(E22:E27)"), "#,##0.00"); set("F28", f("=SUM(E28:E29)"), "#,##0.00");
+  set("B32", "ALTRE VOCI ADIT"); set("E32", f(`=${tutte(32, 3)}`), "#,##0.00"); set("F32", f("=+E32"), "#,##0.00");
   set("E33", "SIC"); set("E34", "Strao"); set("F34", f("=+E14+E17"), "#,##0.00"); set("E35", "supp"); set("F35", f("=+E15+E18"), "#,##0.00"); set("E36", "magg"); set("F36", f("=+E16"), "#,##0.00");
   set("D43", "Trasf SIC"); set("F43", f(`=${tutte(43)}`)); set("D45", "Trasf tot"); set("F45", f(`=${STATION_ORDINE.map((_, i) => `${col(i, 4)}45`).join("+")}`));
 
@@ -80,7 +82,7 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
     set(`${c(0)}2`, f(`=SUM(${c(1)}37:${c(2)}37,${c(1)}34:${c(2)}34,${c(1)}40:${c(2)}40)`), "#,##0.0");
     set(`${c(0)}3`, st); ws.getCell(`${c(0)}3`).font = { bold: true };
     set(`${c(0)}4`, f(`=+${c(4)}8+${c(4)}12+${c(4)}14`), "#,##0.00");
-    set(`${c(0)}5`, f(`=+${c(4)}22+${c(4)}28`), "#,##0.00");
+    set(`${c(0)}5`, f(`=+${c(4)}22+${c(4)}28+${c(4)}32`), "#,##0.00");
     set(`${c(1)}7`, "#teste/ore"); set(`${c(2)}7`, "Costo");
     for (const [bk, r] of BUCKET_RIGA) {
       set(`${c(0)}${r}`, bk);
@@ -101,6 +103,7 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
       set(`${c(0)}${r}`, lab); set(`${c(1)}${r}`, f(`=+${c(2)}${da}`)); set(`${c(2)}${r}`, f(`=$D${r}`), "0.00"); set(`${c(3)}${r}`, f(`=+${c(2)}${r}*${c(1)}${r}`), "#,##0.00");
     }
     set(`${c(4)}22`, f(`=SUM(${c(3)}22:${c(3)}27)`), "#,##0.00"); set(`${c(4)}28`, f(`=SUM(${c(3)}28:${c(3)}29)`), "#,##0.00");
+    set(`${c(0)}32`, "ALTRE VOCI ADIT"); input(`${c(3)}32`, b?.std?.altre ?? 0, "#,##0.00"); set(`${c(4)}32`, f(`=+${c(3)}32`), "#,##0.00");
     set(`${c(0)}30`, "CORSO"); set(`${c(2)}30`, f("=$D30")); set(`${c(0)}31`, "CORSO SUP"); set(`${c(2)}31`, f("=$D31"));
     // tabella ore: SIC (c1) e STD (c2)
     set(`${c(1)}33`, "SIC"); set(`${c(2)}33`, "STD"); set(`${c(3)}33`, "SIC");
@@ -134,7 +137,8 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   let r = 51;
   set(`A${r++}`, `Compilato da FleetDSP (Costi a fine mese): ${x.fonte}. Celle gialle = dati dal sito; le altre sono formule.`);
   set(`A${r++}`, "SIC: teste e costo medio per contratto dall'anagrafica CDL; ore e trasferte dal tracking SIC. STD: ore e trasferte dal tracking STD (Standard tot = ordinarie + domeniche/festivi).");
-  set(`A${r++}`, "Rotte (riga 6) e integrazione MOG non sono compilate.");
+  set(`A${r++}`, "Riga 32 ALTRE VOCI ADIT = festività, ferie/ROL/ExF godute, carenza, CTRB Decr. Dignità (tariffa ADIT), altro e integrazione MOG fatturata nell'ADIT: con questa riga TOT. COSTO STD (B5) = stima STD del sito = P61 del foglio Costi F.O.");
+  set(`A${r++}`, "Rotte (riga 6) non compilate.");
   for (const n of NOTE_MODELLO) set(`A${r++}`, `Correzione rispetto al modello: ${n}`);
   ws.getColumn(1).width = 16; ws.getColumn(2).width = 16;
   for (let i = 3; i <= base(6) + 4; i++) ws.getColumn(i).width = 11;
@@ -155,6 +159,8 @@ export function blocchiDaCalcolo(x: {
   sic: { station: string; bucket: Bucket; cdl: number; standard: number; standardDF: number; straord: number; straordDom: number; suppl: number; supplDom: number; trasfGg: number; trasfDom: number }[];
   std: { station: string; standard: number; standardDF: number; straord: number; straordDom: number; suppl: number; supplDom: number; trasfGg: number; trasfDom: number }[];
   testeStd: Record<string, { ft: number; pt: number; mog: number }>;
+  /** € voci ADIT non da ore per station (stima STD: nonTracking) */
+  altreStd?: Record<string, number>;
 }): BloccoStation[] {
   return STATION_ORDINE.map((station) => {
     const l = x.sic.filter((y) => y.station === station);
@@ -163,7 +169,7 @@ export function blocchiDaCalcolo(x: {
     const costoMedio = Object.fromEntries(BUCKET_RIGA.map(([b]) => { const g = l.filter((y) => y.bucket === b); return [b, g.length ? g.reduce((a, y) => a + y.cdl, 0) / g.length : 0]; })) as Record<Bucket, number>;
     const sic = l.length ? { ...bloccoOre({ standard: somma("standard"), standardDF: somma("standardDF"), straord: somma("straord"), straordDom: somma("straordDom"), suppl: somma("suppl"), supplDom: somma("supplDom"), trasfGg: somma("trasfGg"), trasfDom: somma("trasfDom") }), teste, costoMedio } : null;
     const o = x.std.find((y) => y.station === station);
-    const std = o ? { ...bloccoOre(o), ...(x.testeStd[station] ?? { ft: 0, pt: 0, mog: 0 }) } : null;
+    const std = o ? { ...bloccoOre(o), ...(x.testeStd[station] ?? { ft: 0, pt: 0, mog: 0 }), altre: x.altreStd?.[station] ?? 0 } : null;
     return { station, sic, std };
   });
 }
