@@ -53,7 +53,7 @@ export function numero(c: Cella): number | null {
 /** Riga di intestazione: la prima che contiene tutte le etichette (prefisso, maiuscole indifferenti). */
 function intestazione(m: Matrice, etichette: string[], max = 15) {
   for (let i = 0; i < Math.min(m.length, max); i++) {
-    const h = (m[i] ?? []).map((c) => norm(testo(c)));
+    const h = Array.from(m[i] ?? [], (c) => norm(testo(c))); // Array.from: le righe ExcelJS possono avere buchi
     if (etichette.every((e) => h.some((x) => x.startsWith(norm(e))))) {
       const col = (e: string) => h.findIndex((x) => x.startsWith(norm(e)));
       return { riga: i, col };

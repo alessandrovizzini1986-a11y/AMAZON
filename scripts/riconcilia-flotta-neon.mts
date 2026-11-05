@@ -40,7 +40,8 @@ const fatture: FatturaRiga[] = [];
 if (arg("ald")) fatture.push(...leggiFattureAld(await primo(arg("ald")!)));
 if (arg("arval")) fatture.push(...leggiFattureArval(await primo(arg("arval")!)));
 if (arg("avis")) fatture.push(...leggiFattureAvis(await primo(arg("avis")!)));
-if (arg("europcar")) { const m = await matrici(arg("europcar")!); fatture.push(...leggiFattureEuropcar(m["Professional Solution"] ?? Object.values(m)[0])); }
+// più file dello stesso fornitore separati da virgola (es. Europcar settembre,ottobre): vale l'ultimo mese pieno per targa
+for (const f of (arg("europcar") ?? "").split(",").filter(Boolean)) { const m = await matrici(f); fatture.push(...leggiFattureEuropcar(m["Professional Solution"] ?? Object.values(m)[0])); }
 
 const stazioni = (await sql.query(`SELECT id, code FROM "Station"`)) as { id: string; code: string }[];
 const idStation = new Map(stazioni.map((s) => [s.code, s.id]));

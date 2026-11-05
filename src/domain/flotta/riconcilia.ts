@@ -52,7 +52,7 @@ export function fornitoreFattura(societa: string | null): FatturaRiga["fornitore
 /** CDC dei nostri progetti: 5569 Amazon (PS00009460), 5565 GLS (PS00022667). */
 export const CDC_NOSTRI = ["5569", "5565"];
 
-export type CanoneFatturato = { importo: number; mese: string; fornitore: FatturaRiga["fornitore"]; fattura: string };
+export type CanoneFatturato = { importo: number; mese: string; fornitore: FatturaRiga["fornitore"]; fattura: string; dal?: string | null };
 
 /**
  * Canone dell'ultimo mese pieno fatturato per targa (righe CANONE, periodo dal 1° all'ultimo
@@ -67,7 +67,11 @@ export function canoniFatturati(fatture: FatturaRiga[]): Map<string, CanoneFattu
     const k = `${f.fornitore}|${f.targa}`;
     const m = per.get(k) ?? new Map<string, CanoneFatturato>();
     const prima = m.get(f.mese);
-    m.set(f.mese, { importo: Math.round(((prima?.importo ?? 0) + f.importo) * 100) / 100, mese: f.mese, fornitore: f.fornitore, fattura: f.fattura });
+    // Europcar: ogni riga è già un periodo di 30 giorni; due periodi che partono nello stesso mese
+    // (1–31/10 e 31/10–30/11) non si sommano: vale quello che parte per ultimo
+    if (f.fornitore === "EUROPCAR") {
+      if (!prima || (f.dal ?? "") >= (prima.dal ?? "")) m.set(f.mese, { importo: Math.round(f.importo * 100) / 100, mese: f.mese, fornitore: f.fornitore, fattura: f.fattura, dal: f.dal });
+    } else m.set(f.mese, { importo: Math.round(((prima?.importo ?? 0) + f.importo) * 100) / 100, mese: f.mese, fornitore: f.fornitore, fattura: f.fattura, dal: f.dal });
     per.set(k, m);
   }
   const out = new Map<string, CanoneFatturato>();
