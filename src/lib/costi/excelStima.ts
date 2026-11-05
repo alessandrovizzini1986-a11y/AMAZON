@@ -19,7 +19,7 @@ export type InputExcel = {
   sic: { lav: LavoratoreSic[]; busta: BustaLavoratore[] } | null; sicLordo: SicLordo[]; parSic: ParametriSic | null; dispTrasferta: boolean;
   festivi: { data: string; descrizione: string; station: string }[]; nFestivi: Record<string, number>;
   rettifiche: [string, string, string][]; versioneAnagrafica: string | null;
-  /** integrazione MOG per station (controllo MOG): se c'è, la riga MOG usa questi valori come a schermo */
+  /** integrazione MOG per station (fatturata nell'ADIT del mese tariffe): la riga MOG usa questi valori come a schermo */
   mogPerStation?: Record<string, number>;
 };
 
@@ -107,11 +107,11 @@ export function excelStima(x: InputExcel): ExcelJS.Workbook {
   metti("SUPP65", "SUPP 65% €/h", F(P.STR65.replace("Parametri!", "Parametri!"), t.SUPP65), "in fattura non esiste: tariffa STR65");
   metti("TRASF", "Trasferta feriale €/gg", x.parStd.TRASF, "tariffa alla data (Parametri del sito)", "0.00", true);
   metti("TRASFDOM", "Trasferta domenica €/gg", x.parStd.TRASFDOM, "feriale + extra domenica", "0.00", true);
-  metti("CTRB", "CTRB Decr. Dignità €/h", x.parStd.CTRB, "0,10 €/h su tutte le ore lavorate", "0.00", true);
+  metti("CTRB", "CTRB Decr. Dignità €/h", x.parStd.CTRB, "€ CTRB / ore fatturate dell'ADIT del mese tariffe (parametro STD_CTRB_H solo senza ADIT), su tutte le ore lavorate", "0.0000", true);
   metti("ALTRO", "Altro % su costo ore", x.parStd.ALTRO, "clausola costo lavoro, ASRE, corsi…", "0.00%", true);
   metti("GGMESE", "Giorni retribuiti/mese (festività)", x.parStd.GGMESE, "ore festività per festivo = ore Standard / gg", "0", true);
   metti("MOG", "Integrazione MOG € (totale, se manca il controllo MOG)", x.parStd.MOG, "parametro STD_MOG, diviso per le station", "#,##0.00", true);
-  if (x.mogPerStation) for (const st of x.stations) metti(`MOG_${st}`, `Integrazione MOG € ${st}`, x.mogPerStation[st] ?? 0, "dal controllo MOG (sotto MOG + zero ore × tariffa Standard)", "#,##0.00", true);
+  if (x.mogPerStation) for (const st of x.stations) metti(`MOG_${st}`, `Integrazione MOG € ${st}`, x.mogPerStation[st] ?? 0, "integrazione MOG fatturata da Adecco nell'ADIT del mese tariffe", "#,##0.00", true);
   metti("DISPTR", "Trasferta ai dispatcher SIC nel lordo (1 = sì)", x.dispTrasferta ? 1 : 0, "in busta i dispatcher non hanno trasferta", "0", true);
   if (x.parSic) {
     const p = x.parSic;

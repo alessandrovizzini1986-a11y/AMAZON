@@ -10,7 +10,7 @@ describe("foglio per Stima_Costo_personale", () => {
     expect(nomeFoglio("2026-10")).toBe("AMZ_OTT_26");
     const b = blocchiDaCalcolo({
       sic: [{ station: "DER2", bucket: "CTI FT", cdl: 3000, ...ore }, { station: "DER2", bucket: "CTI FT", cdl: 3200, ...ore }, { station: "DER2", bucket: "DISPATCHER", cdl: 4000, ...ore }],
-      std: [{ station: "DER2", ...ore }], testeStd: { DER2: { ft: 0, pt: 3, mog: 20 } },
+      std: [{ station: "DER2", ...ore }], testeStd: { DER2: { ft: 0, pt: 3, mog: 20 } }, altreStd: { DER2: 1234.5 },
     });
     const wb = foglioStimaPersonale({ mese: "2026-10", blocchi: b, cdlBase: 10200, tariffe: tar, fonte: "test" });
     const ws = wb.getWorksheet("AMZ_OTT_26")!;
@@ -28,6 +28,10 @@ describe("foglio per Stima_Costo_personale", () => {
     expect((ws.getCell("F43").value as { formula: string }).formula).toContain("M43");
     expect((ws.getCell("C30").value as { formula: string }).formula).toContain("M30");
     expect(NOTE_MODELLO.length).toBe(3);
+    // altre voci ADIT: TOT. COSTO STD = ore + trasferte + altre voci (= stima del sito = P61 Costi F.O.)
+    expect(ws.getCell("O32").value).toBe(1234.5);
+    expect((ws.getCell("B5").value as { formula: string }).formula).toBe("+F22+F28+F32");
+    expect((ws.getCell("L5").value as { formula: string }).formula).toBe("+P22+P28+P32");
   });
   it("tipo STD dal contratto del tracking", () => {
     expect(["MOG 35", "MOG 48,37% SBC", "STD PT 60", "STD PT 32,5H SBC", "STD FT"].map(tipoStd)).toEqual(["mog", "mog", "pt", "pt", "ft"]);
@@ -37,5 +41,14 @@ describe("foglio per Stima_Costo_personale", () => {
       expect(stationFromZucchettiName(n)).toBe("DER2");
       expect(isZucchettiName(n)).toBe(true);
     }
+  });
+});
+
+describe("tariffe STD dall'ADIT", async () => {
+  const { tariffeDaAdit } = await import("@/domain/costi/adit");
+  it("CTRB Decr. Dignità = € CTRB / ore fatturate; senza ore null", () => {
+    const t = tariffeDaAdit([{ voce: "STANDARD", quantita: 900, costo: 18774 }, { voce: "MAGG50", quantita: 100, costo: 2856 }, { voce: "CTRB_DIGNITA", quantita: 0, costo: 28 }]);
+    expect(t.CTRB_H).toBeCloseTo(0.028, 6);
+    expect(tariffeDaAdit([{ voce: "CTRB_DIGNITA", quantita: 0, costo: 5 }]).CTRB_H).toBeNull();
   });
 });
