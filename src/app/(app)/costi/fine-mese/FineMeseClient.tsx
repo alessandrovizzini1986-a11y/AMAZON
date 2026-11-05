@@ -181,7 +181,7 @@ export function FineMeseClient(p: Props) {
     try {
       const righe = ris.sic.perStation.flatMap((b) => {
         const l = ris.sic!.lordo.find((x) => x.station === b.station)!;
-        return [["BASE", b.base], ["TRASFERTA", b.trasferte], ["ISTITUTI", b.istituti], ["ASSENZE", b.assenze], ["FERIE_GODUTE", b.ferieGodute], ["LORDO_V2", l.lordo], ["SAVING_RATEI", l.savingRatei], ["FEST_NON_GODUTE", l.festNonGodute]]
+        return [["BASE", b.base], ["TRASFERTA", b.trasferte], ["ISTITUTI", b.istituti], ["STRAORDINARI", b.straordinari], ["FESTIVITA", b.festivita], ["ASSENZE", b.assenze], ["MALATTIA", b.malattia], ["ALTRE_ASSENZE", b.altreAssenze], ["FERIE_GODUTE", b.ferieGodute], ["LORDO_V2", l.lordo], ["SAVING_RATEI", l.savingRatei], ["FEST_NON_GODUTE", l.festNonGodute]]
           .map(([voce, importo]) => ({ station: b.station, voce: voce as string, quantita: null as number | null, tariffa: null as number | null, importo: importo as number }))
           .concat([{ station: b.station, voce: "TESTE", quantita: b.teste, tariffa: null, importo: 0 }, { station: b.station, voce: "CDL_STIMATI", quantita: b.cdlStimati, tariffa: null, importo: 0 }, { station: b.station, voce: "TOTALE", quantita: null, tariffa: null, importo: b.totale }])
           .concat(oreSicStation(b.station).map(([voce, q]) => ({ station: b.station, voce, quantita: q, tariffa: null, importo: 0 })));
@@ -268,7 +268,7 @@ export function FineMeseClient(p: Props) {
     const wb = excelFO({
       mese: p.mese, carburante: p.fo.q8?.perStation ?? null, noleggi: noleggiFO(p.fo.mezzi, p.mese), telepass: p.fo.telepass?.perStation ?? null,
       ztl: z && z.permessi ? z : null, accStraord: per((x) => x.istituti - x.trasferte), accFerie: per((x) => -x.ferieGodute),
-      bustaSic: b?.importo ?? null,
+      bustaSic: b?.importo ?? null, bustaVoci: b?.voci ?? null,
       bustaNota: !b ? "manca: carica il payroll del mese o salva la stima SIC del mese prima" : b.fonte === "payroll" ? `payroll ${it(p.mese)} caricato (consuntivo)` : `stima: busta del 27 calcolata sui tracking SIC di ${it(mesePrima(p.mese))} (stima SIC salvata il ${new Date(b.il!).toLocaleDateString("it-IT")})`,
       costoStd: ris.stime.length ? totaleStime(ris.stime) : null,
       fatturato: p.fatturatoStimato?.totale ?? null,
