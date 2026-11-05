@@ -33,9 +33,11 @@ export function ore(v: Cell): number {
 
 /** Station dal nome file Zucchetti Amazon_<AAAA>_<MM>_<Città>_*.xlsm */
 export function stationFromZucchettiName(fileName: string): Station | null {
-  const up = fileName.toUpperCase().replace(/\s/g, "");
+  // solo lettere: "Sant'Arcangelo", "Sant Arcangelo", "SantArcangelo di Romagna" → SANTARCANGELO
+  const up = fileName.toUpperCase().normalize("NFD").replace(/[^A-Z]/g, "");
   const c = Object.keys(CITTA).find((k) => up.includes(k));
-  return c ? CITTA[c] : null;
+  if (c) return CITTA[c];
+  return up.includes("RIMINI") ? "DER2" : null;
 }
 
 export function isZucchettiName(fileName: string): boolean {
