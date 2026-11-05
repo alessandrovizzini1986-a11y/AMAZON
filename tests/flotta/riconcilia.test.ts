@@ -23,6 +23,9 @@ describe("flotta: regole", () => {
     const d = canoniFatturati([F({ mese: "2026-09", dal: "2026-09-01", al: "2026-09-30", importo: 640 }), F({ importo: 185.82 }), F({ importo: -640 }), F({ targa: "ZERO0AA", importo: 0 })]);
     expect(d.get("ALD|AA111AA")).toMatchObject({ importo: 640, mese: "2026-09" });
     expect(d.has("ALD|ZERO0AA")).toBe(false);
+    // Europcar: due periodi di 30 gg che partono nello stesso mese → l'ultimo, non la somma
+    const e2 = canoniFatturati([F({ fornitore: "EUROPCAR", dal: "2026-10-01", importo: 2076.85 }), F({ fornitore: "EUROPCAR", dal: "2026-10-31", importo: 3406.07 })]);
+    expect(e2.get("EUROPCAR|AA111AA")).toMatchObject({ importo: 3406.07 });
     // sostitutivi: mai canone, anche se fatturati (→ anomalia)
     expect(sceltaCanone(L({ stato: "Sostitutivo", tariffa: 900 }), c.get("ALD|AA111AA")!, 900)).toMatchObject({ scelto: null });
     const s = riconcilia({ lista: [L({ stato: "sost", tariffa: 900 })], cessati: [], fatture: [F({})], sito: [V({ stato: "SOSTITUTIVO", canoneMese: 900 })] });
