@@ -173,3 +173,32 @@ export async function datiMog() {
   return { versione, contratti, variazioni: variazioni.map((v) => ({ cf: v.cf, pctNuova: v.pctNuova, validaDal: v.validaDal })), tariffa: t.tariffa, meseTariffa: t.mese };
 }
 export type DatiMog = Awaited<ReturnType<typeof datiMog>>;
+
+/** Somma per station dei totali di un'elaborazione Telepass/Q8 ({ station: importo } o { station: { settimana: importo } }), in valore assoluto. */
+const perStationRun = (j: unknown): Record<string, number> => Object.fromEntries(Object.entries((j ?? {}) as Record<string, unknown>).map(([s, v]) => {
+  const tot = typeof v === "number" ? v : Object.values((v ?? {}) as Record<string, unknown>).reduce<number>((a, b) => a + (typeof b === "number" ? b : 0), 0);
+  return [s, Math.abs(tot)];
+}));
+
+/** Dati del sito per il foglio F.O. del mese (Q8, Telepass, flotta, trasferte SIC del mese prima, fatturato stimato). */
+export async function datiFO(mese: string) {
+  const [anno, m] = mese.split("-").map(Number);
+  const primo = new Date(`${mese}-01T00:00:00Z`);
+  const [q8, tp, mezzi, prec] = await Promise.all([
+    db.q8Run.findFirst({ where: { anno, mese: m }, orderBy: { eseguitoIl: "desc" } }).catch(() => null),
+    db.telepassRun.findFirst({ where: { anno, mese: m }, orderBy: { eseguitoIl: "desc" } }).catch(() => null),
+    db.vehicle.findMany({
+      where: { OR: [{ stato: { not: "DISMESSO" } }, { contrattoDataFine: { gte: primo } }] },
+      select: { stato: true, leasingCompany: true, canoneMese: true, contrattoDataInizio: true, contrattoDataFine: true, station: { select: { code: true } } },
+    }).catch(() => []),
+    stimaSalvata(mesePrec(mese), "SIC"),
+  ]);
+  const trasfPrec = prec ? prec.righe.filter((r) => r.voce === "TRASFERTA").reduce((a, r) => a + r.importo, 0) : null;
+  return {
+    q8: q8 ? { file: q8.nomeFile, il: q8.eseguitoIl.toISOString(), perStation: perStationRun(q8.totaliJson) } : null,
+    telepass: tp ? { file: tp.nomeFile, il: tp.eseguitoIl.toISOString(), perStation: perStationRun(tp.totaliJson) } : null,
+    mezzi: mezzi.map((v) => ({ station: v.station.code, stato: v.stato, leasingCompany: v.leasingCompany, canoneMese: v.canoneMese === null ? null : Number(v.canoneMese), inizio: v.contrattoDataInizio ? iso(v.contrattoDataInizio) : null, fine: v.contrattoDataFine ? iso(v.contrattoDataFine) : null })),
+    trasfertaSicPrec: trasfPrec === null ? null : { importo: trasfPrec, salvataIl: prec!.creataIl },
+  };
+}
+export type DatiFO = Awaited<ReturnType<typeof datiFO>>;

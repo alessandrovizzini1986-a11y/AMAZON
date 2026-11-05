@@ -53,3 +53,11 @@ I file di esempio e gli attesi del kit (`esempi/`, `attesi/`) contengono dati pe
   - Correzioni rispetto al modello di ottobre 2026: riga 2 sul proprio blocco (prima sfasata di una station), DER2 inclusa in F6/F43/F45/CORSO, struttura degli straordinari STD uguale per tutte le station.
   - Verifica (ottobre 2026, LibreOffice): per ogni station il costo SIC del foglio = "SIC lordo" del sito e il costo STD = ore × tariffe + trasferte del sito (al centesimo, salvo arrotondamento del costo medio).
 - L'Excel della stima ("Excel") ha la pagina rinominata `STIMA_SITO_<MMM>_<AA>` (struttura diversa) e l'integrazione MOG per station uguale a quella a schermo: prima l'Excel ricalcolato usava il parametro STD_MOG / 7 (= 0), da qui la differenza schermo/Excel.
+
+## Foglio Costi F.O. (novembre 2026)
+Prompt: `docs/costi-kit/PROMPT_FO_mensile.md`. In `/costi/fine-mese`, dopo "Calcola costi": pulsante "Foglio AMZ <Mmm> <AAAA> (Costi F.O.)" con la struttura del file AMZ_Costi_F.O.
+- Carburante = Q8 imponibile per DS (elaborazione del mese); Autostrade = Telepass per DS; ZTL Rimini/Cesena su DER2 = permessi con data di richiesta nel mese (file TARGHE_ZTL caricato in pagina; set 2026 622,05 = F.O., ott 2026 606,10).
+- Noleggi per società e DS = canone €/mese della flotta pro-rata sui giorni (sostitutivi esclusi, dismessi solo con data di fine); riga 17 nuova "Altri noleggi"; P62 = SUM(D6:J17).
+- Righe 60–61 = € ore SIC (straordinari, supplementari, maggiorate) e saving ferie/ROL/ExF del mese; P57 = trasferte SIC del mese prima (stima SIC salvata); P58 = CDL base **stimato** con l'ultima anagrafica sui SIC del tracking del mese; P60 come nel file (richiama il foglio del mese prima); P61 = stima STD; P71 = stima del mese (fatture + forecast).
+- Stima del CDL con l'anagrafica precedente: settembre 2026 stimato con il CDL di giugno → errore per DS tra −0,9 % e +0,8 %, totale −0,05 % (672 € su 1,23 M).
+- Voci senza fonte (fornitori, multe, DPI, PDR, danni) restano vuote da compilare.
