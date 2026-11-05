@@ -44,3 +44,12 @@ I file di esempio e gli attesi del kit (`esempi/`, `attesi/`) contengono dati pe
 - Chi ha solo assenze e nessuna ora lavorata nel mese è ZERO ORE: integrazione di tutto il MOG (regola confermata il 04/11/2026).
 - Consolidamenti previsti (colonna "supera il 20 % del MOG" = SI, nuova % e nuovo monte ore del file): tabella per mese e station in Parametri, elenco dei prossimi 3 mesi nel blocco MOG di Presenze. Non cambiano il MOG del mese.
 - Golden DLO4 ottobre 2026 (uguale al kit): 30 OK, 5 SOTTO MOG (64 h = 1.335 €), 1 ZERO ORE (solo malattia, 2.084 €), 19 non in file, 2 non nel tracking.
+
+## Foglio per Stima_Costo_personale (novembre 2026)
+- `/costi/fine-mese` → "Foglio per Stima_Costo_personale": scarica `AMZ_<MMM>_<AA>` con la struttura del file di Alessandro (blocco di 5 colonne per station da G), già compilato. Celle gialle = dati dal sito; il resto sono formule; Excel ricalcola all'apertura.
+  - SIC: teste e costo medio per contratto (CTI FT, CTI PT, CTI PT 32h, DISPATCHER) dall'anagrafica CDL; ore e trasferte dal tracking SIC.
+  - STD: Standard **totale** (ordinarie + domeniche/festivi) in riga 34, MAGG in riga 36 (il foglio fa la differenza: niente doppia sottrazione), straordinari/supplementari totale e 65%, trasferte totali e domenicali, teste FT/PT/MOG dal contratto del tracking.
+  - Tariffe in colonna D dall'ADIT del mese prima e trasferta alla data. Rotte e MOG non compilati.
+  - Correzioni rispetto al modello di ottobre 2026: riga 2 sul proprio blocco (prima sfasata di una station), DER2 inclusa in F6/F43/F45/CORSO, struttura degli straordinari STD uguale per tutte le station.
+  - Verifica (ottobre 2026, LibreOffice): per ogni station il costo SIC del foglio = "SIC lordo" del sito e il costo STD = ore × tariffe + trasferte del sito (al centesimo, salvo arrotondamento del costo medio).
+- L'Excel della stima ("Excel") ha la pagina rinominata `STIMA_SITO_<MMM>_<AA>` (struttura diversa) e l'integrazione MOG per station uguale a quella a schermo: prima l'Excel ricalcolato usava il parametro STD_MOG / 7 (= 0), da qui la differenza schermo/Excel.

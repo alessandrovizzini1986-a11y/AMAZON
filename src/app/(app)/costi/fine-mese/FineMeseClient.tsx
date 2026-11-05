@@ -18,6 +18,7 @@ import type { RigaCDL } from "@/domain/costi/anagrafica";
 import { testoTeams, type RigaTeams } from "@/domain/costi/teams";
 import { valoreAlla } from "@/domain/costi/tariffe";
 import { excelStima } from "@/lib/costi/excelStima";
+import { blocchiDaCalcolo, foglioStimaPersonale, nomeFoglio, tipoStd } from "@/lib/costi/excelStimaPersonale";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaStima } from "../actions";
 import { controlloMog } from "@/domain/mog/mog";
@@ -56,7 +57,7 @@ export function FineMeseClient(p: Props) {
   const [stato, setStato] = useState("");
   const [errore, setErrore] = useState<string | null>(null);
   const [avvisi, setAvvisi] = useState<string[]>([]);
-  const [ris, setRis] = useState<{ ore: OreStation[]; stime: StimaStdStation[]; ctrl: ControlliStation[]; sic: Sic | null } | null>(null);
+  const [ris, setRis] = useState<{ ore: OreStation[]; stime: StimaStdStation[]; ctrl: ControlliStation[]; sic: Sic | null; testeStd: Record<string, { ft: number; pt: number; mog: number }>; mogPer: Record<string, number> } | null>(null);
   const [salvataSic, setSalvataSic] = useState<string | null>(null);
   const [teams, setTeams] = useState<string | null>(null);
   const [salvata, setSalvata] = useState<string | null>(null);
@@ -92,10 +93,14 @@ export function FineMeseClient(p: Props) {
       const par = parametriAlla(p.parametri.map((x) => ({ chiave: x.voce, validaDal: x.validaDal, valore: x.valore })), p.fineMese);
       const ore: OreStation[] = [], stime: StimaStdStation[] = [], ctrl: ControlliStation[] = [];
       const mogPer: Record<string, number> = {};
+      const testeStd: Record<string, { ft: number; pt: number; mog: number }> = {};
       for (const t of dati.tracking.filter((x) => x.tipo === "STD").sort((a, b) => a.station.localeCompare(b.station))) {
         setStato(`Calcolo ${t.station} STD…`);
         const { lavoratori } = leggiLavoratori(t.sheets, anno, mm);
         const o = oreStation(t.station, lavoratori, p.festivi, p.tariffe);
+        const ts = { ft: 0, pt: 0, mog: 0 };
+        for (const l of lavoratori) if (Object.values(l.giorni).some((g) => Object.values(g).some((v) => v))) ts[tipoStd(l.contratto)]++;
+        testeStd[t.station] = ts;
         const nf = festiviMese(anno, mm, t.station, p.festivi).length;
         ore.push(o);
         // integrazione MOG dal controllo MOG (sotto MOG + zero ore × tariffa Standard), se c'è il file MOG
@@ -131,7 +136,7 @@ export function FineMeseClient(p: Props) {
           nonTracciati: p.righeCdl.filter((r) => !tracciati.has(r.cf)).map((r) => ({ nome: `${r.cognome} ${r.nome}`, station: r.station, cdl: r.cdl })),
         };
       }
-      setRis({ ore, stime, ctrl, sic });
+      setRis({ ore, stime, ctrl, sic, testeStd, mogPer });
     } catch (e) { setErrore(e instanceof Error ? e.message : String(e)); } finally { setStato(""); setLavoro(false); }
   };
 
@@ -222,10 +227,24 @@ export function FineMeseClient(p: Props) {
     const wb = excelStima({
       mese: p.mese, stations, oreStd: ris.ore, stimeStd: ris.stime, tariffeStd: p.tariffeStd, meseTariffe: p.meseTariffe ?? "", aditDwh: p.aditDwh,
       parStd: { TRASF: tr, TRASFDOM: tr + ex, CTRB: par.STD_CTRB_H ?? 0.1, ALTRO: par.STD_ALTRO_PCT ?? 0.002, GGMESE: par.STD_GG_MESE ?? 26, MOG: par.STD_MOG ?? 0 },
+      // integrazione MOG per station uguale a quella a schermo (controllo MOG), non il parametro diviso per 7
+      mogPerStation: Object.fromEntries(ris.stime.map((s) => [s.station, s.righe.find((r) => r.voce === "INTEGR_MOG")?.importo ?? 0])),
       sic: ris.sic ? { lav: ris.sic.lav, busta: ris.sic.busta } : null, sicLordo: ris.sic?.lordo ?? [], parSic: ris.sic?.par ?? null, dispTrasferta: true,
       festivi: p.festivi, nFestivi: Object.fromEntries(stations.map((s) => [s, festiviMese(anno, mm, s, p.festivi).length])), rettifiche: rett.length ? rett : [["—", "nessuna rettifica", ""]], versioneAnagrafica: p.anagrafica?.mese ?? null,
     });
     await scarica(wb, `Stima_AMZ_${p.mese.slice(5)}_${p.mese.slice(2, 4)}.xlsx`);
+  };
+
+  /** Foglio AMZ_<MMM>_<AA> con la struttura di Stima_Costo_personale.xlsx, già compilato. */
+  const excelPersonale = async () => {
+    if (!ris || !p.tariffeStd) return;
+    const primo = `${p.mese}-01`;
+    const tr = valoreAlla(p.tariffe, "TRASFERTA", primo) ?? 0, ex = valoreAlla(p.tariffe, "TRASFERTA_DOM_EXTRA", primo) ?? 0;
+    const wb = foglioStimaPersonale({
+      mese: p.mese, blocchi: blocchiDaCalcolo({ sic: ris.sic?.lav ?? [], std: ris.ore, testeStd: ris.testeStd }), cdlBase: (ris.sic?.lav ?? []).reduce((a, y) => a + y.cdl, 0),
+      tariffe: { trasf: tr, trasfDom: tr + ex, ...p.tariffeStd }, fonte: `tracking di ${it(p.mese)}, anagrafica CDL ${p.anagrafica ? it(p.anagrafica.mese) : "—"}, tariffe ADIT ${p.meseTariffe ? it(p.meseTariffe) : "—"}`,
+    });
+    await scarica(wb, `${nomeFoglio(p.mese)}_per_Stima_Costo_personale.xlsx`);
   };
 
   const vai = (m: string) => router.push(`/costi/fine-mese?mese=${m}`);
@@ -329,6 +348,7 @@ export function FineMeseClient(p: Props) {
           <section className="card flex flex-col gap-3 p-4 md:p-5">
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-secondary" onClick={excel}>Excel</button> <Aiuto k="costi.excel" />
+              <button type="button" className="btn-secondary" onClick={excelPersonale}>Foglio per Stima_Costo_personale</button> <Aiuto k="costi.excel.personale" />
               <button type="button" className="btn-secondary" onClick={testo}>Testo per Teams</button> <Aiuto k="costi.teams" />
             </div>
             {teams && <><p className="text-sm text-ok">Copiato negli appunti: incollalo nella chat Teams (se non è stato copiato, selezionalo qui sotto).</p><textarea className="input h-56 w-full font-mono text-xs" readOnly value={teams} /></>}

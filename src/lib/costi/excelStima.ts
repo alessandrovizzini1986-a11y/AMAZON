@@ -19,6 +19,8 @@ export type InputExcel = {
   sic: { lav: LavoratoreSic[]; busta: BustaLavoratore[] } | null; sicLordo: SicLordo[]; parSic: ParametriSic | null; dispTrasferta: boolean;
   festivi: { data: string; descrizione: string; station: string }[]; nFestivi: Record<string, number>;
   rettifiche: [string, string, string][]; versioneAnagrafica: string | null;
+  /** integrazione MOG per station (controllo MOG): se c'è, la riga MOG usa questi valori come a schermo */
+  mogPerStation?: Record<string, number>;
 };
 
 const MESI = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"];
@@ -30,7 +32,8 @@ export function excelStima(x: InputExcel): ExcelJS.Workbook {
   const wb = new ExcelJS.Workbook();
   wb.creator = "FleetDSP";
   const [anno, mm] = x.mese.split("-").map(Number);
-  const pg = wb.addWorksheet(`AMZ_${MESI[mm - 1]}_${String(anno).slice(2)}`);
+  // nome diverso dal foglio AMZ_<MMM>_<AA> di Stima_Costo_personale (struttura diversa: niente confusione nel copia-incolla)
+  const pg = wb.addWorksheet(`STIMA_SITO_${MESI[mm - 1]}_${String(anno).slice(2)}`);
   const wr = wb.addWorksheet("Rettifiche");
   const wp = wb.addWorksheet("Parametri");
 
@@ -107,7 +110,8 @@ export function excelStima(x: InputExcel): ExcelJS.Workbook {
   metti("CTRB", "CTRB Decr. Dignità €/h", x.parStd.CTRB, "0,10 €/h su tutte le ore lavorate", "0.00", true);
   metti("ALTRO", "Altro % su costo ore", x.parStd.ALTRO, "clausola costo lavoro, ASRE, corsi…", "0.00%", true);
   metti("GGMESE", "Giorni retribuiti/mese (festività)", x.parStd.GGMESE, "ore festività per festivo = ore Standard / gg", "0", true);
-  metti("MOG", "Integrazione MOG €", x.parStd.MOG, "dal controllo MOG (0 se non disponibile)", "#,##0.00", true);
+  metti("MOG", "Integrazione MOG € (totale, se manca il controllo MOG)", x.parStd.MOG, "parametro STD_MOG, diviso per le station", "#,##0.00", true);
+  if (x.mogPerStation) for (const st of x.stations) metti(`MOG_${st}`, `Integrazione MOG € ${st}`, x.mogPerStation[st] ?? 0, "dal controllo MOG (sotto MOG + zero ore × tariffa Standard)", "#,##0.00", true);
   metti("DISPTR", "Trasferta ai dispatcher SIC nel lordo (1 = sì)", x.dispTrasferta ? 1 : 0, "in busta i dispatcher non hanno trasferta", "0", true);
   if (x.parSic) {
     const p = x.parSic;
@@ -170,7 +174,7 @@ export function excelStima(x: InputExcel): ExcelJS.Workbook {
     { k: "eCar", lab: "€ Carenza malattia/infortunio (% su costo ore)", f: (st, c) => `${ref("eOre", c)}*${P.CARENZAPCT}`, v: (st) => imp(st, "CARENZA") },
     { k: "eCtrb", lab: "€ CTRB Decr. Dignità", f: (st) => `(${sStd(st, "Standard", "C")}+${sStd(st, "Straordinario", "C")}+${sStd(st, "Supplementare", "C")})*${P.CTRB}`, v: (st) => imp(st, "CTRB_DIGNITA") },
     { k: "eAltro", lab: "€ Altro (% su costo ore)", f: (st, c) => `${ref("eOre", c)}*${P.ALTRO}`, v: (st) => imp(st, "ALTRO") },
-    { k: "eMog", lab: "€ Integrazione MOG", f: () => `${P.MOG}/${ST.length}`, v: (st) => imp(st, "INTEGR_MOG") },
+    { k: "eMog", lab: "€ Integrazione MOG", f: (st) => (x.mogPerStation ? P[`MOG_${st}`] : `${P.MOG}/${ST.length}`), v: (st) => imp(st, "INTEGR_MOG") },
     { k: "totStd", lab: "TOT COSTO STD €", f: (_st, c) => `SUM(${c}${ROW.eOre ?? 0}:${c}${(ROW.eOre ?? 0) + 7})`, v: (st) => s(st)?.totaleEsatto ?? 0, bold: true },
   ];
   for (const d of defs) scrivi(d);
