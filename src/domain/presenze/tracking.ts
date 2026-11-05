@@ -40,6 +40,20 @@ function findHeader(g: SheetGrid): { row: number; tipoCol: number } | null {
  * (28-29-30-31 iniziali = mese precedente, dopo il 31 viene il mese successivo)
  * e stop al primo "Totale" (DER1/DER2/DLZ2 hanno subtotali dopo).
  */
+/** Dopo la colonna c i giorni interi ripartono da un numero più basso (es. 27…31, 1…26: DLO2/DLO4 agosto 2026). */
+function rollover(hdr: unknown[], c: number): boolean {
+  let prev: number | null = null;
+  for (let k = c; k < hdr.length; k++) {
+    const s = text(hdr[k] as never).trim();
+    if (s.toLowerCase().startsWith("tot")) return false;
+    if (!/^\d{1,2}$/.test(s)) continue;
+    const d = Number(s);
+    if (prev !== null && d < prev) return true;
+    prev = d;
+  }
+  return false;
+}
+
 function dayColumns(g: SheetGrid, headerRow: number, tipoCol: number, anno: number, mese: number): DayCol[] {
   const hdr = g.rows[headerRow] ?? [];
   const out: DayCol[] = [];
@@ -62,7 +76,7 @@ function dayColumns(g: SheetGrid, headerRow: number, tipoCol: number, anno: numb
     if (/^\d{1,2}$/.test(s) && Number(s) >= 1 && Number(s) <= 31) {
       const d = Number(s);
       intmode = true;
-      if (m === null) m = d >= 28 ? mese - 1 : mese;
+      if (m === null) m = d >= 28 || (d > 15 && rollover(hdr, c)) ? mese - 1 : mese;
       else if (prev !== null && d < prev) m += 1;
       prev = d;
       let y = anno;

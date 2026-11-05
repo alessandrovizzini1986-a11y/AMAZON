@@ -38,14 +38,15 @@ describe("F.O.: ZTL Rimini/Cesena", () => {
 });
 
 describe("F.O.: foglio", () => {
-  it("nome e formula del costo SIC che richiama il mese prima", () => {
+  it("nome e formula del costo SIC: busta del mese ± accantonamenti, trasferte non sommate (già in busta)", () => {
     expect(foglioFO("2026-10")).toBe("AMZ Ott 2026");
     expect(mesePrima("2026-01")).toBe("2025-12");
     const wb = excelFO({ mese: "2026-10", carburante: { DER1: 100 }, noleggi: [{ riga: 16, station: "DER2", importo: 500, mezzi: 1, societa: ["ALD"] }], telepass: { DER1: 50 }, ztl: { importo: 606.1, permessi: 38 },
-      accStraord: { DER1: 10 }, accFerie: { DER1: 5 }, cdlBase: 1000, cdlNota: "", trasfertaSic: 200, trasfertaNota: "", costoStd: 300, fatturato: 2000, fatturatoNota: "", wind: 1500, elmec: 119.9 });
+      accStraord: { DER1: 10 }, accFerie: { DER1: 5 }, bustaSic: 1000, bustaNota: "", costoStd: 300, fatturato: 2000, fatturatoNota: "", wind: 1500, elmec: 119.9 });
     const ws = wb.getWorksheet("AMZ Ott 2026")!;
     expect([ws.getCell("D3").value, ws.getCell("E16").value, ws.getCell("D53").value, ws.getCell("E55").value, ws.getCell("D60").value, ws.getCell("D61").value]).toEqual([100, 500, 50, 606.1, 10, 5]);
-    expect((ws.getCell("P60").value as { formula: string }).formula).toBe("P58-'AMZ Set 2026'!L60+'AMZ Set 2026'!L61+K60-K61+P57+K67");
+    expect((ws.getCell("P60").value as { formula: string }).formula).toBe("P58-'AMZ Set 2026'!L60+'AMZ Set 2026'!L61+K60-K61+K67");
+    expect([ws.getCell("O58").value, ws.getCell("P58").value, ws.getCell("P57").value]).toEqual(["Busta SIC del mese", 1000, null]);
     expect((ws.getCell("P62").value as { formula: string }).formula).toBe("SUM(D6:J17)");
     expect(ws.getCell("C40").value).toBe("Multe 2026");
   });
