@@ -21,7 +21,7 @@ import { excelStima } from "@/lib/costi/excelStima";
 import { blocchiDaCalcolo, foglioStimaPersonale, nomeFoglio, tipoStd } from "@/lib/costi/excelStimaPersonale";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaStima } from "../actions";
-import { controlloMog } from "@/domain/mog/mog";
+import { controlloMog, lavoratoriGls } from "@/domain/mog/mog";
 import type { DatiMogClient } from "../../presenze/BloccoMog";
 import { Aiuto, Motivo } from "@/components/Aiuto";
 import { useAvvisoUscita } from "@/components/Percorso";
@@ -104,7 +104,7 @@ export function FineMeseClient(p: Props) {
         const nf = festiviMese(anno, mm, t.station, p.festivi).length;
         ore.push(o);
         // integrazione MOG dal controllo MOG (sotto MOG + zero ore × tariffa Standard), se c'è il file MOG
-        const mogEs = p.mog.versione ? controlloMog({ station: t.station, mese: p.mese, lavoratori, contratti: p.mog.contratti, variazioni: p.mog.variazioni, tariffa: p.tariffeStd.STANDARD }) : null;
+        const mogEs = p.mog.versione ? controlloMog({ station: t.station, mese: p.mese, lavoratori, contratti: p.mog.contratti, variazioni: p.mog.variazioni, tariffa: p.tariffeStd.STANDARD, suGls: lavoratoriGls(t.sheets) }) : null;
         if (mogEs) mogPer[t.station] = mogEs.filter((e) => e.stato === "SOTTO MOG" || e.stato === "ZERO ORE").reduce((a, e) => a + e.costo, 0);
         stime.push(stimaStd(o, p.tariffeStd, { CTRB_H: par.STD_CTRB_H ?? 0.1, ALTRO_PCT: par.STD_ALTRO_PCT ?? 0.002, GG_MESE: par.STD_GG_MESE ?? 26, MOG: par.STD_MOG ?? 0 }, nf, 7, mogPer[t.station]));
         const l = letturaFile(t.sheets, anno, mm);

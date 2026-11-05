@@ -5,7 +5,7 @@ import ExcelJS from "exceljs";
 import Link from "next/link";
 import { leggiLavoratori } from "@/domain/presenze/lavoratori";
 import type { TrackingInput } from "@/domain/presenze/controlloSettimanale";
-import { consolidamentiPrevisti, controlloMog, riepilogoMog, type ContrattoMog, type EsitoMog, type VariazioneMog } from "@/domain/mog/mog";
+import { consolidamentiPrevisti, controlloMog, lavoratoriGls, riepilogoMog, type ContrattoMog, type EsitoMog, type VariazioneMog } from "@/domain/mog/mog";
 import { scarica, tabella } from "@/lib/presenze/excelUtil";
 import { Aiuto } from "@/components/Aiuto";
 import { salvaEsitiMog } from "../costi/actions";
@@ -15,7 +15,7 @@ export type DatiMogClient = { versione: string | null; contratti: ContrattoMog[]
 const h = (x: number | null) => (x === null ? "—" : x.toLocaleString("it-IT", { maximumFractionDigits: 1 }));
 const eur = (x: number) => x.toLocaleString("it-IT", { maximumFractionDigits: 0 });
 const it = (s: string | null) => (s ? s.split("-").reverse().join("/") : "—");
-const TONO: Record<string, string> = { OK: "badge-ok", "SOTTO MOG": "badge-danger", "A RISCHIO": "badge-warn", "ZERO ORE": "badge-danger", "NON IN FILE MOG": "badge-info", "NON NEL TRACKING": "badge-neutral" };
+const TONO: Record<string, string> = { OK: "badge-ok", "SOTTO MOG": "badge-danger", "A RISCHIO": "badge-warn", "ZERO ORE": "badge-danger", "NON IN FILE MOG": "badge-info", "NON NEL TRACKING": "badge-neutral", "SU GLS": "badge-info" };
 
 /**
  * Blocco MOG per Presenze. Settimanale (finoA < fine mese): lavoratori A RISCHIO / ZERO ORE con la
@@ -26,7 +26,7 @@ export function BloccoMog({ mese, finoA, tracking, mog, modo, canSave }: { mese:
   const [salvato, setSalvato] = useState<string | null>(null);
   const [copiato, setCopiato] = useState<string | null>(null);
   const esiti = useMemo(() => tracking.filter((t) => t.tipo === "STD").flatMap((t) => {
-    try { return controlloMog({ station: t.station, mese, lavoratori: leggiLavoratori(t.sheets, anno, mm).lavoratori, contratti: mog.contratti, variazioni: mog.variazioni, finoA, tariffa: mog.tariffa }); } catch { return []; }
+    try { return controlloMog({ station: t.station, mese, lavoratori: leggiLavoratori(t.sheets, anno, mm).lavoratori, contratti: mog.contratti, variazioni: mog.variazioni, finoA, tariffa: mog.tariffa, suGls: lavoratoriGls(t.sheets) }); } catch { return []; }
   }), [tracking, mog, mese, finoA, anno, mm]);
   if (!mog.versione) return <section className="card p-4 text-sm"><h2 className="mb-1 text-[19px] font-semibold">MOG</h2><p className="text-warn">Nessun file MOG di Adecco caricato: caricalo in <Link className="underline" href="/costi/parametri#mog">Costi → Parametri e anagrafica</Link>.</p></section>;
   const stations = [...new Set(esiti.map((e) => e.station))].sort();
@@ -68,9 +68,9 @@ export function BloccoMog({ mese, finoA, tracking, mog, modo, canSave }: { mese:
       </div>
       {vecchio && <p className="rounded-control bg-warn-soft px-4 py-2 text-sm text-warn">Il file MOG ha più di 40 giorni: chiedi a Erika il file aggiornato.</p>}
       <div className="overflow-x-auto"><table className="table-base text-sm">
-        <thead><tr><th>Station</th><th className="text-right">OK</th><th className="text-right">{modo === "settimanale" ? "A rischio" : "Sotto MOG"}</th><th className="text-right">Zero ore</th><th className="text-right">Non in file MOG</th><th className="text-right">Non nel tracking</th><th className="text-right">Ore mancanti</th><th className="text-right">€ integrazione</th>{modo === "settimanale" && <th>Teams</th>}</tr></thead>
+        <thead><tr><th>Station</th><th className="text-right">OK</th><th className="text-right">{modo === "settimanale" ? "A rischio" : "Sotto MOG"}</th><th className="text-right">Zero ore</th><th className="text-right">Non in file MOG</th><th className="text-right">Non nel tracking</th><th className="text-right">Su GLS</th><th className="text-right">Ore mancanti</th><th className="text-right">€ integrazione</th>{modo === "settimanale" && <th>Teams</th>}</tr></thead>
         <tbody>{stations.map((st) => { const r = riepilogoMog(esiti.filter((e) => e.station === st)); const ore = esiti.filter((e) => e.station === st && (e.stato === "A RISCHIO" || e.stato === "SOTTO MOG")).reduce((t, e) => t + e.oreMancanti, 0); return (
-          <tr key={st}><td className="font-semibold">{st}</td><td className="text-right font-mono">{r.ok}</td><td className={`text-right font-mono ${(modo === "settimanale" ? r.aRischio : r.sotto) ? "bg-danger-soft text-danger" : ""}`}>{modo === "settimanale" ? r.aRischio : r.sotto}</td><td className={`text-right font-mono ${r.zeroOre ? "bg-danger-soft text-danger" : ""}`}>{r.zeroOre}</td><td className={`text-right font-mono ${r.nonInFile ? "bg-info-soft text-info" : ""}`}>{r.nonInFile}</td><td className="text-right font-mono">{r.nonNelTracking}</td><td className="text-right font-mono">{h(Math.round(ore * 10) / 10)}</td><td className="text-right font-mono">{eur(r.costo + r.costoZeroOre)}</td>
+          <tr key={st}><td className="font-semibold">{st}</td><td className="text-right font-mono">{r.ok}</td><td className={`text-right font-mono ${(modo === "settimanale" ? r.aRischio : r.sotto) ? "bg-danger-soft text-danger" : ""}`}>{modo === "settimanale" ? r.aRischio : r.sotto}</td><td className={`text-right font-mono ${r.zeroOre ? "bg-danger-soft text-danger" : ""}`}>{r.zeroOre}</td><td className={`text-right font-mono ${r.nonInFile ? "bg-info-soft text-info" : ""}`}>{r.nonInFile}</td><td className="text-right font-mono">{r.nonNelTracking}</td><td className="text-right font-mono">{r.suGls}</td><td className="text-right font-mono">{h(Math.round(ore * 10) / 10)}</td><td className="text-right font-mono">{eur(r.costo + r.costoZeroOre)}</td>
             {modo === "settimanale" && <td><button type="button" className="btn-secondary px-3 py-1 text-xs" onClick={async () => { await navigator.clipboard.writeText(teams(st)).catch(() => {}); setCopiato(teams(st)); }}>Copia riga</button></td>}</tr>); })}</tbody>
       </table></div>
       {copiato && <p className="rounded-control bg-ok-soft px-3 py-2 text-xs">Copiato: {copiato}</p>}
@@ -81,7 +81,7 @@ export function BloccoMog({ mese, finoA, tracking, mog, modo, canSave }: { mese:
           <tbody>{visibili.sort((a, b) => a.station.localeCompare(b.station) || (a.gap ?? 999) - (b.gap ?? 999)).map(riga)}</tbody>
         </table></div>
       </details>
-      <p className="text-xs text-ink-muted">Computo = ore lavorate (Standard, Straordinario, Supplementare, Accordo) + assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi sindacali e altri). Non contano permessi non retribuiti e assenze ingiustificate. Chi nel mese ha solo assenze (es. malattia tutto il mese) e nessuna ora lavorata è a ZERO ORE: Adecco integra tutto il MOG. {modo === "settimanale" ? "A rischio = la proiezione a fine mese resta sotto il MOG di oltre 4 h: chiedi agli Ops di assegnare rotte." : "Non in file MOG = assunto dopo la chiusura payroll del file: MOG da chiedere a Erika."}</p>
+      <p className="text-xs text-ink-muted">Computo = ore lavorate (Standard, Straordinario, Supplementare, Accordo) + assenze retribuite (ferie, ROL, ExF, 104, malattia, infortunio, permessi sindacali e altri). Non contano permessi non retribuiti e assenze ingiustificate. Chi nel mese ha solo assenze (es. malattia tutto il mese) e nessuna ora lavorata è a ZERO ORE: Adecco integra tutto il MOG. {modo === "settimanale" ? "A rischio = la proiezione a fine mese resta sotto il MOG di oltre 4 h: chiedi agli Ops di assegnare rotte." : "Non in file MOG = assunto dopo la chiusura payroll del file: MOG da chiedere a Erika. Su GLS = nel file MOG della station ma lavora su GLS Castel Maggiore (foglio GLS del tracking): il MOG si controlla sul tracking GLS e non entra nella stima Amazon."}</p>
       {cons.length > 0 && <details>
         <summary className="cursor-pointer text-sm font-semibold">Consolidamenti previsti entro {it(limite.slice(0, 7))} ({cons.length})</summary>
         <p className="mt-1 text-xs text-ink-muted">Dal file MOG: la media delle ore retribuite degli ultimi 6 mesi supera il MOG di oltre il 20 %. Dal mese indicato il contratto può consolidarsi alla nuova % (monte ore più alto). Il controllo usa ancora la % attuale finché non arriva il file aggiornato.</p>
