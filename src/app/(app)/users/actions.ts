@@ -13,7 +13,7 @@ const userSchema = z.object({
   email: z.string().email().transform((v) => v.toLowerCase().trim()),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
-  role: z.enum(["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO"]),
+  role: z.enum(["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO", "STAGISTA"]),
   stationId: z.string().optional(),
   licenseNo: z.string().optional(),
   phone: z.string().optional(),

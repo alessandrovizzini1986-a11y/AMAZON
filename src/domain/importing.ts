@@ -60,7 +60,7 @@ export const IMPORT_SPECS: Record<string, EntitySpec> = {
       { key: "email", label: "Email", required: true, type: "string" },
       { key: "firstName", label: "Nome", required: true, type: "string", aliases: ["name", "nome"] },
       { key: "lastName", label: "Cognome", required: true, type: "string", aliases: ["surname", "cognome"] },
-      { key: "role", label: "Ruolo", required: false, type: "enum", enumValues: ["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO"], note: "Default: DRIVER" },
+      { key: "role", label: "Ruolo", required: false, type: "enum", enumValues: ["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO", "STAGISTA"], note: "Default: DRIVER" },
       { key: "stationCode", label: "Codice stazione", required: false, type: "string", aliases: ["stazione", "sede"], note: "Obbligatorio per DRIVER e RESP_MEZZI" },
       { key: "licenseNo", label: "N. patente", required: false, type: "string", aliases: ["patente"] },
       { key: "phone", label: "Telefono", required: false, type: "string", aliases: ["cellulare"] },

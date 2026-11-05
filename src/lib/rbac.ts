@@ -35,7 +35,9 @@ export type Action =
   | "forecast.view"
   | "costi.view"
   | "costi.run"
-  | "costi.parametri";
+  | "costi.parametri"
+  | "training.view"
+  | "training.admin";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -62,6 +64,11 @@ const MATRIX: Record<Role, Action[]> = {
     "costi.view",
     "costi.run",
     "costi.parametri",
+  ],
+  // stagista in training: solo il percorso e il vademecum
+  STAGISTA: [
+    "vademecum.view",
+    "training.view",
   ],
   ADMIN: [
     "vehicle.view",
@@ -93,6 +100,8 @@ const MATRIX: Record<Role, Action[]> = {
     "costi.view",
     "costi.run",
     "costi.parametri",
+    "training.view",
+    "training.admin",
   ],
 };
 

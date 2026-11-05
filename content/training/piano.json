@@ -1,0 +1,637 @@
+{
+  "titolo": "Training Business Analysis",
+  "inizio": "2026-11-09",
+  "fine": "2026-11-20",
+  "orario": "full time",
+  "versione": "1.1",
+  "moduli": [
+    {
+      "id": "Base",
+      "titolo": "Mappa e strumenti",
+      "esame": "Apre tutti i file dalla mappa, gruppi Outlook pronti, accessi ok.",
+      "valida": "d1a5"
+    },
+    {
+      "id": "Multe",
+      "titolo": "Multe",
+      "esame": "Una settimana di multe gestita da sola con 0 errori sui check finali (giorno 4).",
+      "valida": "d4a5"
+    },
+    {
+      "id": "Acquisti e Fatture",
+      "titolo": "Acquisti DPI e fatture Amazon",
+      "esame": "Ordine registrato con quadratura; una settimana di fatture di tutte le station con quadratura su ognuna (giorno 6).",
+      "valida": "d6a3"
+    },
+    {
+      "id": "Personale",
+      "titolo": "Tracking, presenze, stima costi",
+      "esame": "Controllo presenze di 3 station end-to-end e stima parziale di 2 station con cella OK (giorni 8-9).",
+      "valida": "d9a5"
+    },
+    {
+      "id": "Consegna",
+      "titolo": "Giornata tipo",
+      "esame": "Giornata gestita da sola con Alessandro solo in cc (giorno 10).",
+      "valida": "d10a4"
+    }
+  ],
+  "giorni": [
+    {
+      "day": 1,
+      "date": "2026-11-09",
+      "title": "Mappa, accessi, strumenti",
+      "modulo": "Base",
+      "sezioni": [
+        "00-mappa",
+        "01-accessi-contatti"
+      ],
+      "obiettivo": "Apre ogni file dalla mappa senza chiedere e ha Outlook pronto per le multe.",
+      "attivita": [
+        {
+          "id": "d1a1",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 45,
+          "testo": "Chi siamo, le 7 station, cosa fa il team, il sito e il vademecum: come si cerca, come si legge una scheda (Trigger, Input, Passi, Output, Check)."
+        },
+        {
+          "id": "d1a2",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 45,
+          "testo": "Giro di SharePoint: 01. Costi, 06_Fatture/2026, 05_DPI, Multe+Danni, Teste+mezzi, 015_Telepass Business. Apertura di ogni file della tabella 'Dove vive ogni file'.",
+          "ancore": [
+            "00-mappa#dove-vive-ogni-file"
+          ]
+        },
+        {
+          "id": "d1a3",
+          "tipo": "do",
+          "chi": "Stagista",
+          "durata": 60,
+          "testo": "Crea i gruppi contatti Outlook AMZ_DER1 … AMZ_DVN1 e CC_MULTE dalla tabella in sezione 1. Crea le cartelle Outlook: Multe/Aperte, Multe/Chiuse, Fatture, Tracking.",
+          "ancore": [
+            "01-accessi-contatti#gruppi-contatti-outlook-da-creare-il-primo-giorno"
+          ]
+        },
+        {
+          "id": "d1a4",
+          "tipo": "do",
+          "chi": "Stagista",
+          "durata": 30,
+          "testo": "Apre Lista Targhe e trova la station di 5 targhe dettate da Alessandro."
+        },
+        {
+          "id": "d1a5",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 15,
+          "testo": "Verifica: 8 gruppi contatti con i membri giusti; tutti i file della mappa aperti almeno una volta; accessi Bruneau, Lyreco, Amazon Business, portale Amazon funzionanti.",
+          "ancore": [
+            "01-accessi-contatti#gruppi-contatti-outlook-da-creare-il-primo-giorno",
+            "01-accessi-contatti#portali-acquisti"
+          ]
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "03-multe-flusso",
+          "05-multe-foglio-2026"
+        ],
+        "nota": "Domani si parte con le multe: leggi il flusso e la tabella colonne del foglio 2026. Non serve capire tutto, serve riconoscere i nomi."
+      }
+    },
+    {
+      "day": 2,
+      "date": "2026-11-10",
+      "title": "Multe: il flusso base",
+      "modulo": "Multe",
+      "sezioni": [
+        "03-multe-flusso",
+        "05-multe-foglio-2026"
+      ],
+      "obiettivo": "Da una mail di Sanzioni CDS sa aprire la pratica: targa → station → richiesta nominativo → riga nel foglio 2026.",
+      "attivita": [
+        {
+          "id": "d2a1",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Il flusso in 8 passi, il numero progressivo come chiave, la regola importo scontato (Accordo art. 19)."
+        },
+        {
+          "id": "d2a2",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 45,
+          "testo": "Una pratica vera dalla mail alla riga: lettura del verbale PDF (dove sono numero, targa, date, importo, punti), Lista Targhe, Template A ai capi station, riga nel foglio 2026.",
+          "ancore": [
+            "04-multe-albero-template#template-a-richiesta-nominativo-alla-station",
+            "05-multe-foglio-2026#esempio-compilato"
+          ]
+        },
+        {
+          "id": "d2a3",
+          "tipo": "do",
+          "chi": "Stagista con Alessandro accanto",
+          "durata": 90,
+          "testo": "3 pratiche reali del giorno: ognuna fino alla riga nel foglio e alla mail Template A pronta in bozza. Alessandro approva prima dell'invio."
+        },
+        {
+          "id": "d2a4",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 90,
+          "testo": "Tutte le altre mail Sanzioni arrivate oggi e ieri: righe + bozze. Nessun invio senza ok."
+        },
+        {
+          "id": "d2a5",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 20,
+          "testo": "Check finale sezione 3: nessuna riga con colonne obbligatorie vuote; verbale copiato esatto; importo = importo scontato; bozze con TO/CC giusti."
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "04-multe-albero-template"
+        ],
+        "nota": "Leggi l'albero decisionale e i Template A, B, B2, C. Domani decidi tu a chi scrivere."
+      }
+    },
+    {
+      "day": 3,
+      "date": "2026-11-11",
+      "title": "Multe: albero decisionale e verbali a casa",
+      "modulo": "Multe",
+      "sezioni": [
+        "04-multe-albero-template"
+      ],
+      "obiettivo": "Dato il contratto del driver sa chiudere la pratica: B2 per SIC/CTI, C per STD/MOG, D-E-F per i verbali arrivati a casa.",
+      "attivita": [
+        {
+          "id": "d3a1",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "L'albero: CTI/SIC → rispondi a Sanzioni (B2); STD/MOG → Driver PS con PDF (C); veicolo non nostro (B); GLS e accordo Franchigie; non imputabile.",
+          "ancore": [
+            "04-multe-albero-template#template-b2-richiesta-trattenuta-driver-cti-sic",
+            "04-multe-albero-template#template-c-addebito-driver-std-mog",
+            "04-multe-albero-template#template-b-veicolo-non-nostro"
+          ]
+        },
+        {
+          "id": "d3a2",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 45,
+          "testo": "Un verbale arrivato a casa dall'inizio alla fine: Template D a Tesoreria, poi E o F con 'pagato da nostra tesoreria'.",
+          "ancore": [
+            "04-multe-albero-template#4b-verbali-arrivati-a-casa-del-driver-mezzi-a-breve-termine",
+            "04-multe-albero-template#template-d-richiesta-pagamento-a-tesoreria"
+          ]
+        },
+        {
+          "id": "d3a3",
+          "tipo": "do",
+          "chi": "Stagista con Alessandro accanto",
+          "durata": 120,
+          "testo": "Chiude le pratiche aperte ieri per cui la station ha risposto: per ognuna sceglie il template, prepara la bozza, aggiorna Driver / Contratto / Metodo nel foglio."
+        },
+        {
+          "id": "d3a4",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 60,
+          "testo": "Riordina la cartella Outlook Multe: una conversazione per progressivo, Aperte/Chiuse."
+        },
+        {
+          "id": "d3a5",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 20,
+          "testo": "Checklist Template C: PDF allegato, driver.ps in TO, CC completi, nome come in busta paga. Per ogni pratica: destinatario coerente con il contratto.",
+          "ancore": [
+            "04-multe-albero-template#template-c-addebito-driver-std-mog"
+          ]
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "04-multe-albero-template",
+          "12-regole-contrattuali"
+        ],
+        "nota": "Rileggi 4b (punti, Template G) e 4c (RMPP). In sezione 12 solo il blocco Multe."
+      }
+    },
+    {
+      "day": 4,
+      "date": "2026-11-12",
+      "title": "Multe: punti, RMPP, chiusura mese. Esame multe",
+      "modulo": "Multe",
+      "sezioni": [
+        "04-multe-albero-template",
+        "12-regole-contrattuali"
+      ],
+      "obiettivo": "Gestisce da sola una settimana di multe, incluse PEC punti e RMPP, e sa aggiornare le pivot di fine mese.",
+      "attivita": [
+        {
+          "id": "d4a1",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Punti patente: regola dei 5 giorni, modulo conducente, Template G a Servizi Generali. RMPP: pagamento tesoreria, file RMPP, nessun addebito. Pivot e TABELLA_ADDEBITI_SIC per Annalisa.",
+          "ancore": [
+            "04-multe-albero-template#template-g-richiesta-invio-pec-per-comunicazione-dati-conducente-punti",
+            "04-multe-albero-template#4c-mancati-pagamenti-pedaggio-rmpp",
+            "12-regole-contrattuali#multe-sezioni-3-5"
+          ]
+        },
+        {
+          "id": "d4a2",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Una richiesta PEC reale (anche vecchia) e la chiusura mensile di ottobre sulle pivot."
+        },
+        {
+          "id": "d4a3",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 150,
+          "testo": "ESAME: tutte le mail Sanzioni del giorno + le pratiche in sospeso. Alessandro è in cc ma non corregge: conta gli errori sui check finali."
+        },
+        {
+          "id": "d4a4",
+          "tipo": "do",
+          "chi": "Stagista",
+          "durata": 45,
+          "testo": "Aggiorna le due colonne nuove del foglio (DATA RICHIESTA MODULO, DATA INVIO PEC) sulle pratiche con punti di ottobre e novembre."
+        },
+        {
+          "id": "d4a5",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Esito esame: 0 errori sui check finali = modulo Multe superato. Altrimenti si ripete venerdì mattina la parte sbagliata."
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "02-acquisti-dpi",
+          "06-fatture-amazon"
+        ],
+        "nota": "Due cose nuove domani: Ordini_bis (semplice) e i due formati di fattura Amazon (guarda bene le anteprime e le date americane)."
+      }
+    },
+    {
+      "day": 5,
+      "date": "2026-11-13",
+      "title": "Acquisti DPI e formati fattura",
+      "modulo": "Acquisti e Fatture",
+      "sezioni": [
+        "02-acquisti-dpi",
+        "06-fatture-amazon"
+      ],
+      "obiettivo": "Registra un ordine in Ordini_bis con quadratura e riconosce al volo i due formati di fattura Amazon.",
+      "attivita": [
+        {
+          "id": "d5a1",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Portali (Bruneau, Lyreco, Amazon Business), quando si ordina, regola unica Ordini_bis, 12 colonne e formule.",
+          "ancore": [
+            "01-accessi-contatti#portali-acquisti",
+            "02-acquisti-dpi#colonne-di-ordinibis"
+          ]
+        },
+        {
+          "id": "d5a2",
+          "tipo": "do",
+          "chi": "Stagista con Alessandro accanto",
+          "durata": 60,
+          "testo": "Registra gli ultimi 3 ordini reali in Ordini_bis (una riga per prodotto+misura); PREZZO TOTALE a formula; quadratura con la conferma ordine.",
+          "ancore": [
+            "02-acquisti-dpi#colonne-di-ordinibis",
+            "02-acquisti-dpi#esempio-reale"
+          ]
+        },
+        {
+          "id": "d5a3",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Fatture Amazon: settimanale vs incentivi, Dettagli fattura vs Riepilogo, date MM/GG, naming PDF DS_WK / DS_MESE, colonne di fatt_2026 e il mapping MACROAREA.",
+          "ancore": [
+            "06-fatture-amazon#i-due-formati-di-fattura",
+            "06-fatture-amazon#colonne-di-fatt2026"
+          ]
+        },
+        {
+          "id": "d5a4",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 60,
+          "testo": "Una fattura settimanale inserita riga per riga in fatt_2026, con quadratura (somma Totale = Importo dovuto, scarto < 0,02 €).",
+          "ancore": [
+            "06-fatture-amazon#esempio-fattura-der1-inv-it3jdbf-0002484"
+          ]
+        },
+        {
+          "id": "d5a5",
+          "tipo": "do",
+          "chi": "Stagista",
+          "durata": 90,
+          "testo": "Inserisce una fattura incentivi (poche righe) e una settimanale piccola, su fatt_2026 reale, con Alessandro che controlla la quadratura prima di salvare.",
+          "ancore": [
+            "06-fatture-amazon#esempio-fattura-incentivi-der1-inv-it3jdbf-0002151"
+          ]
+        },
+        {
+          "id": "d5a6",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 15,
+          "testo": "Ordini_bis: nessuna cella obbligatoria vuota, totale = conferma. fatt_2026: Numero su ogni riga, MACROAREA da formula, quadratura ok.",
+          "ancore": [
+            "02-acquisti-dpi#colonne-di-ordinibis",
+            "06-fatture-amazon#colonne-di-fatt2026"
+          ]
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "06-fatture-amazon",
+          "09-errori-tipici"
+        ],
+        "nota": "Rileggi la sezione fatture: lunedì ne fai una settimana intera da sola. Errori tipici: il blocco Fatture."
+      }
+    },
+    {
+      "day": 6,
+      "date": "2026-11-16",
+      "title": "Fatture Amazon: una settimana intera",
+      "modulo": "Acquisti e Fatture",
+      "sezioni": [
+        "06-fatture-amazon"
+      ],
+      "obiettivo": "Inserisce da sola le fatture settimanali di tutte le station per una settimana, con quadratura su ognuna.",
+      "attivita": [
+        {
+          "id": "d6a1",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 240,
+          "testo": "Settimana precedente: tutte le fatture settimanali delle 7 station in fatt_2026, PDF rinominati DS_WK_NFATTURA. Alessandro disponibile per domande, non per correzioni."
+        },
+        {
+          "id": "d6a2",
+          "tipo": "do",
+          "chi": "Stagista",
+          "durata": 60,
+          "testo": "Bonifica: 50 righe di fatt_2026 con Numero vuoto, risalendo alla fattura da DS + data (dalla lista in sezione 10).",
+          "ancore": [
+            "10-da-confermare-bonifiche#bonifiche-da-fare-il-primo-giorno-buon-esercizio-per-la-stagista"
+          ]
+        },
+        {
+          "id": "d6a3",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Una cella di quadratura per fattura (SOMMA.SE su Numero): tutte verdi. Descrizioni nuove aggiunte a MACROAREA, non scritte a mano. Modulo Fatture superato se 0 scarti."
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "07-tracking-trasferte",
+          "12-regole-contrattuali"
+        ],
+        "nota": "Domani tracking: leggi la struttura del file e, in sezione 12, il blocco Orario (42 h, 8h24, supplementare, straordinario)."
+      }
+    },
+    {
+      "day": 7,
+      "date": "2026-11-17",
+      "title": "Tracking: struttura e controllo settimanale",
+      "modulo": "Personale",
+      "sezioni": [
+        "07-tracking-trasferte",
+        "12-regole-contrattuali"
+      ],
+      "obiettivo": "Legge un tracking STD e SIC, trova gli errori di split e li segnala agli Ops con la mail giusta.",
+      "attivita": [
+        {
+          "id": "d7a1",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 45,
+          "testo": "Il tracking: blocco per driver, righe Tipo, Ore Totali / ore del mese / delta. Regole contrattuali che servono: 42 h e 8h24, supplementare = giorni non da contratto, straordinario oltre l'orario, domenica 50/65, rotta annullata e rescue.",
+          "ancore": [
+            "07-tracking-trasferte#i-file",
+            "12-regole-contrattuali#orario-straordinario-supplementare-controllo-tracking-sezione-7"
+          ]
+        },
+        {
+          "id": "d7a2",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 60,
+          "testo": "Controllo settimanale di una station: coerenza Totali vs GIORNI DA CONTRATTO, split Standard/Supplementare/Straordinario, ferie vs Report Ferie, mail anomalie agli Ops."
+        },
+        {
+          "id": "d7a3",
+          "tipo": "do",
+          "chi": "Stagista con Alessandro accanto",
+          "durata": 120,
+          "testo": "Controllo della settimana scorsa su 2 station (STD + SIC), mail anomalie in bozza."
+        },
+        {
+          "id": "d7a4",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 60,
+          "testo": "Terza station da sola."
+        },
+        {
+          "id": "d7a5",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 20,
+          "testo": "Per ogni driver delta spiegato o segnalato; nessuna ora su RIPOSO; nessun testo dove servono numeri; mail con elenco driver / giorno / cosa non torna."
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "07-tracking-trasferte"
+        ],
+        "nota": "Solo la 7b: controllo presenze tracking vs Amazon. Guarda i 3 screenshot e la tabella dei simboli."
+      }
+    },
+    {
+      "day": 8,
+      "date": "2026-11-18",
+      "title": "Controllo presenze tracking vs Amazon",
+      "modulo": "Personale",
+      "sezioni": [
+        "07-tracking-trasferte"
+      ],
+      "obiettivo": "Fa il controllo presenze di una station end-to-end con il template v3 e manda la tabella agli Ops.",
+      "attivita": [
+        {
+          "id": "d8a1",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 60,
+          "testo": "Portale Amazon → CSV, foglio START, incolla AMAZON e tracking, semaforo, RISULTATO, simboli, invio. Esempio DLO4 pulito e DVN1 sporco.",
+          "ancore": [
+            "07-tracking-trasferte#7b-controllo-presenze-tracking-vs-amazon",
+            "07-tracking-trasferte#simboli-del-foglio-risultato"
+          ]
+        },
+        {
+          "id": "d8a2",
+          "tipo": "do",
+          "chi": "Stagista con Alessandro accanto",
+          "durata": 120,
+          "testo": "Una station reale sul periodo 1-15 novembre: CSV, template, semaforo verde, tabella filtrata agli Ops."
+        },
+        {
+          "id": "d8a3",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 120,
+          "testo": "Seconda e terza station. Riga RIEPILOGO di ciascuna ad Alessandro."
+        },
+        {
+          "id": "d8a4",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 20,
+          "testo": "Semaforo verde su tutte; nessun +1 segnalato per un rescue su rotta annullata; driver A sconosciuti passati ad Alessandro e non agli Ops.",
+          "ancore": [
+            "07-tracking-trasferte#passo-4-semaforo-in-start",
+            "07-tracking-trasferte#attenzione-trappole-note"
+          ]
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "08-stima-costi",
+          "12-regole-contrattuali"
+        ],
+        "nota": "Stima costi: i due file, le categorie di ore e le indennità (22,50 / 29,50). In sezione 12 il blocco Indennità."
+      }
+    },
+    {
+      "day": 9,
+      "date": "2026-11-19",
+      "title": "Stima costi parziale e totale",
+      "modulo": "Personale",
+      "sezioni": [
+        "08-stima-costi",
+        "12-regole-contrattuali"
+      ],
+      "obiettivo": "Compila la stima parziale di novembre per 2 station e sa spiegare i 3 numeri più grandi.",
+      "attivita": [
+        {
+          "id": "d9a1",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 45,
+          "testo": "Stima_Costi (parziale, terza settimana, data di taglio = ultima domenica con tracking) e Stima_Costo_personale (totale, fine mese). Categorie di ore e da dove si prendono nel tracking. Costo orario solo dal foglio dedicato.",
+          "ancore": [
+            "08-stima-costi#categorie-di-ore-uguali-nei-due-file"
+          ]
+        },
+        {
+          "id": "d9a2",
+          "tipo": "show",
+          "chi": "Alessandro",
+          "durata": 60,
+          "testo": "Stima parziale di ottobre rifatta insieme per una station, poi confronto con la totale di ottobre: dove e perché differiscono."
+        },
+        {
+          "id": "d9a3",
+          "tipo": "do",
+          "chi": "Stagista con Alessandro accanto",
+          "durata": 120,
+          "testo": "Stima parziale di novembre (al 15/11) per 2 station: ore per categoria da tracking, cella di controllo OK."
+        },
+        {
+          "id": "d9a4",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 60,
+          "testo": "Spiega per iscritto (3 righe per numero) i 3 importi più grandi delle sue 2 station."
+        },
+        {
+          "id": "d9a5",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 20,
+          "testo": "Cella controllo OK; somma HH = ore tracking alla stessa data; categorie a zero giustificate; trasferte 22,50 / 29,50.",
+          "ancore": [
+            "12-regole-contrattuali#indennita-e-costo-stima-costi-sezione-8"
+          ]
+        }
+      ],
+      "sera": {
+        "leggi": [
+          "09-errori-tipici",
+          "11-lista-attivita"
+        ],
+        "nota": "Ultimo giorno domani: rileggi tutti gli errori tipici e scorri la lista attività. Scrivi (nel sito, campo note) le cose che senti di non saper ancora fare."
+      }
+    },
+    {
+      "day": 10,
+      "date": "2026-11-20",
+      "title": "Giornata tipo da sola e consegna",
+      "modulo": "Consegna",
+      "sezioni": [
+        "09-errori-tipici",
+        "10-da-confermare-bonifiche",
+        "11-lista-attivita"
+      ],
+      "obiettivo": "Gestisce una giornata intera (multe, fatture, tracking) con Alessandro solo in cc. Il piano della settimana prossima è scritto da lei.",
+      "attivita": [
+        {
+          "id": "d10a1",
+          "tipo": "do",
+          "chi": "Stagista da sola",
+          "durata": 240,
+          "testo": "Giornata tipo: mail Sanzioni del giorno, fatture della settimana, controllo tracking di una station, aggiornamento foglio multe. Alessandro in cc su tutto, interviene solo se c'è un invio sbagliato."
+        },
+        {
+          "id": "d10a2",
+          "tipo": "do",
+          "chi": "Stagista",
+          "durata": 60,
+          "testo": "Scrive nel sito il piano della settimana 23-27/11: cosa fa ogni giorno, con sezione del vademecum accanto, e la lista 'non so ancora fare'."
+        },
+        {
+          "id": "d10a3",
+          "tipo": "tell",
+          "chi": "Alessandro",
+          "durata": 60,
+          "testo": "Retro: errori della settimana, cosa aggiungere al vademecum, cosa automatizzare. Validazione finale dei moduli."
+        },
+        {
+          "id": "d10a4",
+          "tipo": "check",
+          "chi": "Alessandro",
+          "durata": 30,
+          "testo": "Tutti i moduli validati; lista 'non so ancora fare' trasformata in attività per la settimana 23-27/11 nel piano."
+        }
+      ],
+      "sera": {
+        "leggi": [],
+        "nota": "Niente da leggere. Da lunedì il sito è il tuo strumento, non il tuo corso."
+      }
+    }
+  ]
+}

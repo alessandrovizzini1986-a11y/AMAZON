@@ -6,7 +6,7 @@ import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
 
-const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", RESP_MEZZI: "Resp. Mezzi", DRIVER: "Driver", CONTROLLO: "Controllo presenze" };
+const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", RESP_MEZZI: "Resp. Mezzi", DRIVER: "Driver", CONTROLLO: "Controllo presenze", STAGISTA: "Stagista (training)" };
 
 export default async function UsersPage({
   searchParams,
@@ -23,7 +23,7 @@ export default async function UsersPage({
 
   return (
     <div>
-      <PageHeader title="Utenti e permessi" subtitle="Gestione account per i 4 ruoli — la password iniziale viene generata e mostrata una sola volta" />
+      <PageHeader title="Utenti e permessi" subtitle="Gestione account per i 5 ruoli — la password iniziale viene generata e mostrata una sola volta" />
 
       {params.error && <p className="mb-4 text-sm text-danger bg-danger-soft rounded-control px-3 py-2">{params.error}</p>}
       {params.created && (
@@ -40,7 +40,7 @@ export default async function UsersPage({
             {Object.entries(ROLE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <select className="input" name="stationId" defaultValue="">
-            <option value="">— stazione (non richiesta per Admin e Controllo presenze) —</option>
+            <option value="">— stazione (non richiesta per Admin, Controllo presenze e Stagista) —</option>
             {stations.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
           </select>
           <input className="input" name="licenseNo" placeholder="N. patente" />
