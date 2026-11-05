@@ -19,6 +19,9 @@ import { testoTeams, type RigaTeams } from "@/domain/costi/teams";
 import { valoreAlla } from "@/domain/costi/tariffe";
 import { excelStima } from "@/lib/costi/excelStima";
 import { blocchiDaCalcolo, foglioStimaPersonale, nomeFoglio, tipoStd } from "@/lib/costi/excelStimaPersonale";
+import { excelFO } from "@/lib/costi/excelFO";
+import { foglioFO, leggiZtl, noleggiFO, ztlDelMese, type PermessoZtl } from "@/domain/costi/fo";
+import type { DatiFO } from "../dati";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaStima } from "../actions";
 import { controlloMog, lavoratoriGls } from "@/domain/mog/mog";
@@ -32,6 +35,7 @@ type Props = {
   anagrafica: { mese: string; eta: number } | null; zucchetti: { il: string; da: string } | null; oreLavoroPrec: Record<string, number> | null;
   righeCdl: RigaCDL[]; aditDwh: { station: string; voce: string; quantita: number; costo: number; teste: number }[]; utente: string;
   mog: DatiMogClient;
+  fo: DatiFO; fatturatoStimato: { totale: number; certo: number } | null;
 };
 
 type Sic = { lav: LavoratoreSic[]; busta: BustaLavoratore[]; perStation: BustaStation[]; lordo: SicLordo[]; nonTracciati: { nome: string; station: string; cdl: number }[]; par: ParametriSic };
@@ -235,6 +239,43 @@ export function FineMeseClient(p: Props) {
     await scarica(wb, `Stima_AMZ_${p.mese.slice(5)}_${p.mese.slice(2, 4)}.xlsx`);
   };
 
+  const [ztl, setZtl] = useState<{ nome: string; permessi: PermessoZtl[] } | null>(null);
+  const leggiFileZtl = async (files: File[]) => {
+    const f = files[0]; if (!f) return;
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await f.arrayBuffer());
+    let permessi: PermessoZtl[] = [];
+    for (const ws of wb.worksheets) {
+      const righe: unknown[][] = [];
+      ws.eachRow({ includeEmpty: true }, (r, n) => { righe[n - 1] = (r.values as unknown[]).slice(1).map((v) => (v && typeof v === "object" && !(v instanceof Date) && "result" in v ? (v as { result: unknown }).result : v)); });
+      const p = leggiZtl(Array.from(righe, (r) => r ?? []));
+      if (p.length > permessi.length) permessi = p;
+    }
+    setZtl({ nome: f.name, permessi });
+  };
+
+  /** Foglio "AMZ <Mmm> <AAAA>" del file Costi F.O., compilato dai dati del sito. */
+  const excelFoglioFO = async () => {
+    if (!ris) return;
+    const lordo = ris.sic?.lordo ?? [];
+    const per = (k: "ore" | "savingRatei") => (lordo.length ? Object.fromEntries(lordo.map((l) => [l.station, l[k]])) : null);
+    const lav = ris.sic?.lav ?? [];
+    const z = ztl ? ztlDelMese(ztl.permessi, p.mese) : null;
+    const wb = excelFO({
+      mese: p.mese, carburante: p.fo.q8?.perStation ?? null, noleggi: noleggiFO(p.fo.mezzi, p.mese), telepass: p.fo.telepass?.perStation ?? null,
+      ztl: z && z.permessi ? z : null, accStraord: per("ore"), accFerie: per("savingRatei"),
+      cdlBase: lav.length ? lav.reduce((a, y) => a + y.cdl, 0) : null,
+      cdlNota: `stimato: CDL dell'anagrafica ${p.anagrafica ? it(p.anagrafica.mese) : "—"} per i ${lav.length} SIC del tracking di ${it(p.mese)} (${lav.filter((y) => y.cdlStimato).length} con la media del contratto, ${ris.sic?.nonTracciati.length ?? 0} in anagrafica esclusi perché non nel tracking)`,
+      trasfertaSic: p.fo.trasfertaSicPrec?.importo ?? (lordo.length ? lordo.reduce((a, l) => a + l.trasferte, 0) : null),
+      trasfertaNota: p.fo.trasfertaSicPrec ? `trasferte SIC del mese prima (stima SIC salvata), pagate in questo mese` : "trasferte SIC di questo mese (manca la stima SIC salvata del mese prima)",
+      costoStd: ris.stime.length ? totaleStime(ris.stime) : null,
+      fatturato: p.fatturatoStimato?.totale ?? null,
+      fatturatoNota: p.fatturatoStimato ? `stima del mese (fatture ${eur(p.fatturatoStimato.certo)} € + forecast)` : "stima del mese non disponibile",
+      wind: 1500, elmec: 119.9,
+    });
+    await scarica(wb, `${foglioFO(p.mese).replace(/ /g, "_")}_per_Costi_FO.xlsx`);
+  };
+
   /** Foglio AMZ_<MMM>_<AA> con la struttura di Stima_Costo_personale.xlsx, già compilato. */
   const excelPersonale = async () => {
     if (!ris || !p.tariffeStd) return;
@@ -349,7 +390,20 @@ export function FineMeseClient(p: Props) {
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-secondary" onClick={excel}>Excel</button> <Aiuto k="costi.excel" />
               <button type="button" className="btn-secondary" onClick={excelPersonale}>Foglio per Stima_Costo_personale</button> <Aiuto k="costi.excel.personale" />
+              <button type="button" className="btn-secondary" onClick={excelFoglioFO}>Foglio {foglioFO(p.mese)} (Costi F.O.)</button> <Aiuto k="costi.excel.fo" />
               <button type="button" className="btn-secondary" onClick={testo}>Testo per Teams</button> <Aiuto k="costi.teams" />
+            </div>
+            <div className="rounded-control border border-line p-3 text-sm">
+              <p className="font-semibold">Foglio {foglioFO(p.mese)} per il file Costi F.O.</p>
+              <ul className="mt-1 list-disc pl-5 text-xs text-ink-muted">
+                <li>Carburante Q8: {p.fo.q8 ? `elaborazione del ${new Date(p.fo.q8.il).toLocaleDateString("it-IT")} (${p.fo.q8.file})` : <span className="text-warn">manca l&apos;elaborazione Q8 del mese (Telepass e carburante)</span>}</li>
+                <li>Telepass: {p.fo.telepass ? `elaborazione del ${new Date(p.fo.telepass.il).toLocaleDateString("it-IT")}` : <span className="text-warn">manca l&apos;elaborazione Telepass del mese</span>}</li>
+                <li>Noleggi: {p.fo.mezzi.length} mezzi della flotta, canone pro-rata sui giorni, sostitutivi esclusi</li>
+                <li>Trasferte SIC: {p.fo.trasfertaSicPrec ? `${eur(p.fo.trasfertaSicPrec.importo)} € dalla stima SIC del mese prima` : <span className="text-warn">manca la stima SIC salvata del mese prima: uso quelle di questo mese</span>}</li>
+                <li>Fatturato stimato: {p.fatturatoStimato ? `${eur(p.fatturatoStimato.totale)} €` : <span className="text-warn">non disponibile</span>}</li>
+                <li>ZTL Rimini/Cesena (DER2): {ztl ? (() => { const z = ztlDelMese(ztl.permessi, p.mese); return `${z.permessi} permessi richiesti nel mese = ${eur(z.importo)} € (${ztl.nome})`; })() : "carica il file TARGHE_ZTL qui sotto"}</li>
+              </ul>
+              <div className="mt-2"><Dropzone titolo="File ZTL Rimini/Cesena (facoltativo)" testo={<>TARGHE_ZTL_RIMINI_CESENA.xlsx: conta i permessi con data di richiesta nel mese.</>} accept=".xlsx" lavoro={false} onFiles={leggiFileZtl} aiuto="costi.ztl" /></div>
             </div>
             {teams && <><p className="text-sm text-ok">Copiato negli appunti: incollalo nella chat Teams (se non è stato copiato, selezionalo qui sotto).</p><textarea className="input h-56 w-full font-mono text-xs" readOnly value={teams} /></>}
           </section>
