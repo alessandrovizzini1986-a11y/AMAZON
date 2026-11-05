@@ -57,7 +57,12 @@ I file con nomi, CF e importi stanno in `docs/costi-kit/esempi/fo/` (non va su g
 
 ### 3.1 Busta di M quando il payroll non c'è ancora (caso normale)
 1. Il sito calcola la "busta del 27" sui tracking SIC di M−1 (CDL dell'ultima anagrafica + trasferte e istituti di M−1 a costo SIC + assenze − ferie godute) e la salva con "Salva stima SIC" del mese M−1. Quella è P58 del F.O. di M.
-2. Precisione misurata: tracking di agosto 2026 → busta stimata 1.196.160 € contro payroll di settembre 1.209.421 € (−1,1 %); per DS tra −6,4 % (DLO4) e +5,8 % (DLO5); trasferte esatte all'euro su 5 DS su 7.
+2. Precisione misurata (tracking di agosto 2026 → paga di settembre, CDL SIC Valerio 1.214.338,51 €): 1.197.735 € con i parametri attuali (−1,4 %); 1.221.393 € (+0,6 %) con malattia −11,46 €/h e carenza 63,5 % ricalcolati dal payroll 09. Per DS tra −2,5 % e +4,8 %.
+   Regole verificate sul payroll 09/2026 e sulle "Valorizzazione istituti" 02–06/2026:
+   - festività non goduta: festivo di sabato o domenica pagato a tutti (25/04 e 15/08), infrasettimanale a chi l'ha lavorato; lorda = RLM × %PT / 22 (il costo dell'anagrafica ha già INPS/INAIL, prima si contavano gli oneri due volte);
+   - 104 e altri permessi (congedo parentale) = assenza pagata dall'INPS, al costo orario RLM × %PT / ore mese del contratto;
+   - lavoratore senza voci nell'ultima settimana del tracking = cessato: la sua busta di chiusura è nel mese stesso, non nel successivo;
+   - carenza/integrazione = 63,5 % della trattenuta malattia (non 2,5 %): si ricalcola con i coefficienti dal payroll.
 3. Quando si carica il payroll di M, il foglio usa il payroll (consuntivo).
 4. Tracking DLO2/DLO4 che partono dal 27 del mese prima (agosto 2026: 27/07 → 31/08): il sito prende solo i giorni del mese.
 

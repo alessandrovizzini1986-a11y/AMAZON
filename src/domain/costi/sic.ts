@@ -22,6 +22,9 @@ export function bucket(contratto: string): Bucket {
 }
 
 const isDom = (iso: string) => new Date(iso + "T12:00:00Z").getUTCDay() === 0;
+const isWeekend = (iso: string) => [0, 6].includes(new Date(iso + "T12:00:00Z").getUTCDay());
+const fineMese = (iso: string) => { const [a, m] = iso.split("-").map(Number); return new Date(Date.UTC(a, m, 0)).toISOString().slice(0, 10); };
+const menoGiorni = (iso: string, n: number) => new Date(Date.parse(iso + "T12:00:00Z") - n * 864e5).toISOString().slice(0, 10);
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
 export type LavoratoreSic = {
@@ -29,6 +32,10 @@ export type LavoratoreSic = {
   inAnagrafica: boolean; cfCorretto: boolean; cdl: number; cdlStimato: boolean; anag: RigaCDL | null;
   standard: number; standardDF: number; straord: number; straordDom: number; suppl: number; supplDom: number; accordo: number; oreDomFest: number;
   ferie: number; ggFerie: number; rol: number; exf: number; malattia: number; infortunio: number; nonRetribuite: number;
+  /** ore 104 e altri permessi (congedo parentale…): pagate dall'INPS, in busta come assenza */
+  permInps: number;
+  /** nessuna voce nell'ultima settimana del mese: cessato, non è nella busta del mese dopo */
+  cessato: boolean;
   trasfGg: number; trasfDom: number; trasfEuro: number; festiviMese: number; festNonGoduteGg: number;
 };
 
@@ -42,7 +49,7 @@ export function lavoratoriSic(station: string, lavoratori: Lavoratore[], anag: M
     const a = j?.riga ?? null;
     const x: LavoratoreSic = {
       station, nome: l.nome, cf: normCf(l.cf), contratto: l.contratto, bucket: bucket(l.contratto), inAnagrafica: !!a, cfCorretto: !!j?.corretto, cdl: a?.cdl ?? 0, cdlStimato: !a, anag: a,
-      standard: 0, standardDF: 0, straord: 0, straordDom: 0, suppl: 0, supplDom: 0, accordo: 0, oreDomFest: 0, ferie: 0, ggFerie: 0, rol: 0, exf: 0, malattia: 0, infortunio: 0, nonRetribuite: 0,
+      standard: 0, standardDF: 0, straord: 0, straordDom: 0, suppl: 0, supplDom: 0, accordo: 0, oreDomFest: 0, ferie: 0, ggFerie: 0, rol: 0, exf: 0, malattia: 0, infortunio: 0, nonRetribuite: 0, permInps: 0, cessato: false,
       trasfGg: 0, trasfDom: 0, trasfEuro: 0, festiviMese: festiviDelMese.length, festNonGoduteGg: 0,
     };
     for (const d of giorni) {
@@ -52,10 +59,15 @@ export function lavoratoriSic(station: string, lavoratori: Lavoratore[], anag: M
       if (df) { x.standardDF += g.Standard ?? 0; x.straordDom += g.Straordinario ?? 0; x.supplDom += g.Supplementare ?? 0; x.oreDomFest += oreLavoro(l, d); }
       x.ferie += g.FERIE ?? 0; x.rol += g.ROL ?? 0; x.exf += g.ExF ?? 0; x.malattia += g.MALATTIA ?? 0; x.infortunio += g.INFORTUNIO ?? 0;
       x.nonRetribuite += (g.PERM_NR ?? 0) + (g.ASS_INGIUST ?? 0);
+      x.permInps += (g["104"] ?? 0) + (g.ALTRI_PERM ?? 0);
       if (oreLavoro(l, d) > 4) { const dom = isDom(d); x.trasfGg++; if (dom) x.trasfDom++; x.trasfEuro += trasfertaGiorno(tariffe, d, dom); }
     }
-    // festività non goduta: festivo del mese lavorato, o che cade di domenica
-    x.festNonGoduteGg = festiviDelMese.filter((d) => isDom(d) || oreLavoro(l, d) > 0).length;
+    // festività non goduta (paga 09/2026 e istituti 04–06/2026): festivo di sabato o domenica a tutti i presenti
+    // nel mese, festivo infrasettimanale a chi l'ha lavorato
+    const attivi = giorni.filter((d) => Object.values(l.giorni[d]).some((v) => v));
+    const primo = attivi[0] ?? "", ultimo = attivi.at(-1) ?? "";
+    x.festNonGoduteGg = festiviDelMese.filter((d) => d >= primo && d <= ultimo && (isWeekend(d) || oreLavoro(l, d) > 0)).length;
+    x.cessato = !!ultimo && ultimo < menoGiorni(fineMese(ultimo), 6);
     const hGg = a?.hSettim && a?.ggLavorativi ? a.hSettim / a.ggLavorativi : null;
     x.ggFerie = hGg ? x.ferie / hGg : 0;
     out.push(x);
@@ -95,15 +107,21 @@ export type BustaLavoratore = { base: number; trasferta: number; istitutiLordi: 
  * retribuite) − ferie/ROL/ExF godute. Dispatcher: nessuna trasferta.
  */
 export function bustaLavoratore(x: LavoratoreSic, p: ParametriSic): BustaLavoratore {
+  // cessato nel mese: tutto (variabili comprese) è nella busta di chiusura dello stesso mese
+  if (x.cessato) return { base: 0, trasferta: 0, istitutiLordi: 0, istituti: 0, assenze: 0, ferieGodute: 0, totale: 0 };
   const a = x.anag;
+  const pct = a?.pctPt ? (a.pctPt > 1 ? a.pctPt / 100 : a.pctPt) : 1;
   const trasferta = x.bucket === "DISPATCHER" ? 0 : x.trasfEuro;
   const strTar = x.bucket === "CTI FT" || x.bucket === "DISPATCHER" ? p.STR_FT : p.STR_PT;
-  const lordi = x.straord * strTar + x.suppl * p.SUPP + x.oreDomFest * p.DOMFEST + x.festNonGoduteGg * (a?.costoFestNonGodutaGg ?? 0);
+  // festività non goduta lorda = RLM × %PT / 22 (paga 09/2026); il costo dell'anagrafica ha già INPS/INAIL
+  const festGg = a?.rlm ? (a.rlm * pct) / 22 : (a?.costoFestNonGodutaGg ?? 0) / 1.379;
+  const lordi = x.straord * strTar + x.suppl * p.SUPP + x.oreDomFest * p.DOMFEST + x.festNonGoduteGg * festGg;
   const mal = (x.malattia + x.infortunio) * p.MALATTIA_H * p.MOLT_ONERI;
   const carenza = -mal * p.CARENZA_PCT;
   const hMese = a?.hSettim ? (a.hSettim * 52) / 12 : null;
-  const orarioBase = a?.rlm && hMese ? a.rlm / hMese : 0;
-  const nonRetr = -x.nonRetribuite * orarioBase * p.MOLT_ONERI;
+  // RLM è a tempo pieno, le ore settimanali sono quelle del contratto (PT comprese)
+  const orarioBase = a?.rlm && hMese ? (a.rlm * pct) / hMese : 0;
+  const nonRetr = -(x.nonRetribuite + x.permInps) * orarioBase * p.MOLT_ONERI;
   const ferie = a ? -(x.ggFerie * (a.savingFeGg ?? 0) + x.rol * (a.savingRolH ?? 0) + x.exf * (a.savingExfH ?? 0)) : 0;
   const istituti = trasferta + lordi * p.MOLT_ONERI;
   const assenze = mal + carenza + nonRetr;

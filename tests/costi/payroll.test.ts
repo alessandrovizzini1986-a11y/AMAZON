@@ -50,7 +50,7 @@ describe("riconciliazione e coefficienti", async () => {
   });
   it("coefficienti e media mobile su 3 mesi", () => {
     const c = coefficientiMese({ strFt: 1790, strPt: 161, supp: 1410, magg: 460, malattia: -950, carenza: 23.75, oneri: 360, tfr: 74, imponibile: 1000 }, { strFt: 100, strPt: 10, supp: 100, domFest: 100, malattia: 100 });
-    expect(c).toEqual({ SIC_MOLT_ONERI: 1.434, SIC_STR_FT: 17.9, SIC_STR_PT: 16.1, SIC_SUPP: 14.1, SIC_DOMFEST: 4.6, SIC_MALATTIA_H: -9.5 });
+    expect(c).toEqual({ SIC_MOLT_ONERI: 1.434, SIC_STR_FT: 17.9, SIC_STR_PT: 16.1, SIC_SUPP: 14.1, SIC_DOMFEST: 4.6, SIC_MALATTIA_H: -9.5, SIC_CARENZA_PCT: 0.025 });
     expect(mediaMobile([{ A: 1 }, { A: 2, B: 5 }, { A: 3 }, { A: 4 }])).toEqual({ A: 3, B: 5 });
   });
 });

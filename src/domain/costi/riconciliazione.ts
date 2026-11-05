@@ -86,8 +86,8 @@ export type EuroPayroll = { strFt: number; strPt: number; supp: number; magg: nu
 export function coefficientiMese(e: EuroPayroll, o: OreSic | null): Partial<Record<string, number>> {
   const out: Partial<Record<string, number>> = {};
   if (e.imponibile) out.SIC_MOLT_ONERI = 1 + (e.oneri + e.tfr) / e.imponibile;
-  // SIC_CARENZA_PCT non si ricalcola: in paga carenza/integrazione valgono ~60 % della trattenuta
-  // malattia (09/2026), la spec indica 2,5 % "del totale malattia" — definizione da confermare.
+  // carenza/integrazione in % della trattenuta malattia (paga 09/2026: 23.625 / 37.224 = 63,5 %)
+  if (e.malattia < 0 && e.carenza) out.SIC_CARENZA_PCT = e.carenza / -e.malattia;
   if (o) {
     if (o.strFt) out.SIC_STR_FT = e.strFt / o.strFt;
     if (o.strPt) out.SIC_STR_PT = e.strPt / o.strPt;
