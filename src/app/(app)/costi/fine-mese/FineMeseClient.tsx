@@ -20,7 +20,7 @@ import { valoreAlla } from "@/domain/costi/tariffe";
 import { excelStima } from "@/lib/costi/excelStima";
 import { blocchiDaCalcolo, foglioStimaPersonale, nomeFoglio, tipoStd } from "@/lib/costi/excelStimaPersonale";
 import { excelFO } from "@/lib/costi/excelFO";
-import { foglioFO, leggiZtl, noleggiFO, ztlDelMese, type PermessoZtl } from "@/domain/costi/fo";
+import { foglioFO, leggiZtl, mesePrima, noleggiFO, ztlDelMese, type PermessoZtl } from "@/domain/costi/fo";
 import type { DatiFO } from "../dati";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { salvaStima } from "../actions";
@@ -257,17 +257,15 @@ export function FineMeseClient(p: Props) {
   /** Foglio "AMZ <Mmm> <AAAA>" del file Costi F.O., compilato dai dati del sito. */
   const excelFoglioFO = async () => {
     if (!ris) return;
-    const lordo = ris.sic?.lordo ?? [];
-    const per = (k: "ore" | "savingRatei") => (lordo.length ? Object.fromEntries(lordo.map((l) => [l.station, l[k]])) : null);
-    const lav = ris.sic?.lav ?? [];
+    const ps = ris.sic?.perStation ?? [];
+    const per = (f: (b: BustaStation) => number) => (ps.length ? Object.fromEntries(ps.map((b) => [b.station, f(b)])) : null);
     const z = ztl ? ztlDelMese(ztl.permessi, p.mese) : null;
+    const b = p.fo.bustaSic;
     const wb = excelFO({
       mese: p.mese, carburante: p.fo.q8?.perStation ?? null, noleggi: noleggiFO(p.fo.mezzi, p.mese), telepass: p.fo.telepass?.perStation ?? null,
-      ztl: z && z.permessi ? z : null, accStraord: per("ore"), accFerie: per("savingRatei"),
-      cdlBase: lav.length ? lav.reduce((a, y) => a + y.cdl, 0) : null,
-      cdlNota: `stimato: CDL dell'anagrafica ${p.anagrafica ? it(p.anagrafica.mese) : "—"} per i ${lav.length} SIC del tracking di ${it(p.mese)} (${lav.filter((y) => y.cdlStimato).length} con la media del contratto, ${ris.sic?.nonTracciati.length ?? 0} in anagrafica esclusi perché non nel tracking)`,
-      trasfertaSic: p.fo.trasfertaSicPrec?.importo ?? (lordo.length ? lordo.reduce((a, l) => a + l.trasferte, 0) : null),
-      trasfertaNota: p.fo.trasfertaSicPrec ? `trasferte SIC del mese prima (stima SIC salvata), pagate in questo mese` : "trasferte SIC di questo mese (manca la stima SIC salvata del mese prima)",
+      ztl: z && z.permessi ? z : null, accStraord: per((x) => x.istituti - x.trasferte), accFerie: per((x) => -x.ferieGodute),
+      bustaSic: b?.importo ?? null,
+      bustaNota: !b ? "manca: carica il payroll del mese o salva la stima SIC del mese prima" : b.fonte === "payroll" ? `payroll ${it(p.mese)} caricato (consuntivo)` : `stima: busta del 27 calcolata sui tracking SIC di ${it(mesePrima(p.mese))} (stima SIC salvata il ${new Date(b.il!).toLocaleDateString("it-IT")})`,
       costoStd: ris.stime.length ? totaleStime(ris.stime) : null,
       fatturato: p.fatturatoStimato?.totale ?? null,
       fatturatoNota: p.fatturatoStimato ? `stima del mese (fatture ${eur(p.fatturatoStimato.certo)} € + forecast)` : "stima del mese non disponibile",
@@ -399,7 +397,7 @@ export function FineMeseClient(p: Props) {
                 <li>Carburante Q8: {p.fo.q8 ? `elaborazione del ${new Date(p.fo.q8.il).toLocaleDateString("it-IT")} (${p.fo.q8.file})` : <span className="text-warn">manca l&apos;elaborazione Q8 del mese (Telepass e carburante)</span>}</li>
                 <li>Telepass: {p.fo.telepass ? `elaborazione del ${new Date(p.fo.telepass.il).toLocaleDateString("it-IT")}` : <span className="text-warn">manca l&apos;elaborazione Telepass del mese</span>}</li>
                 <li>Noleggi: {p.fo.mezzi.length} mezzi della flotta, canone pro-rata sui giorni, sostitutivi esclusi</li>
-                <li>Trasferte SIC: {p.fo.trasfertaSicPrec ? `${eur(p.fo.trasfertaSicPrec.importo)} € dalla stima SIC del mese prima` : <span className="text-warn">manca la stima SIC salvata del mese prima: uso quelle di questo mese</span>}</li>
+                <li>Busta SIC pagata nel mese: {p.fo.bustaSic ? `${eur(p.fo.bustaSic.importo)} € ${p.fo.bustaSic.fonte === "payroll" ? "dal payroll del mese" : "dalla stima SIC salvata del mese prima"} (trasferte e straordinari del mese prima già dentro)` : <span className="text-warn">manca: carica il payroll del mese o salva la stima SIC del mese prima</span>}</li>
                 <li>Fatturato stimato: {p.fatturatoStimato ? `${eur(p.fatturatoStimato.totale)} €` : <span className="text-warn">non disponibile</span>}</li>
                 <li>ZTL Rimini/Cesena (DER2): {ztl ? (() => { const z = ztlDelMese(ztl.permessi, p.mese); return `${z.permessi} permessi richiesti nel mese = ${eur(z.importo)} € (${ztl.nome})`; })() : "carica il file TARGHE_ZTL qui sotto"}</li>
               </ul>

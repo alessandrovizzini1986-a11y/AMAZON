@@ -34,3 +34,17 @@ describe("tracking con la colonna Driver al posto di Lavoratore", () => {
     expect(lavoratori.map((l) => [l.nome, l.driverId, l.contratto])).toEqual([["Mario Rossi", "A2TEST", "MOG 35"]]);
   });
 });
+
+describe("tracking che parte dal 27 del mese prima (DLO2/DLO4 agosto 2026)", () => {
+  it("27…31 = mese prima, 1…31 = mese del tracking", () => {
+    const giorni = [27, 28, 29, 30, 31, ...Array.from({ length: 31 }, (_, i) => i + 1)];
+    const rows = [
+      ["Data Inizio: 01/08/2026", "", "", "Data fine: 31/08/2026"],
+      [".", "Tipo Contratto", "Giorni contratto", "Lavoratore", "Driver ID", "Codice Fiscale", "Tipo", ...giorni],
+      ["", "CTI FT", "", "Mario Rossi", "A2TEST", CF, "Standard", ...giorni.map(() => 8)],
+    ];
+    const { lavoratori } = leggiLavoratori([foglio("08.26", rows) as never], 2026, 8);
+    const d = Object.keys(lavoratori[0].giorni).sort();
+    expect([d.length, d[0], d[30]]).toEqual([31, "2026-08-01", "2026-08-31"]);
+  });
+});

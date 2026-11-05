@@ -1,8 +1,10 @@
 /**
  * Foglio "AMZ <Mmm> <AAAA>" con la struttura del file AMZ_Costi_F.O._2026.xlsx (righe 2–73, colonne B–P),
  * compilato dal sito: si sposta nel file F.O. con "Sposta o copia foglio". Celle gialle = dati dal sito,
- * celle vuote = voci da inserire a mano (fornitori, multe, DPI…). La formula del costo SIC (P60) richiama il
- * foglio del mese prima come nel file originale ('AMZ <mese prima>'!L60 / L61).
+ * celle vuote = voci da inserire a mano (fornitori, multe, DPI…).
+ * Costo SIC (P60) = busta SIC pagata nel mese (P58: contiene già trasferte e straordinari del mese prima e
+ * toglie le ferie godute) − accantonamenti del mese prima ('AMZ <mese prima>'!L60 / L61) + accantonamenti del
+ * mese + PDR. Niente CDL base né trasferte a parte: sarebbero contati due volte.
  */
 import ExcelJS from "exceljs";
 import { DS_FO, foglioFO, mesePrima, type CellaNoleggio } from "@/domain/costi/fo";
@@ -13,13 +15,12 @@ export type InputFO = {
   noleggi: CellaNoleggio[];
   telepass: Record<string, number> | null;
   ztl: { importo: number; permessi: number } | null;
-  /** riga 60: € ore straordinarie/supplementari/maggiorate SIC del mese per DS */
+  /** riga 60: € straordinari, supplementari, ore dom/festive e festività non godute SIC del mese per DS, a costo SIC (€/h SIC × oneri) */
   accStraord: Record<string, number> | null;
   /** riga 61: saving ferie/ROL/ExF SIC del mese per DS */
   accFerie: Record<string, number> | null;
-  /** CDL base SIC del mese (stimato con l'ultima anagrafica disponibile) */
-  cdlBase: number | null; cdlNota: string;
-  trasfertaSic: number | null; trasfertaNota: string;
+  /** busta SIC pagata nel mese (payroll del mese, o stima SIC salvata del mese prima) */
+  bustaSic: number | null; bustaNota: string;
   costoStd: number | null;
   fatturato: number | null; fatturatoNota: string;
   wind: number; elmec: number;
@@ -72,18 +73,17 @@ export function excelFO(x: InputFO): ExcelJS.Workbook {
   if (x.ztl) { set("E55", x.ztl.importo, eur, true); set("K55", `ZTL Rimini/Cesena su DER2: ${x.ztl.permessi} permessi richiesti nel mese`); }
   else set("K55", "ZTL Rimini/Cesena: carica il file TARGHE_ZTL per compilarla");
   DS_FO.forEach((_, i) => { set(`${COL[i]}58`, x.wind, eur, true); set(`${COL[i]}59`, x.elmec, eur, true); });
-  perDs(60, x.accStraord, "SIC: ore straordinarie, supplementari e maggiorate del mese × tariffe (stima SIC)", "M");
+  perDs(60, x.accStraord, "SIC: straordinari, supplementari, ore dom/festive e festività non godute del mese a costo SIC (€/h SIC × oneri)", "M");
   perDs(61, x.accFerie, "SIC: saving ferie (gg × Saving FE) + ROL e ExF (h × costo rateo) con l'ultima anagrafica CDL", "M");
   set("K60", f("SUM(D60:J60)"), eur); set("L60", f("K60"), eur);
   set("K61", f("SUM(D61:J61)"), eur); set("L61", f("K61"), eur);
   set("K67", f("SUM(D67:J67)"), eur); set("K68", f("SUM(D68:J68)"), eur);
 
   // riepilogo a destra
-  set("O57", "Trasferta"); if (x.trasfertaSic !== null) set("P57", r2(x.trasfertaSic), eur, true); set("Q57", x.trasfertaNota);
-  set("O58", "CDL base SIC"); if (x.cdlBase !== null) set("P58", r2(x.cdlBase), eur, true); set("Q58", x.cdlNota);
+  set("O58", "Busta SIC del mese"); if (x.bustaSic !== null) set("P58", r2(x.bustaSic), eur, true); set("Q58", x.bustaNota);
   set("O59", "DESCRIZIONE"); set("P59", "IMPORTO");
-  set("O60", "TOT. COSTO SIC"); set("P60", f(`P58-${prev}!L60+${prev}!L61+K60-K61+P57+K67`), eur);
-  set("Q60", `CDL base del mese − straordinari del mese prima + ferie del mese prima + straordinari del mese − ferie del mese + trasferte + PDR (richiama il foglio ${prev.replace(/'/g, "")})`);
+  set("O60", "TOT. COSTO SIC"); set("P60", f(`P58-${prev}!L60+${prev}!L61+K60-K61+K67`), eur);
+  set("Q60", `busta SIC pagata nel mese − straordinari del mese prima + ferie del mese prima + straordinari del mese − ferie del mese + PDR (richiama il foglio ${prev.replace(/'/g, "")}). Le trasferte sono già nella busta.`);
   set("O61", "TOT. COSTO STD"); if (x.costoStd !== null) set("P61", r2(x.costoStd), eur, true); set("Q61", "stima STD di competenza del mese (Costi a fine mese)");
   set("O62", "MEZZI"); set("P62", f("SUM(D6:J17)"), eur);
   set("O63", "CARBURANTE"); set("P63", f("SUM(D3:J3)"), eur);

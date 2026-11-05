@@ -40,39 +40,26 @@ I file con nomi, CF e importi stanno in `docs/costi-kit/esempi/fo/` (non va su g
 | 55 | ZTL (Area C) | Area C Telepass per DS **+ ZTL Rimini/Cesena su DER2** = permessi con **DATA RICHIESTA nel mese** × importo (15,95 €) | file ZTL. Set 2026: 39 × 15,95 = 622,05; ott 2026: 38 → 606,10 |
 | 56 | Canone Telepass | canoni dei dispositivi per DS | TelepassRun |
 | 58–59 | Wind, Elmec | parametri fissi per DS (1.500; 119,90), con data di validità | Parametri del sito |
-| 60 | Accantonamento straordinari + supplementari (SIC) | Σ ore SIC del mese × tariffe: STR30, SUPP18, MAGG50 (Standard dom/fest), STR65, SUPP65 | "€ Ore SIC" della stima SIC del mese |
+| 60 | Accantonamento straordinari + supplementari (SIC) | ore SIC del mese a **costo SIC**: straordinario FT/PT, supplementare, ore dom/festive, festività non godute × €/h SIC × moltiplicatore oneri (= istituti della busta senza trasferte). Fino a settembre 2026 si usavano le tariffe STD dell'agenzia (circa il doppio) | busta SIC del mese |
 | 61 | Accantonamento ferie e permessi (SIC) | **saving preciso** per lavoratore: gg ferie × Saving FE + h ROL × costo rateo ROL/h + h ExF × costo rateo EXF/h, con il **CDL base del mese** (colonne "Saving FE", "Costo rateo ROL", "Costo rateo EXF" del DB CDL) | tracking SIC × anagrafica CDL. Set 2026 da riconciliare: sito 10.359,93, F.O. 10.068 (DER1) |
 | 67 | PDR una tantum (+43 % costo azienda) | manuale | — |
-| P57 | Trasferta SIC | Σ trasferte SIC del mese (gg > 4 h × tariffa alla data; domenica + extra) | stima SIC del mese |
-| P60 | TOT. COSTO SIC | `CDL base del mese − K60(M−1) + K61(M−1) + K60(M) − K61(M) + trasferte + PDR` (formula del file; il "−160.000" di settembre è una rettifica manuale da documentare) | vedi §3 |
+| P58 | Busta SIC del mese | busta pagata nel mese M: payroll di M se caricato, altrimenti la stima SIC salvata di M−1 (busta del 27 calcolata sui tracking di M−1) | vedi §3 |
+| P60 | TOT. COSTO SIC | `P58 − L60(M−1) + L61(M−1) + K60(M) − K61(M) + PDR`. **Niente CDL base né trasferte a parte**: la busta le contiene già | vedi §3 |
 | P61 | TOT. COSTO STD | stima STD di competenza del mese (con MOG corretto) | stima STD salvata |
 | P62–P68 | Mezzi, carburante, multe, autostrade, Wind+Elmec, danni, Edenred | somme delle righe sopra | formula |
 | P71 | Fatturato stimato | stima del mese (fatturato + forecast) | sito |
 | P72–P73, N79–R82 | ML, ML %, confronto con lo stesso mese dell'anno prima | formula | — |
 
-## 3. CDL SIC: base del mese + variabili del mese prima
-- La busta pagata nel mese **M** = **CDL base** dall'anagrafica valida in M + trasferte, straordinari, supplementari e istituti del **mese M−1** (tracking di M−1).
-- Oggi il sito calcola la "busta 27/M+1" sul tracking del mese M: CDL base + istituti di M, pagata a M+1. Per il F.O. di **ottobre** serve quindi:
-  - CDL base della versione più recente (oggi 0926);
-  - variabili di **settembre**: la stima SIC di settembre salvata;
-  - accantonamenti di ottobre e di settembre (righe 60–61) per la formula P60.
-- Il consuntivo FO Valerio separa "CDL SIC" (effettivo, pagato) e "ACCANTONAMENTO SIC" (rettifica di competenza). Il confronto va fatto voce per voce.
+## 3. Costo SIC: busta pagata nel mese ± accantonamenti
+- La busta pagata nel mese **M** contiene: retribuzione, oneri, ratei 13ª/14ª, TFR **più** trasferte, straordinari, supplementari, festività del **mese M−1**, **meno** le ferie/ROL/ExF godute e le assenze (malattia pagata INPS, non retribuite) di M−1.
+- Per questo `CDL base + trasferte` **non** è la busta: il CDL base dell'anagrafica è il costo pieno teorico (ratei ferie maturati compresi, nessuna ferie goduta, nessuna assenza), e sommandoci le trasferte e stornando gli accantonamenti si contano due volte straordinari e ferie. Settembre 2026: formula vecchia 1.465.745 (1.305.745 con la rettifica a mano −160.000) contro un consuntivo Valerio di 1.295.005 = CDL SIC pagato 1.204.260 + accantonamento 90.744,85.
+- Formula: **costo SIC F.O. (M) = busta pagata in M − accantonamenti di M−1 + accantonamenti di M** (righe 60–61). È esattamente come Valerio registra il consuntivo (CDL SIC effettivo + ACCANTONAMENTO SIC).
 
-### 3.1 Quando il CDL del mese non c'è ancora (caso normale)
-Il DB CDL base del mese M arriva a fine M+1 (quello di ottobre a fine novembre), ma la stima del F.O. si fa a inizio M+1. Si stima così:
-1. **CDL base stimato di M** = per ogni lavoratore SIC presente nel **tracking di M**, il CDL dell'**ultima versione disponibile** (oggi 0926), con queste correzioni:
-   - lavoratore nel tracking ma non in anagrafica (assunto dopo): media del suo bucket di contratto nella DS (lo fa già il sito, "CDL stimato");
-   - lavoratore in anagrafica ma non nel tracking (cessato o spostato): escluso;
-   - assunti o cessati a metà mese: pro-rata sui giorni di presenza nel tracking.
-   - Eventuali aumenti noti con data (rinnovo CCNL, scatti, passaggi di livello) si applicano come parametro "variazione CDL %" con validità, finché non arriva il CDL vero.
-2. Le **variabili di M−1** (trasferte, straordinari, supplementari, istituti) e gli **accantonamenti** (righe 60–61) non dipendono dal CDL del mese: si calcolano subito dai tracking.
-3. Il **saving ferie/ROL/ExF** (riga 61) usa i costi rateo dell'ultima versione del CDL; quando arriva quella vera si ricalcola.
-4. Sul foglio e in pagina è scritto chiaramente: "CDL base **stimato** dalla versione AAAA-MM (n lavoratori, di cui x stimati con la media e y esclusi)".
-5. **A fine M+1**, quando si carica il DB CDL di M:
-   - il sito ricalcola la riga e mostra **stima / CDL vero / delta per DS**;
-   - il delta va nello storico per migliorare la stima del mese dopo (es. un coefficiente medio di crescita mensile per DS);
-   - il foglio F.O. già mandato non si tocca; il delta entra nella nota del mese dopo o nella rettifica (come il "−160.000" di settembre, che va documentato).
-6. Test: stimare settembre con il CDL di giugno (versione 2026-06 sul sito) e confrontarlo con il CDL vero di settembre (2026-09). Il delta per DS misura l'errore che ci si aspetta.
+### 3.1 Busta di M quando il payroll non c'è ancora (caso normale)
+1. Il sito calcola la "busta del 27" sui tracking SIC di M−1 (CDL dell'ultima anagrafica + trasferte e istituti di M−1 a costo SIC + assenze − ferie godute) e la salva con "Salva stima SIC" del mese M−1. Quella è P58 del F.O. di M.
+2. Precisione misurata: tracking di agosto 2026 → busta stimata 1.196.160 € contro payroll di settembre 1.209.421 € (−1,1 %); per DS tra −6,4 % (DLO4) e +5,8 % (DLO5); trasferte esatte all'euro su 5 DS su 7.
+3. Quando si carica il payroll di M, il foglio usa il payroll (consuntivo).
+4. Tracking DLO2/DLO4 che partono dal 27 del mese prima (agosto 2026: 27/07 → 31/08): il sito prende solo i giorni del mese.
 
 ## 4. Consuntivo (FO Valerio): confronto
 - Si legge il foglio Outsourcing, solo CDC che inizia per "5569".

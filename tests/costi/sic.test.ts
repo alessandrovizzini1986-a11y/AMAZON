@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, it, expect } from "vitest";
 import { leggiLavoratori } from "@/domain/presenze/lavoratori";
 import { festiviAnno, festiviMese } from "@/domain/costi/festivi";
@@ -58,4 +59,23 @@ describe.skipIf(!hasKit)("SIC settembre 2026 (golden)", () => {
     expect(Math.abs(out.DVN1 / 175207.37 - 1)).toBeLessThan(0.03);
     expect(Math.abs(out.DLO5 / 147758.93 - 1)).toBeLessThan(0.09);
   }, 180_000);
+
+  const ago = esempio("tracking_sic_ago26");
+  it.skipIf(!fs.existsSync(ago))("busta 27/09 da tutti i tracking di agosto vs payroll 09/2026: −1,1 % sul totale", async () => {
+    const fest = festiviAnno(2026);
+    const a = leggiAnagraficaCDL(await grids(esempio("fo", "DB_CDL_base_0926_AmazonGLS_BO.xlsx")));
+    const idx = new Map(a.righe.map((r) => [r.cf, r]));
+    const tot: Record<string, number> = {}, trasf: Record<string, number> = {};
+    for (const f of files("tracking_sic_ago26")) {
+      const st = stationDi(f);
+      const { lavoratori } = leggiLavoratori(await grids(f), 2026, 8);
+      const b = bustaStation(st, lavoratoriSic(st, lavoratori, idx, fest, TAR, festiviMese(2026, 8, st, fest).map((x) => x.data)), PSIC);
+      tot[st] = Math.round(b.totale); trasf[st] = Math.round(b.trasferte);
+    }
+    // DLO2/DLO4 partono dal 27/07: agosto intero, trasferte = paga di settembre
+    expect([trasf.DLO4, trasf.DLO5, trasf.DER1]).toEqual([11854, 14021, 11706]);
+    const somma = Object.values(tot).reduce((s, x) => s + x, 0);
+    expect(Math.abs(somma / 1209420.66 - 1)).toBeLessThan(0.02);
+    for (const st of ST) expect(Math.abs(tot[st] / { DER1: 144118, DER2: 138964, DLO2: 265219, DLO4: 147438, DLO5: 149754, DLZ2: 188225, DVN1: 174989 }[st]! - 1)).toBeLessThan(0.07);
+  }, 300_000);
 });

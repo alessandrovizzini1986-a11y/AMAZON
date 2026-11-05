@@ -180,11 +180,11 @@ const perStationRun = (j: unknown): Record<string, number> => Object.fromEntries
   return [s, Math.abs(tot)];
 }));
 
-/** Dati del sito per il foglio F.O. del mese (Q8, Telepass, flotta, trasferte SIC del mese prima, fatturato stimato). */
+/** Dati del sito per il foglio F.O. del mese (Q8, Telepass, flotta, busta SIC pagata nel mese, trasferte SIC del mese prima). */
 export async function datiFO(mese: string) {
   const [anno, m] = mese.split("-").map(Number);
   const primo = new Date(`${mese}-01T00:00:00Z`);
-  const [q8, tp, mezzi, prec] = await Promise.all([
+  const [q8, tp, mezzi, prec, pay] = await Promise.all([
     db.q8Run.findFirst({ where: { anno, mese: m }, orderBy: { eseguitoIl: "desc" } }).catch(() => null),
     db.telepassRun.findFirst({ where: { anno, mese: m }, orderBy: { eseguitoIl: "desc" } }).catch(() => null),
     db.vehicle.findMany({
@@ -192,13 +192,19 @@ export async function datiFO(mese: string) {
       select: { stato: true, leasingCompany: true, canoneMese: true, contrattoDataInizio: true, contrattoDataFine: true, station: { select: { code: true } } },
     }).catch(() => []),
     stimaSalvata(mesePrec(mese), "SIC"),
+    db.payrollRiga.aggregate({ where: { mesePaga: mese, componente: { notIn: ["RECLASS", "GLS"] } }, _sum: { importo: true }, _count: { _all: true } }).catch(() => null),
   ]);
+  // busta SIC pagata nel mese: payroll del mese se caricato, altrimenti la stima SIC salvata del mese prima (busta 27/M)
+  const stimaPrec = prec ? prec.righe.filter((r) => r.voce === "TOTALE" && r.station !== "TOTALE").reduce((a, r) => a + r.importo, 0) : null;
+  const bustaSic = pay?._count._all ? { importo: Number(pay._sum.importo ?? 0), fonte: "payroll" as const, il: null }
+    : stimaPrec !== null ? { importo: stimaPrec, fonte: "stima" as const, il: prec!.creataIl } : null;
   const trasfPrec = prec ? prec.righe.filter((r) => r.voce === "TRASFERTA").reduce((a, r) => a + r.importo, 0) : null;
   return {
     q8: q8 ? { file: q8.nomeFile, il: q8.eseguitoIl.toISOString(), perStation: perStationRun(q8.totaliJson) } : null,
     telepass: tp ? { file: tp.nomeFile, il: tp.eseguitoIl.toISOString(), perStation: perStationRun(tp.totaliJson) } : null,
     mezzi: mezzi.map((v) => ({ station: v.station.code, stato: v.stato, leasingCompany: v.leasingCompany, canoneMese: v.canoneMese === null ? null : Number(v.canoneMese), inizio: v.contrattoDataInizio ? iso(v.contrattoDataInizio) : null, fine: v.contrattoDataFine ? iso(v.contrattoDataFine) : null })),
     trasfertaSicPrec: trasfPrec === null ? null : { importo: trasfPrec, salvataIl: prec!.creataIl },
+    bustaSic,
   };
 }
 export type DatiFO = Awaited<ReturnType<typeof datiFO>>;
