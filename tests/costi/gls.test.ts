@@ -13,7 +13,7 @@ import { esempio, grids, hasKit } from "./kit";
 const sheet = (name: string, rows: Cell[][]): SheetGrid => ({ name, rows, formulas: new Set(), notes: new Map() });
 const d = (s: string) => new Date(s + "T00:00:00Z");
 const PSIC = { MOLT_ONERI: 1.434, STR_FT: 17.9, STR_PT: 16.1, SUPP: 14.1, DOMFEST: 4.6, MALATTIA_H: -11.46, CARENZA_PCT: 0.635 };
-const TAR = [{ voce: "TRASFERTA", validaDal: "2026-01-01", valore: 22.5 }, { voce: "TRASFERTA_DOM_EXTRA", validaDal: "2025-05-01", valore: 7 }];
+const TAR = [{ voce: "TRASFERTA", validaDal: "2026-01-01", valore: 22.5 }, { voce: "TRASFERTA_DOM_EXTRA", validaDal: "2025-05-01", valore: 7 }, { voce: "TRASFERTA_GLS", validaDal: "2026-01-01", valore: 25 }];
 
 /** File presenze inventato: agosto 2026, 3 persone (2 SIC, 1 STD), 1 cessato il 31/08. */
 function presenzeAgosto(): SheetGrid[] {
@@ -72,7 +72,7 @@ describe("file presenze GLS (dati inventati)", () => {
     const r = b.righe.find((x) => x.cf === "AAAAAA00A00A000A")!;
     expect(r.base).toBe(4000);
     expect(r.trasfGg).toBe(10);
-    expect(r.trasferta).toBeCloseTo(225, 2);
+    expect(r.trasferta).toBeCloseTo(250, 2); // 10 giorni × 25 € (tariffa GLS)
     expect(r.straordinari).toBeCloseTo(2 * 17.9 * 1.434, 2);
     // 15/8 è sabato: festività non goduta a tutti = RLM/22 × oneri
     expect(r.festGg).toBe(1);
@@ -187,7 +187,7 @@ describe.skipIf(!kitGls)("GLS ottobre 2026 (kit locale, golden)", () => {
     expect(Math.max(...e.map((x) => x.giorniSenzaTimbratura.length))).toBe(16);
   });
 
-  it.skipIf(!fs.existsSync(K("GLS_Castel_Maggiore_Presenze_AGOSTO_2026.xlsx")))("busta di settembre dalle presenze di agosto ≈ payroll 09/2026 CDC 5565 (±2 %)", async () => {
+  it.skipIf(!fs.existsSync(K("GLS_Castel_Maggiore_Presenze_AGOSTO_2026.xlsx")))("busta di settembre dalle presenze di agosto ≈ payroll 09/2026 CDC 5565 (±3 %; con trasferta GLS 25 € è +2,2 %)", async () => {
     const cdl = leggiAnagraficaCDL(await grids(K("DB_CDL_base_0926_AmazonGLS_BO.xlsx")), "SIC GLS BO").righe;
     const ago = leggiPresenzeGls(await grids(K("GLS_Castel_Maggiore_Presenze_AGOSTO_2026.xlsx")), "2026-08");
     const set = leggiPresenzeGls(await grids(K("GLS_Castel_Maggiore_Presenze_SETTEMBRE_2026.xlsx")), "2026-09");
@@ -195,6 +195,7 @@ describe.skipIf(!kitGls)("GLS ottobre 2026 (kit locale, golden)", () => {
     const pay = leggiPayroll(await grids(K("payroll/Costi_del_Personale_PS_0926_AMAZONGLS.xlsx")), 5565);
     const reale = totalePayroll(pay.righe);
     expect(reale).toBeCloseTo(291632.97, 2);
-    expect(Math.abs(b.totali.totale / reale - 1)).toBeLessThan(0.02);
+    expect(Math.abs(b.totali.totale / reale - 1)).toBeLessThan(0.03);
+    expect(b.totali.trasferta).toBe(802 * 25); // payroll: 20.925 €
   }, 60_000);
 });

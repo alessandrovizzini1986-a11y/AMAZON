@@ -30,7 +30,7 @@ export function NuovaTariffa() {
   const [f, setF] = useState({ voce: "TRASFERTA", validaDal: "", valore: "", fonte: "" });
   return (
     <form className="mt-4 flex flex-wrap items-end gap-2 text-sm" onSubmit={(e) => { e.preventDefault(); a.esegui(() => aggiungiTariffa({ ...f, valore: numIt(f.valore), fonte: f.fonte || undefined })); }}>
-      <label className="flex flex-col">Voce<select className="input" value={f.voce} onChange={(e) => setF({ ...f, voce: e.target.value })}><option value="TRASFERTA">Trasferta feriale</option><option value="TRASFERTA_DOM_EXTRA">Extra domenica</option></select></label>
+      <label className="flex flex-col">Voce<select className="input" value={f.voce} onChange={(e) => setF({ ...f, voce: e.target.value })}><option value="TRASFERTA">Trasferta feriale</option><option value="TRASFERTA_DOM_EXTRA">Extra domenica</option><option value="TRASFERTA_GLS">Trasferta GLS (tutti i giorni)</option></select></label>
       <label className="flex flex-col">Valida dal<input className="input" type="date" required value={f.validaDal} onChange={(e) => setF({ ...f, validaDal: e.target.value })} /></label>
       <label className="flex flex-col">€/giorno<input className="input w-24" required inputMode="decimal" value={f.valore} onChange={(e) => setF({ ...f, valore: e.target.value })} /></label>
       <label className="flex flex-col">Fonte<input className="input" value={f.fonte} onChange={(e) => setF({ ...f, fonte: e.target.value })} placeholder="accordo, circolare…" /></label>

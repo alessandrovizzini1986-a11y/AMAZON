@@ -12,6 +12,7 @@ const SCHEDE: (Scheda & { perm: Action })[] = [
   { href: "/fatture-amazon/registro", label: "Registro", perm: "fatture.registro" },
   { href: "/fatture-amazon/allinea", label: "Allinea e storico", perm: "fatture.allinea" },
   { href: "/fatture-amazon/fatturato", label: "Fatturato", perm: "fatturato.view" },
+  { href: "/fatture-amazon/rimborsi", label: "Rimborsi", perm: "fatturato.view" },
   { href: "/fatture-amazon/forecast", label: "Forecast", exact: true, perm: "forecast.view" },
   { href: "/fatture-amazon/forecast/storico", label: "Storico forecast e furgoni", perm: "forecast.view" },
 ];

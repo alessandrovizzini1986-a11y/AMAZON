@@ -58,7 +58,7 @@ export async function importaAnagrafica(input: { mese: string; nomeFile: string;
 export async function aggiungiTariffa(input: { voce: string; validaDal: string; valore: number; fonte?: string }) {
   const user = await requireUser();
   assertCan(user, "costi.parametri");
-  const x = z.object({ voce: z.enum(["TRASFERTA", "TRASFERTA_DOM_EXTRA"]), validaDal: iso, valore: z.number().finite().min(0).max(1000), fonte: z.string().max(200).optional() }).parse(input);
+  const x = z.object({ voce: z.enum(["TRASFERTA", "TRASFERTA_DOM_EXTRA", "TRASFERTA_GLS"]), validaDal: iso, valore: z.number().finite().min(0).max(1000), fonte: z.string().max(200).optional() }).parse(input);
   await db.tariffa.upsert({ where: { voce_validaDal: { voce: x.voce, validaDal: d(x.validaDal) } }, create: { ...x, validaDal: d(x.validaDal) }, update: { valore: x.valore, fonte: x.fonte } });
   await audit({ userId: user.id, action: "costi.tariffa", entity: "Tariffa", meta: x });
   revalidatePath(BASE, "layout");
