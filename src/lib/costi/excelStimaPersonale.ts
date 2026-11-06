@@ -18,6 +18,12 @@ export type InputStimaPersonale = {
   mese: string; blocchi: BloccoStation[]; cdlBase: number;
   tariffe: { trasf: number; trasfDom: number; STANDARD: number; STR30: number; SUPP18: number; MAGG50: number; STR65: number; SUPP65: number };
   fonte: string;
+  /** blocchi del foglio (default le 7 DS Amazon); GLS: [{ codice: "GLS", etichetta: "GLS-CASTELMAGGIORE (BO)" }] */
+  stazioni?: { codice: string; etichetta: string }[];
+  /** nome del foglio (default AMZ_MMM_AA) */
+  nome?: string;
+  /** righe di nota al posto di quelle Amazon */
+  note?: string[];
 };
 
 export const STATION_ORDINE = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1"];
@@ -39,7 +45,8 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   const wb = new ExcelJS.Workbook();
   wb.creator = "FleetDSP";
   wb.calcProperties.fullCalcOnLoad = true; // Excel ricalcola tutto all'apertura
-  const ws = wb.addWorksheet(nomeFoglio(x.mese));
+  const ws = wb.addWorksheet(x.nome ?? nomeFoglio(x.mese));
+  const ST = x.stazioni ?? STATION_ORDINE.map((codice) => ({ codice, etichetta: codice }));
   const set = (ref: string, v: ExcelJS.CellValue, fmt?: string) => { const c = ws.getCell(ref); c.value = v; if (fmt) c.numFmt = fmt; };
   const f = (formula: string) => ({ formula: formula.replace(/^=/, "") });
   const giallo: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
@@ -48,7 +55,7 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   // colonne di ogni blocco: c0 etichetta, c1 SIC / teste, c2 STD / costo, c3 importo, c4 totale
   const base = (i: number) => 7 + 5 * i; // G = 7
   const col = (i: number, o: number) => L(base(i) + o);
-  const tutte = (r: number, o = 1) => STATION_ORDINE.map((_, i) => `${col(i, o)}${r}`).join("+");
+  const tutte = (r: number, o = 1) => ST.map((_, i) => `${col(i, o)}${r}`).join("+");
 
   // ── colonne A–F
   set("A1", MESI_LUNGHI[Number(x.mese.slice(5, 7)) - 1]);
@@ -56,7 +63,7 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   set("A3", "TOTALE STATION");
   set("A4", "TOT. COSTO SIC"); set("B4", f("=+F8+F12+F14"));
   set("A5", "TOT. COSTO STD"); set("B5", f("=+F22+F28+F32"));
-  set("A6", "ROTTE"); set("F6", f(`=${STATION_ORDINE.map((_, i) => `${col(i, 4)}6`).join("+")}`));
+  set("A6", "ROTTE"); set("F6", f(`=${ST.map((_, i) => `${col(i, 4)}6`).join("+")}`));
   set("C7", "#teste/ore"); set("D7", "Costo");
   const t = x.tariffe;
   const sicRighe: [number, string, number][] = [[12, "TRASFERTE", t.trasf], [13, "TRASFERTE DOM.", t.trasfDom], [14, "STR 30%", t.STR30], [15, "SUPP 18%", t.SUPP18], [16, "MAGG 50%", t.MAGG50], [17, "STR 65%", t.STR65], [18, "SUPP 65%", t.SUPP65]];
@@ -73,14 +80,14 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   set("F22", f("=SUM(E22:E27)"), "#,##0.00"); set("F28", f("=SUM(E28:E29)"), "#,##0.00");
   set("B32", "ALTRE VOCI ADIT"); set("E32", f(`=${tutte(32, 3)}`), "#,##0.00"); set("F32", f("=+E32"), "#,##0.00");
   set("E33", "SIC"); set("E34", "Strao"); set("F34", f("=+E14+E17"), "#,##0.00"); set("E35", "supp"); set("F35", f("=+E15+E18"), "#,##0.00"); set("E36", "magg"); set("F36", f("=+E16"), "#,##0.00");
-  set("D43", "Trasf SIC"); set("F43", f(`=${tutte(43)}`)); set("D45", "Trasf tot"); set("F45", f(`=${STATION_ORDINE.map((_, i) => `${col(i, 4)}45`).join("+")}`));
+  set("D43", "Trasf SIC"); set("F43", f(`=${tutte(43)}`)); set("D45", "Trasf tot"); set("F45", f(`=${ST.map((_, i) => `${col(i, 4)}45`).join("+")}`));
 
   // ── blocchi station
-  STATION_ORDINE.forEach((st, i) => {
+  ST.forEach(({ codice: st, etichetta }, i) => {
     const c = (o: number) => col(i, o);
     const b = x.blocchi.find((y) => y.station === st);
     set(`${c(0)}2`, f(`=SUM(${c(1)}37:${c(2)}37,${c(1)}34:${c(2)}34,${c(1)}40:${c(2)}40)`), "#,##0.0");
-    set(`${c(0)}3`, st); ws.getCell(`${c(0)}3`).font = { bold: true };
+    set(`${c(0)}3`, etichetta); ws.getCell(`${c(0)}3`).font = { bold: true };
     set(`${c(0)}4`, f(`=+${c(4)}8+${c(4)}12+${c(4)}14`), "#,##0.00");
     set(`${c(0)}5`, f(`=+${c(4)}22+${c(4)}28+${c(4)}32`), "#,##0.00");
     set(`${c(1)}7`, "#teste/ore"); set(`${c(2)}7`, "Costo");
@@ -136,12 +143,15 @@ export function foglioStimaPersonale(x: InputStimaPersonale): ExcelJS.Workbook {
   // note sotto la tabella
   let r = 51;
   set(`A${r++}`, `Compilato da FleetDSP (Costi a fine mese): ${x.fonte}. Celle gialle = dati dal sito; le altre sono formule.`);
-  set(`A${r++}`, "SIC: teste e costo medio per contratto dall'anagrafica CDL; ore e trasferte dal tracking SIC. STD: ore e trasferte dal tracking STD (Standard tot = ordinarie + domeniche/festivi).");
-  set(`A${r++}`, "Riga 32 ALTRE VOCI ADIT = festività, ferie/ROL/ExF godute, carenza, CTRB Decr. Dignità (tariffa ADIT), altro e integrazione MOG fatturata nell'ADIT: con questa riga TOT. COSTO STD (B5) = stima STD del sito = P61 del foglio Costi F.O.");
-  set(`A${r++}`, "Rotte (riga 6) non compilate.");
-  for (const n of NOTE_MODELLO) set(`A${r++}`, `Correzione rispetto al modello: ${n}`);
+  if (x.note) for (const n of x.note) set(`A${r++}`, n);
+  else {
+    set(`A${r++}`, "SIC: teste e costo medio per contratto dall'anagrafica CDL; ore e trasferte dal tracking SIC. STD: ore e trasferte dal tracking STD (Standard tot = ordinarie + domeniche/festivi).");
+    set(`A${r++}`, "Riga 32 ALTRE VOCI ADIT = festività, ferie/ROL/ExF godute, carenza, CTRB Decr. Dignità (tariffa ADIT), altro e integrazione MOG fatturata nell'ADIT: con questa riga TOT. COSTO STD (B5) = stima STD del sito = P61 del foglio Costi F.O.");
+    set(`A${r++}`, "Rotte (riga 6) non compilate.");
+    for (const n of NOTE_MODELLO) set(`A${r++}`, `Correzione rispetto al modello: ${n}`);
+  }
   ws.getColumn(1).width = 16; ws.getColumn(2).width = 16;
-  for (let i = 3; i <= base(6) + 4; i++) ws.getColumn(i).width = 11;
+  for (let i = 3; i <= base(ST.length - 1) + 4; i++) ws.getColumn(i).width = 11;
   ws.views = [{ state: "frozen", xSplit: 6, ySplit: 3 }];
   return wb;
 }
