@@ -77,8 +77,10 @@ La stessa fattura ha più righe con la stessa descrizione nello stesso giorno ma
 Nella scheda **Rimborsi** ci sono quattro tabelline per mese e DS, IVA esclusa, da tenere a portata di mano per le contestazioni:
 
 - **Parcheggi**: rimborso in fattura (*Incentivi - Parcheggio*, datato il 1° del mese) contro il costo del parcheggio di ogni DS (Costi → Parametri, `PARCHEGGIO_<DS>`, con la data da cui vale: DLO2 dal 15/11/2026 è 0 perché il parcheggio è di Amazon; DER2 ha il temporaneo da 3.500 €/mese dal 01/10/2026 al 15/01/2027).
-- **Pedaggi**: righe *Pedaggi* in fattura contro l'elaborazione Telepass del mese.
+- **Pedaggi**: righe *Pedaggi* e, da fine aprile 2026, *OTR Services* (settimanali) contro l'elaborazione Telepass del mese (pedaggi + RMPP + ZTL).
 - **Carburante**: *FuelAllowance* contro l'elaborazione Q8 del mese.
 - **Training**: giornate *Training Day* (80 € l'una) contro i nuovi STD del mese (data inizio contratto nel file MOG) × 80 €. I nuovi SIC non hanno data di assunzione nel sito: se ci sono, il fatturato è giustamente più alto.
+
+Sotto ci sono l'andamento dell'anno e di quello prima (il 2025 usa i costi del consuntivo contabile, per mese di registrazione) e la tabella del **carburante per settimana** (FuelAllowance contro Q8 della stessa settimana Amazon), utile per contestare le settimane scoperte.
 
 La differenza in **rosso** vuol dire rimborsato meno del costo: da controllare o contestare. Le note credito vanno nella voce della fattura che stornano. "Scarica Excel" dà il recap dell'anno e tutte le righe di fattura con il numero, da allegare alla contestazione.

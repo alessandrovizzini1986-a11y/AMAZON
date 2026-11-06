@@ -15,7 +15,8 @@ const RIF_NC = /^credit note for (INV-[A-Z0-9-]+)/i;
 export function voceRimborso(descrizione: string): VoceRimborso | null {
   const d = descrizione.trim();
   if (/parchegg/i.test(d)) return "PARCHEGGI";
-  if (/pedagg/i.test(d)) return "PEDAGGI";
+  // da fine aprile 2026 Amazon rimborsa i pedaggi come "OTR Services" (righe settimanali)
+  if (/pedagg/i.test(d) || /^otr services/i.test(d)) return "PEDAGGI";
   if (/^fuel ?allowance/i.test(d) || /^modifiche - carburante/i.test(d)) return "CARBURANTE";
   if (/^training/i.test(d)) return "TRAINING";
   return null;
@@ -24,7 +25,7 @@ export function voceRimborso(descrizione: string): VoceRimborso | null {
 /** Numero della fattura stornata da una nota credito ("Credit Note for INV-… dated …"). */
 export const fatturaStornata = (descrizione: string) => RIF_NC.exec(descrizione.trim())?.[1].toUpperCase() ?? null;
 
-export type RigaRimborso = { numero: string; ds: string; data: string; descrizione: string; quantita: number; avere: number };
+export type RigaRimborso = { numero: string; ds: string; data: string; descrizione: string; quantita: number; avere: number; week?: number };
 export type RigaClassificata = RigaRimborso & { voce: VoceRimborso; mese: string; storno: boolean };
 
 /**
@@ -98,4 +99,30 @@ export function totaliRun(j: unknown, dsList: string[] = DS_FATTURATO): Record<s
     out[ds] = Math.round(((out[ds] ?? 0) + Math.abs(tot)) * 100) / 100;
   }
   return out;
+}
+
+export type SettimanaCarburante = { week: number; perDs: Record<string, { allowance: number; q8: number; diff: number }>; allowance: number; q8: number; diff: number };
+
+/**
+ * Carburante per settimana Amazon: FuelAllowance in fattura (campo week della riga) contro la spesa Q8 della
+ * stessa settimana (somma delle elaborazioni dei mesi: una settimana a cavallo di due mesi è in due file).
+ * `q8`: per mese l'ultima elaborazione { station: { settimana: importo } }.
+ */
+export function carburanteSettimane(righe: RigaClassificata[], q8: unknown[], dsList: string[] = DS_FATTURATO): SettimanaCarburante[] {
+  const q: Record<string, number> = {}, a: Record<string, number> = {};
+  for (const j of q8) for (const [k, w] of Object.entries((j ?? {}) as Record<string, Record<string, number>>)) {
+    const ds = dsAmazon(k.trim().toUpperCase());
+    if (!dsList.includes(ds)) continue;
+    for (const [wk, v] of Object.entries(w ?? {})) if (/^\d+$/.test(wk) && typeof v === "number") q[`${ds}|${Number(wk)}`] = (q[`${ds}|${Number(wk)}`] ?? 0) + Math.abs(v);
+  }
+  for (const r of righe) if (r.voce === "CARBURANTE" && r.week) a[`${r.ds}|${r.week}`] = (a[`${r.ds}|${r.week}`] ?? 0) + r.avere;
+  const weeks = [...new Set([...Object.keys(q), ...Object.keys(a)].map((k) => Number(k.split("|")[1])))].sort((x, y) => x - y);
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  return weeks.map((week) => {
+    const perDs: SettimanaCarburante["perDs"] = {};
+    for (const ds of dsList) { const al = r2(a[`${ds}|${week}`] ?? 0), qq = r2(q[`${ds}|${week}`] ?? 0); perDs[ds] = { allowance: al, q8: qq, diff: r2(al - qq) }; }
+    const v = Object.values(perDs);
+    const al = r2(v.reduce((s, x) => s + x.allowance, 0)), qq = r2(v.reduce((s, x) => s + x.q8, 0));
+    return { week, perDs, allowance: al, q8: qq, diff: r2(al - qq) };
+  });
 }

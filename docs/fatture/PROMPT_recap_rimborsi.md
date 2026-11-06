@@ -15,7 +15,7 @@ Regole del sito: nessuna chiamata esterna, nessun nome reale nei test, DVN5/DVN6
 | Voce | Rimborsato (fattura Amazon, `avere`) | Nostro costo |
 |---|---|---|
 | Parcheggi | righe con "Parchegg" (`Incentivi - Parcheggio`), una al mese datata il 1° | costo mensile per DS dai Parametri `PARCHEGGIO_<DS>` (con data di validità, pro-rata ai giorni) |
-| Pedaggi | righe con "Pedagg" (`Pedaggi`, `Modifiche - Pedaggi`, `Incentivi - Pedaggi`, `Rimborso - pedaggi`) | elaborazione Telepass del mese (ultima per mese), per station |
+| Pedaggi | righe con "Pedagg" (`Pedaggi`, `Modifiche - Pedaggi`, `Incentivi - Pedaggi`, `Rimborso - pedaggi`) e `OTR Services` (da fine aprile 2026) | elaborazione Telepass del mese (pedaggi + RMPP + ZTL), per station |
 | Carburante | `FuelAllowance` / `Fuel Allowance` / `Modifiche - Carburante` | elaborazione Q8 del mese (ultima per mese), per station |
 | Training | `Training Day…` (quantità = giornate, 80 €) | nuovi STD del mese (data inizio contratto nel file MOG) × `TRAINING_EURO` (80 €) |
 
@@ -45,3 +45,11 @@ maggio 2026 fatturati due volte e stornati a luglio). Il mese è quello della da
 
 Limiti dichiarati in pagina: i nuovi SIC non hanno data di assunzione nel sito (il training atteso conta solo gli
 STD del file MOG); pedaggi e carburante si confrontano solo nei mesi con Telepass/Q8 elaborati.
+
+## Aggiunte del 06/11/2026
+
+- Storico 2026: Q8 e Telepass gennaio–settembre caricati dai file elaborati di Alessandro (TelepassRun/Q8Run con
+  `eseguitoDa = "storico file elaborato"`); ottobre era già elaborato nel sito ed è identico.
+- 2025: tabella `CostoConsuntivo` (anno, mese, DS, voce) dal file consuntivo_costi_fatturato_2025 (Costo Effettivo,
+  CDC 5569; parcheggi = "AFFITTI AMAZON"); se c'è per mese e voce vale lui.
+- Carburante per settimana Amazon (FuelAllowance contro Q8): il problema segnalato parte dalla settimana 6 del 2026.

@@ -52,3 +52,22 @@ describe("voci di rimborso", () => {
     expect(totaliRun({ DER1: { "40": -100.5, "41": -50 }, "GLS - CASTEL MAGGIORE": { "40": -9 }, SEDE: 5, DVN1: 10 }, ["DER1", "DVN1"])).toEqual({ DER1: 150.5, DVN1: 10 });
   });
 });
+
+import { carburanteSettimane } from "@/domain/fatture/rimborsi";
+describe("OTR Services e carburante per settimana", () => {
+  it("OTR Services sono pedaggi", () => {
+    expect(voceRimborso("OTR Services")).toBe("PEDAGGI");
+    expect(voceRimborso("OTR Services WK18 - Missing Payment")).toBe("PEDAGGI");
+  });
+  it("allowance per settimana contro Q8 sommato sui mesi (settimana a cavallo)", () => {
+    const r = classificaRighe([
+      { numero: "A", ds: "DER1", data: "2026-01-27", descrizione: "FuelAllowance", quantita: 10, avere: 100, week: 5 },
+      { numero: "A", ds: "DVN6", data: "2026-01-28", descrizione: "FuelAllowance", quantita: 10, avere: 50, week: 5 },
+    ], new Map());
+    const s = carburanteSettimane(r, [{ DER1: { "5": -60 }, DVN1: { "5": -20 } }, { DER1: { "5": -70 } }], ["DER1", "DVN1"]);
+    expect(s).toHaveLength(1);
+    expect(s[0].perDs.DER1).toEqual({ allowance: 100, q8: 130, diff: -30 });
+    expect(s[0].perDs.DVN1.diff).toBe(30);
+    expect(s[0].diff).toBe(0);
+  });
+});
