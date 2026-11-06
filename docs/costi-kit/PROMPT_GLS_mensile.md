@@ -50,7 +50,7 @@ I nomi dei fogli hanno a volte uno spazio in fondo (`'07_26 '`, `'08_26 '`): le 
 | 3 | Carburante | elaborazione Q8 del mese, station GLS | 09/2026: 31.150,48 |
 | 5 | Carburante elettrico | manuale (ricariche) | 1.000–2.500 €/mese |
 | 6–17 | Noleggi per società | flotta station GLS, canone pro-rata sui giorni, sostitutivi esclusi (come Amazon) | righe: 8 TORENTAL, 9 Avis, 10 Europcar, 11 Noleggiare, 12 Locauto, 13 Hertz, 14 Autovia, 15 Ald MT, 16 Ald, 17 VEM |
-| 18 | DANNI | **forfait mensile** (confermato da Alessandro il 06/11/2026), parametro con data di validità | nel file 4.050 €/mese; Alessandro ha scritto "405": confermare l'importo prima di usarlo |
+| 18 | DANNI | **forfait mensile** (confermato da Alessandro il 06/11/2026), parametro con data di validità | 4.050 €/mese (confermato) |
 | 53 | Autostrade | elaborazione Telepass, station GLS | |
 | 58–59 | Wind, Elmec | parametri (Wind 10 × 100 = 1.000; Elmec 119,90) | |
 | 60–61 | Accantonamenti SIC (straordinari; ferie e permessi) | come Amazon: istituti del mese a costo SIC, saving ferie/ROL/ExF | oggi quasi sempre 0 |
@@ -136,16 +136,31 @@ Regole:
 Dove metterlo nel sito: Presenze → nuova scheda "GLS Badgebox" (stessa logica di archivio locale nel browser
 dei tracking; nessun file salvato sul server).
 
-## 5. Costi extra tra Amazon e GLS (`01_26_Costi_extra`, `PVT_extra`)
+## 5. Costi extra (driver Amazon su GLS)
 
-Righe per giorno con DS Amazon, driver, contratto, ore, targa, km, tratta (per esempio Roma Nord – Bologna
-Interporto). Costo persona = 20,44 €/h × ore + 20,50 € di trasferta; carburante = km × 0,10 €; pedaggi a
-valore; noleggio a valore. La pivot `PVT_extra` li somma per DS (gennaio 2026: 14.959,94 €). Da chiarire con
-Alessandro (domanda aperta, con l'esempio nella risposta del 06/11/2026): il costo di questi driver è
-nel payroll Amazon (CDC 5569) ma il lavoro è per GLS; va tolto dal costo Amazon e aggiunto al F.O. GLS (e quindi
-all'open book), oppure resta su Amazon?
+Il foglio `01_26_Costi_extra` / `PVT_extra` del file F.O. GLS erano **calcoli personali** di Alessandro:
+non è una fonte da leggere. Regola (06/11/2026): gli extra costi (driver delle station Amazon mandati su GLS
+nei picchi: ore × costo orario + trasferta, carburante, pedaggi, noleggi) **si fatturano a GLS a parte**, come
+extra costi autorizzati (clausola del foglio `_ft`: "rifatturati previa condivisione ed autorizzazione del
+Committente"). Non entrano nel F.O. GLS né nell'open book, e il loro costo resta su Amazon. Eventuale funzione
+futura: un registro degli extra con export per la richiesta di autorizzazione a GLS.
 
-## 6. Ordine di lavoro proposto
+## 6. Primo mese: ottobre 2026
+
+Si parte dal conteggio di **ottobre 2026** (non si ricostruiscono gennaio–settembre). File che servono:
+
+| Cosa | File | Stato |
+|---|---|---|
+| Ore, giustificativi e anagrafica di ottobre | presenze Castel Maggiore ottobre | nel kit (`esempi/gls/`) |
+| Controllo timbrature | Badgebox ottobre | nel kit |
+| Variabili di settembre per la busta pagata a ottobre | presenze Castel Maggiore **settembre** | da chiedere |
+| CDL SIC GLS | `DB_CDL_base_0926` foglio `SIC GLS BO` (ultima versione) | nel kit |
+| Busta reale di ottobre | payroll `Costi_del_Personale_PS_1026` (CDC 5565) | da chiedere, se già disponibile |
+| STD GLS | ADIT di ottobre, CDC 5565 | quando arriva |
+| Mezzi, carburante, pedaggi | flotta, Q8 e Telepass del sito (station GLS) | nel sito |
+| Foglio `_ft` di ottobre | F.O. GLS `09_26` (mese prima) e `08_26` (pedaggi) | nel kit |
+
+## 7. Ordine di lavoro proposto
 
 1. Lettori puri e test golden (con dati inventati) per: file presenze GLS, export Badgebox, foglio `SIC GLS BO`,
    payroll per CDC.
