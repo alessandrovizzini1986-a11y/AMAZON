@@ -16,8 +16,11 @@ export async function verificaNumeri(numeri: string[]): Promise<Record<string, I
   const user = await requireUser();
   assertCan(user, "fatture.import");
   const n = z.array(numero).max(2000).parse(numeri);
-  const r = await db.amazonInvoice.findMany({ where: { numero: { in: n } }, select: { numero: true, esportataIl: true, presenteInFatt2026Il: true } });
-  return Object.fromEntries(r.map((x) => [x.numero, { esportataIl: x.esportataIl?.toISOString() ?? null, presenteInFatt2026Il: x.presenteInFatt2026Il?.toISOString() ?? null }]));
+  const r = await db.amazonInvoice.findMany({ where: { numero: { in: n } }, select: { numero: true, esportataIl: true, presenteInFatt2026Il: true, pdfSha256: true, nRighe: true, sommaAvere: true, importoDovuto: true } });
+  return Object.fromEntries(r.map((x) => [x.numero, {
+    esportataIl: x.esportataIl?.toISOString() ?? null, presenteInFatt2026Il: x.presenteInFatt2026Il?.toISOString() ?? null,
+    pdfSha256: x.pdfSha256, nRighe: x.nRighe, sommaAvere: Number(x.sommaAvere), importoDovuto: Number(x.importoDovuto),
+  }]));
 }
 
 const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -30,6 +33,8 @@ const fattura = z.object({
   numero, ds: z.string().min(1).max(10), tipo: z.enum(["Fattura", "Nota di credito"]), dataFattura: iso, periodoDa: iso, periodoA: iso,
   importoDovuto: z.number(), sommaTotale: z.number(), sommaAvere: z.number(), rifNotaCredito: z.string().max(40).nullable(),
   pdfNome: z.string().max(300), pdfSha256: z.string().regex(/^[0-9a-f]{64}$/), righe: z.array(riga).min(1).max(500),
+  /** true = fattura rivista da Amazon: sostituisce righe e importi di quella già esportata */
+  sostituisci: z.boolean().optional(),
 });
 export type FatturaDaRegistrare = z.infer<typeof fattura>;
 
@@ -40,17 +45,18 @@ const d = (s: string) => new Date(s + "T00:00:00Z");
  * numero: un secondo scarico della stessa anteprima non duplica nulla. Il client
  * invia lotti di al massimo 500 righe.
  */
-export async function registraEsportazione(input: { fatture: FatturaDaRegistrare[] }): Promise<{ registrate: number; giaPresenti: number }> {
+export async function registraEsportazione(input: { fatture: FatturaDaRegistrare[] }): Promise<{ registrate: number; giaPresenti: number; sostituite: number }> {
   const user = await requireUser();
   assertCan(user, "fatture.import");
   const fatture = z.array(fattura).max(200).parse(input.fatture);
   if (fatture.reduce((s, f) => s + f.righe.length, 0) > 500) throw new Error("massimo 500 righe per chiamata");
   const esistenti = new Map((await db.amazonInvoice.findMany({ where: { numero: { in: fatture.map((f) => f.numero) } } })).map((x) => [x.numero, x]));
-  let registrate = 0, giaPresenti = 0;
+  let registrate = 0, giaPresenti = 0, sostituite = 0;
   const ora = new Date();
   for (const f of fatture) {
     const e = esistenti.get(f.numero);
-    if (e && (e.esportataIl || e.presenteInFatt2026Il)) { giaPresenti++; continue; }
+    const sostituisci = !!(e && (e.esportataIl || e.presenteInFatt2026Il) && f.sostituisci);
+    if (e && (e.esportataIl || e.presenteInFatt2026Il) && !sostituisci) { giaPresenti++; continue; }
     const occ = new Map<string, number>();
     const righe = f.righe.map((r) => {
       const base = `${f.numero}|${r.data}|${r.descrizione}|${r.quantita}|${r.avere.toFixed(2)}`;
@@ -64,6 +70,8 @@ export async function registraEsportazione(input: { fatture: FatturaDaRegistrare
     const dati = {
       ds: f.ds, tipo: f.tipo, dataFattura: d(f.dataFattura), periodoDa: d(f.periodoDa), periodoA: d(f.periodoA), importoDovuto: f.importoDovuto, sommaTotale: f.sommaTotale,
       sommaAvere: f.sommaAvere, nRighe: righe.length, rifNotaCredito: f.rifNotaCredito, pdfNome: f.pdfNome, pdfSha256: f.pdfSha256, fonte: "PDF", esportataIl: ora, esportataDaId: user.id,
+      // le righe vecchie in fatt_2026 non valgono più: tornerà "presente" al prossimo Allinea
+      ...(sostituisci ? { presenteInFatt2026Il: null } : {}),
     };
     await db.$transaction(async (tx) => {
       const inv = await tx.amazonInvoice.upsert({ where: { numero: f.numero }, create: { numero: f.numero, ...dati }, update: dati });
@@ -72,8 +80,9 @@ export async function registraEsportazione(input: { fatture: FatturaDaRegistrare
       await tx.amazonInvoiceLine.createMany({ data: righe.map((r) => ({ ...r, invoiceId: inv.id })), skipDuplicates: true });
     });
     registrate++;
+    if (sostituisci) sostituite++;
   }
-  await audit({ userId: user.id, action: "fatture.esporta", entity: "AmazonInvoice", meta: { fatture: fatture.map((f) => f.numero), registrate, giaPresenti, righe: fatture.reduce((s, f) => s + f.righe.length, 0) } });
+  await audit({ userId: user.id, action: "fatture.esporta", entity: "AmazonInvoice", meta: { fatture: fatture.map((f) => f.numero), registrate, giaPresenti, sostituite: fatture.filter((f) => f.sostituisci).map((f) => f.numero), righe: fatture.reduce((s, f) => s + f.righe.length, 0) } });
   revalidatePath("/fatture-amazon", "layout");
-  return { registrate, giaPresenti };
+  return { registrate, giaPresenti, sostituite };
 }
