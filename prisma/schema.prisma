@@ -820,6 +820,21 @@ model AnagraficaCDL {
   @@index([cf])
 }
 
+// Costi consuntivi per DS e mese da contabilità (es. consuntivo_costi_fatturato_2025): confronto rimborsi Amazon
+model CostoConsuntivo {
+  id         String   @id @default(cuid())
+  anno       Int
+  mese       Int
+  ds         String
+  voce       String // CARBURANTE | PEDAGGI | PARCHEGGI
+  importo    Decimal  @db.Decimal(14, 2)
+  fonte      String
+  caricatoIl DateTime @default(now())
+
+  @@unique([anno, mese, ds, voce])
+  @@index([anno, mese])
+}
+
 // Tariffe per data (trasferta, extra domenica): vale l'ultima con validaDal ≤ data
 model Tariffa {
   id        String   @id @default(cuid())

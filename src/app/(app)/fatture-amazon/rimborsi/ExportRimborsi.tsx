@@ -2,10 +2,10 @@
 
 import ExcelJS from "exceljs";
 import { scarica } from "@/lib/presenze/excelUtil";
-import { ETICHETTA_VOCE, type RecapVoce, type RigaClassificata } from "@/domain/fatture/rimborsi";
+import { ETICHETTA_VOCE, type RecapVoce, type RigaClassificata, type SettimanaCarburante } from "@/domain/fatture/rimborsi";
 
 /** Excel per le contestazioni: recap mese × voce × DS e tutte le righe di fattura usate. */
-export function ExportRimborsi({ anno, righe, recap }: { anno: number; righe: RigaClassificata[]; recap: { mese: string; recap: RecapVoce[] }[] }) {
+export function ExportRimborsi({ anno, righe, recap, settimane }: { anno: number; righe: RigaClassificata[]; recap: { mese: string; recap: RecapVoce[] }[]; settimane: SettimanaCarburante[] }) {
   const vai = async () => {
     const wb = new ExcelJS.Workbook();
     const eur = "#,##0.00";
@@ -19,7 +19,12 @@ export function ExportRimborsi({ anno, righe, recap }: { anno: number; righe: Ri
     for (const x of [...righe].sort((a, b) => a.voce.localeCompare(b.voce) || a.ds.localeCompare(b.ds) || a.data.localeCompare(b.data))) d.addRow([ETICHETTA_VOCE[x.voce], x.ds, x.data, x.numero, x.descrizione, x.quantita, x.avere, x.storno ? "sì" : ""]);
     d.getColumn(7).numFmt = eur;
     d.columns.forEach((c, i) => (c.width = [16, 7, 11, 22, 50, 10, 16, 8][i]));
-    for (const w of [r, d]) w.views = [{ state: "frozen", ySplit: 1 }];
+    const c = wb.addWorksheet("Carburante settimane");
+    c.addRow(["Settimana", "DS", "FuelAllowance", "Q8 (Imp. Scontato no IVA)", "Differenza"]).font = { bold: true };
+    for (const w of settimane) for (const [ds, x] of Object.entries(w.perDs)) c.addRow([w.week, ds, x.allowance, x.q8, x.diff]);
+    [3, 4, 5].forEach((i) => (c.getColumn(i).numFmt = eur));
+    c.columns.forEach((col, i) => (col.width = [10, 7, 16, 24, 14][i]));
+    for (const w of [r, d, c]) w.views = [{ state: "frozen", ySplit: 1 }];
     await scarica(wb, `Rimborsi_Amazon_${anno}.xlsx`);
   };
   return <button type="button" className="btn-secondary" onClick={vai}>Scarica Excel {anno}</button>;
