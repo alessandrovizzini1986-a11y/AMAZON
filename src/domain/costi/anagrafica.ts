@@ -22,9 +22,10 @@ export function isAnagraficaCDL(sheets: SheetGrid[]) {
   return sheets.some((s) => s.name.trim().toLowerCase() === FOGLIO_CDL.toLowerCase());
 }
 
-export function leggiAnagraficaCDL(sheets: SheetGrid[]): { meseVersione: string | null; righe: RigaCDL[]; scartate: number } {
-  const ws = sheets.find((s) => s.name.trim().toLowerCase() === FOGLIO_CDL.toLowerCase());
-  if (!ws) throw new Error(`foglio "${FOGLIO_CDL}" non trovato`);
+/** `foglio`: "SIC Amazon TR" (Amazon, default) o "SIC GLS BO" (GLS Castel Maggiore). */
+export function leggiAnagraficaCDL(sheets: SheetGrid[], foglio: string = FOGLIO_CDL): { meseVersione: string | null; righe: RigaCDL[]; scartate: number } {
+  const ws = sheets.find((s) => s.name.trim().toLowerCase() === foglio.toLowerCase());
+  if (!ws) throw new Error(`foglio "${foglio}" non trovato`);
   const a1 = at(ws, 0, 0);
   const meseVersione = a1 instanceof Date ? a1.toISOString().slice(0, 7) : null;
   const hr = [0, 1, 2, 3].find((r) => (ws.rows[r] ?? []).some((v) => str(v).toUpperCase() === "CODICE FISCALE"));
