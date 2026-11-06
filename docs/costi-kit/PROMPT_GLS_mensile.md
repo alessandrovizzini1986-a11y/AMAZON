@@ -33,11 +33,12 @@ solo nel DB, nessun nome o codice fiscale reale nei test o nella documentazione,
 | d | Costi generali di struttura | 7 % di a1…c | 43.269,56 |
 | e | Margine lordo | 6,5 % di a1…d | 42.991,40 |
 
-Da verificare con Alessandro e scrivere nel prompt prima di costruire:
-- da dove viene il numero di teste (101 da marzo; 94 a gennaio, 99 a febbraio): attivi in anagrafica,
-  presenti nel file presenze, o un valore fisso di contratto;
-- il mese di riferimento dei pedaggi (M−2) e se vale anche per gli altri costi quando le fatture arrivano tardi;
-- che cosa si fattura quando il costo del lavoro è una stima: oggi a1 è un valore fisso (460.000 SIC + 23.000 STD da giugno).
+Decisioni di Alessandro (06/11/2026):
+- **teste** (voci b e c) = persone **attive** nel foglio `Anagrafica` del file presenze del mese (colonna
+  Attivo/Cessato, maiuscole e minuscole indifferenti; SIC e STD insieme). Ottobre 2026: 96 SIC + 12 STD = 108
+  attivi, quindi b = 108 × 129,25 = 13.959,00 e c = 108 × 37,42 = 4.041,36 (a settembre il file usava 101);
+- pedaggi: due mesi prima, come nel file;
+- il costo del lavoro a1 resta quello del foglio F.O. del mese prima (P60 + P61), ma calcolato (§3) e non fisso.
 
 ## 2. Il foglio `MM_26` del file F.O. GLS
 
@@ -49,7 +50,7 @@ I nomi dei fogli hanno a volte uno spazio in fondo (`'07_26 '`, `'08_26 '`): le 
 | 3 | Carburante | elaborazione Q8 del mese, station GLS | 09/2026: 31.150,48 |
 | 5 | Carburante elettrico | manuale (ricariche) | 1.000–2.500 €/mese |
 | 6–17 | Noleggi per società | flotta station GLS, canone pro-rata sui giorni, sostitutivi esclusi (come Amazon) | righe: 8 TORENTAL, 9 Avis, 10 Europcar, 11 Noleggiare, 12 Locauto, 13 Hertz, 14 Autovia, 15 Ald MT, 16 Ald, 17 VEM |
-| 18 | DANNI | manuale (danni del mese) | 4.050 quasi ogni mese: da verificare se è un forfait |
+| 18 | DANNI | **forfait mensile** (confermato da Alessandro il 06/11/2026), parametro con data di validità | nel file 4.050 €/mese; Alessandro ha scritto "405": confermare l'importo prima di usarlo |
 | 53 | Autostrade | elaborazione Telepass, station GLS | |
 | 58–59 | Wind, Elmec | parametri (Wind 10 × 100 = 1.000; Elmec 119,90) | |
 | 60–61 | Accantonamenti SIC (straordinari; ferie e permessi) | come Amazon: istituti del mese a costo SIC, saving ferie/ROL/ExF | oggi quasi sempre 0 |
@@ -83,8 +84,9 @@ e la tabellina che scompone la busta SIC GLS.
   104 e congedi come assenze INPS, malattia −11,46 €/h netta della carenza 63,5 %);
 - costo SIC F.O. (P60) = busta pagata nel mese ± accantonamenti, come per Amazon.
 
-**STD** (somministrati Adecco su GLS): stima di competenza dalle ore del file presenze × tariffe ADIT,
-voci ADIT del CDC 5565 (verificare che l'ADIT li contenga e con quale CDC), MOG con le regole Adecco.
+**STD** (somministrati Adecco su GLS): stima di competenza dalle ore del file presenze × tariffe ADIT. Gli
+STD GLS sono **nello stesso file ADIT, CDC 5565** (confermato da Alessandro): il lettore ADIT va esteso per
+tenere il CDC e separare Amazon (5569) da GLS (5565) in tariffe, consuntivo e integrazione MOG.
 
 **Fonte delle ore: il file presenze di Castel Maggiore** (`GLS_Castel_Maggiore_-_Presenze_MESE_AAAA_Delivery.xlsx`):
 
@@ -139,7 +141,9 @@ dei tracking; nessun file salvato sul server).
 Righe per giorno con DS Amazon, driver, contratto, ore, targa, km, tratta (per esempio Roma Nord – Bologna
 Interporto). Costo persona = 20,44 €/h × ore + 20,50 € di trasferta; carburante = km × 0,10 €; pedaggi a
 valore; noleggio a valore. La pivot `PVT_extra` li somma per DS (gennaio 2026: 14.959,94 €). Da chiarire con
-Alessandro chi paga chi (Amazon presta driver a GLS nei picchi?) e su quale riga del F.O. finiscono.
+Alessandro (domanda aperta, con l'esempio nella risposta del 06/11/2026): il costo di questi driver è
+nel payroll Amazon (CDC 5569) ma il lavoro è per GLS; va tolto dal costo Amazon e aggiunto al F.O. GLS (e quindi
+all'open book), oppure resta su Amazon?
 
 ## 6. Ordine di lavoro proposto
 
