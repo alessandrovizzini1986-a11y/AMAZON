@@ -22,6 +22,8 @@ describe("festivi e patroni", () => {
     expect(f.filter((x) => x.station === "TUTTE").map((x) => x.data)).toEqual(["2026-01-01", "2026-01-06", "2026-04-06", "2026-04-25", "2026-05-01", "2026-06-02", "2026-08-15", "2026-11-01", "2026-12-08", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-31"]);
     expect(festiviMese(2026, 9, "DLO2", f).map((x) => x.data)).toEqual(["2026-09-13"]);
     expect(festiviMese(2026, 9, "DER1", f)).toEqual([]);
+    expect([patrono("GLS", 2026), patrono("GLS", 2027)]).toEqual(["2026-11-30", "2027-11-30"]);
+    expect([domenicaOFestivo("2026-11-30", "GLS", f), domenicaOFestivo("2026-11-30", "DER1", f)]).toEqual([true, false]);
     expect([domenicaOFestivo("2026-09-29", "DER2", f), domenicaOFestivo("2026-09-29", "DER1", f), domenicaOFestivo("2026-09-26", "DER1", f)]).toEqual([true, false, false]);
   });
 });

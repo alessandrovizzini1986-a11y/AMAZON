@@ -145,7 +145,12 @@ extra costi autorizzati (clausola del foglio `_ft`: "rifatturati previa condivis
 Committente"). Non entrano nel F.O. GLS né nell'open book, e il loro costo resta su Amazon. Eventuale funzione
 futura: un registro degli extra con export per la richiesta di autorizzazione a GLS.
 
-## 6. Primo mese: ottobre 2026
+## 6. Festivi GLS
+
+Patrono di Castel Maggiore: **30 novembre** (Sant'Andrea) ogni anno, station `GLS` (`patrono()` in
+`src/domain/costi/festivi.ts` e tabella Festivo del sito). Nazionali come Amazon.
+
+## 6b. Primo mese: ottobre 2026
 
 Si parte dal conteggio di **ottobre 2026** (non si ricostruiscono gennaio–settembre). File che servono:
 
@@ -154,7 +159,7 @@ Si parte dal conteggio di **ottobre 2026** (non si ricostruiscono gennaio–sett
 | Ore, giustificativi e anagrafica di ottobre | presenze Castel Maggiore ottobre | nel kit (`esempi/gls/`) |
 | Controllo timbrature | Badgebox ottobre | nel kit |
 | Variabili di settembre per la busta pagata a ottobre | presenze Castel Maggiore **settembre** | da chiedere |
-| CDL SIC GLS | `DB_CDL_base_0926` foglio `SIC GLS BO` (ultima versione) | nel kit |
+| CDL SIC GLS | `DB_CDL_base_0926` foglio `SIC GLS BO` (ultima versione) | nel kit (riconsegnato il 06/11) |
 | Busta reale di ottobre | payroll `Costi_del_Personale_PS_1026` (CDC 5565) | da chiedere, se già disponibile |
 | STD GLS | ADIT di ottobre, CDC 5565 | quando arriva |
 | Mezzi, carburante, pedaggi | flotta, Q8 e Telepass del sito (station GLS) | nel sito |
