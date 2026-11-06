@@ -2,7 +2,7 @@ import Link from "next/link";
 import { can } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
-import { DS_FATTURATO, indicatoriDs, meseClasse, meseDs, settimanaDs, type Griglia, type RigaFatturato } from "@/domain/fatture/fatturato";
+import { DS_FATTURATO, codiciDs, dsAmazon, indicatoriDs, meseClasse, meseDs, settimanaDs, type Griglia, type RigaFatturato } from "@/domain/fatture/fatturato";
 import { stationUtente, utenteCon } from "../dati";
 import { Export } from "./Export";
 
@@ -15,17 +15,18 @@ const VISTE = { ds: "Mese × DS", classe: "Mese × classe", settimana: "Settiman
 
 async function righe(anno: number, ds: string | null): Promise<RigaFatturato[]> {
   const r = await db.amazonInvoiceLine.findMany({
-    where: { anno, ...(ds ? { ds } : {}) },
+    where: { anno, ...(ds ? { ds: { in: codiciDs(ds) } } : {}) },
     select: { ds: true, anno: true, mese: true, week: true, classe: true, avere: true, quantita: true },
   });
-  return r.map((x) => ({ ...x, avere: Number(x.avere) }));
+  // DVN5 e DVN6 (rotte extra di DVN1) dentro DVN1
+  return r.map((x) => ({ ...x, ds: dsAmazon(x.ds), avere: Number(x.avere) }));
 }
 
 export default async function FatturatoPage({ searchParams }: { searchParams: Promise<{ anno?: string; vista?: string; mese?: string; ds?: string }> }) {
   const user = await utenteCon("fatturato.view");
   const p = await searchParams;
   const solo = await stationUtente(user); // RESP_MEZZI: solo la propria station
-  const anniDb = await db.amazonInvoiceLine.findMany({ distinct: ["anno"], select: { anno: true }, orderBy: { anno: "desc" }, ...(solo ? { where: { ds: solo } } : {}) });
+  const anniDb = await db.amazonInvoiceLine.findMany({ distinct: ["anno"], select: { anno: true }, orderBy: { anno: "desc" }, ...(solo ? { where: { ds: { in: codiciDs(solo) } } } : {}) });
   const anni = anniDb.map((a) => a.anno);
   const anno = Number(p.anno) || anni[0] || new Date().getFullYear();
   const vista = (p.vista && p.vista in VISTE ? p.vista : "ds") as keyof typeof VISTE;
@@ -37,7 +38,7 @@ export default async function FatturatoPage({ searchParams }: { searchParams: Pr
   const indicatori = indicatoriDs(att, (r) => !mese || r.mese === mese, colDs);
   const link = (q: Record<string, string | number | null>) => `/fatture-amazon/fatturato?${new URLSearchParams(Object.entries({ anno, vista, ...q }).filter(([, v]) => v !== null && String(v) !== "").map(([k, v]) => [k, String(v)])).toString()}`;
   const dett = mese && p.ds && (!solo || p.ds === solo)
-    ? await db.amazonInvoice.findMany({ where: { righe: { some: { anno, mese, ds: p.ds } } }, orderBy: { numero: "asc" }, include: { righe: { where: { anno, mese, ds: p.ds }, select: { avere: true } } } })
+    ? await db.amazonInvoice.findMany({ where: { righe: { some: { anno, mese, ds: { in: codiciDs(p.ds) } } } }, orderBy: { numero: "asc" }, include: { righe: { where: { anno, mese, ds: { in: codiciDs(p.ds) } }, select: { avere: true } } } })
     : null;
   const puoRegistro = can(user, "fatture.registro");
   const etichetta = vista === "settimana" ? "Settimana" : "Mese";

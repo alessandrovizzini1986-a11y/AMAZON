@@ -1,8 +1,12 @@
 /**
  * Controllo MOG (Monte Ore Garantito) dei somministrati STD
- * (docs/costi-kit/ADDENDUM_claude_code_modulo_MOG.md): computo del mese = ore lavorate +
- * assenze retribuite, confronto con il MOG del file ADECCO_PS, proiezione a fine mese,
- * costo dell'integrazione che Adecco fattura (ore mancanti × tariffa Standard).
+ * (docs/costi-kit/ADDENDUM_claude_code_modulo_MOG.md), con le regole di Adecco (integrazioni MOG
+ * di ottobre 2026, CDC 1528):
+ * - MOG del mese = ore MOG al giorno (% × 169 / 100 / 26) × giorni del contratto da lunedì a sabato nel mese, max 26;
+ * - computo = tutte le ore del tracking (lavoro, assenze retribuite e non retribuite), la malattia/infortunio
+ *   vale le ore MOG di un giorno per ogni giorno lun–sab del periodo di malattia (dal primo all'ultimo giorno);
+ * - contratto attivo anche solo una parte del mese e nessuna ora: integrazione del MOG pro-rata.
+ * Costo dell'integrazione che Adecco fattura = ore mancanti × tariffa Standard.
  */
 import type { CellaX } from "@/lib/fatture/xlsxStream";
 import { LAVORO, type Lavoratore } from "@/domain/presenze/lavoratori";
@@ -11,8 +15,9 @@ import { normCf } from "@/domain/costi/anagrafica";
 export const SITO_DS: Record<string, string> = { valsamoggia: "DER1", santarcangelo: "DER2", origgio: "DLO2", buccinasco: "DLO4", castegnato: "DLO5", pomezia: "DLZ2", vigonza: "DVN1" };
 export const dsDaSito = (sito: string) => Object.entries(SITO_DS).find(([k]) => sito.toLowerCase().includes(k))?.[1] ?? null;
 
-/** Assenze retribuite che contano nel computo; Permesso non retribuito, Assenza ingiustificata e Riposo no. */
+/** Assenze retribuite (contano nel computo; come Adecco contano anche permesso non retribuito e assenza ingiustificata, non il Riposo). */
 export const ASSENZE_RETRIBUITE = ["FERIE", "ROL", "ExF", "104", "MALATTIA", "INFORTUNIO", "PERM_SIND", "ALTRI_PERM"] as const;
+const MALATTIA = ["MALATTIA", "INFORTUNIO"] as const;
 export const DIVISORE_MESE = 169; // ore mensili FT 39 h
 export const TARIFFA_DEFAULT = 20.86;
 
@@ -77,22 +82,33 @@ export function stessoNome(a: string, b: string) {
 const giorniMese = (m: string) => { const [a, b] = m.split("-").map(Number); return new Date(Date.UTC(a, b, 0)).getUTCDate(); };
 const giorni = (da: string, a: string) => Math.round((Date.parse(a) - Date.parse(da)) / 864e5) + 1;
 
-/** MOG del mese: dal file; con una variazione nel mese pct × 169 dalla data; contratti iniziati o finiti nel mese pro-rata sui giorni di calendario. */
+/** Domenica: fuori dai giorni MOG (Adecco conta i giorni da lunedì a sabato). */
+const domenica = (iso: string) => new Date(iso + "T12:00:00Z").getUTCDay() === 0;
+const GG_MOG_MESE = 26;
+/** % MOG valida in un giorno: quella del contratto o l'ultima variazione (aumento) già in vigore. */
+function pctAl(c: ContrattoMog, giorno: string, variazioni: VariazioneMog[]): number | null {
+  const v = variazioni.filter((x) => x.cf === c.cf && x.validaDal <= giorno).sort((p, q) => p.validaDal.localeCompare(q.validaDal)).at(-1);
+  if (v) return v.pctNuova;
+  if (c.pctMog !== null) return c.pctMog;
+  return c.oreMogMese !== null ? (c.oreMogMese / DIVISORE_MESE) * 100 : null;
+}
+/** Ore MOG di un giorno (% × 169 / 100 / 26). */
+export const oreMogGiorno = (c: ContrattoMog, giorno: string, variazioni: VariazioneMog[] = []) => { const p = pctAl(c, giorno, variazioni); return p === null ? null : ((p / 100) * DIVISORE_MESE) / GG_MOG_MESE; };
+/** Giorni MOG (lun–sab) del contratto tra da e a, compresi. */
+function giorniMog(c: ContrattoMog, da: string, a: string): string[] {
+  const out: string[] = [];
+  const ini = c.dataInizio && c.dataInizio > da ? c.dataInizio : da, fin = c.dataFine && c.dataFine < a ? c.dataFine : a;
+  for (let d = ini; d <= fin; d = addG(d, 1)) if (!domenica(d)) out.push(d);
+  return out;
+}
+
+/** MOG del mese come Adecco: ore MOG al giorno × giorni lun–sab del contratto nel mese (max 26), con gli aumenti dalla loro data. */
 export function mogDelMese(c: ContrattoMog, mese: string, variazioni: VariazioneMog[] = []): number | null {
-  const base = c.oreMogMese ?? (c.pctMog !== null ? (c.pctMog / 100) * DIVISORE_MESE : null);
-  if (base === null) return null;
-  const n = giorniMese(mese), inizio = `${mese}-01`, fine = `${mese}-${String(n).padStart(2, "0")}`;
-  const da = c.dataInizio && c.dataInizio > inizio ? c.dataInizio : inizio;
-  const a = c.dataFine && c.dataFine < fine ? c.dataFine : fine;
-  if (a < da) return 0;
-  const v = variazioni.filter((x) => x.cf === c.cf && x.validaDal <= a).sort((p, q) => p.validaDal.localeCompare(q.validaDal)).at(-1);
-  let ore = 0;
-  if (v && v.validaDal > da) {
-    ore += base * giorni(da, addG(v.validaDal, -1)) / n + (v.pctNuova / 100) * DIVISORE_MESE * giorni(v.validaDal, a) / n;
-  } else if (v) {
-    ore = (v.pctNuova / 100) * DIVISORE_MESE * giorni(da, a) / n;
-  } else ore = base * giorni(da, a) / n;
-  return Math.round(ore * 10) / 10;
+  if (pctAl(c, `${mese}-01`, variazioni) === null && c.oreMogMese === null) return null;
+  const n = giorniMese(mese);
+  const gg = giorniMog(c, `${mese}-01`, `${mese}-${String(n).padStart(2, "0")}`).slice(0, GG_MOG_MESE);
+  // + 1e-9: 34,125 resta 34,13 come nella lista Adecco (34,125 × 100 in virgola mobile è 3412,4999…)
+  return Math.round(gg.reduce((t, d) => t + (oreMogGiorno(c, d, variazioni) ?? 0), 0) * 100 + 1e-9) / 100;
 }
 const addG = (iso: string, k: number) => new Date(Date.parse(iso + "T00:00:00Z") + k * 864e5).toISOString().slice(0, 10);
 
@@ -125,25 +141,22 @@ export function controlloMog(x: { station: string; mese: string; lavoratori: Lav
   for (const l of x.lavoratori) {
     const g = Object.entries(l.giorni).filter(([d]) => d.startsWith(x.mese) && d <= finoA);
     const lav = g.reduce((t, [, v]) => t + LAVORO.reduce((s, k) => s + (v[k] ?? 0), 0), 0);
-    const ass = g.reduce((t, [, v]) => t + ASSENZE_RETRIBUITE.reduce((s, k) => s + (v[k] ?? 0), 0), 0);
+    const ass = g.reduce((t, [, v]) => t + ASSENZE_RETRIBUITE.filter((k) => !MALATTIA.includes(k as never)).reduce((s, k) => s + (v[k] ?? 0), 0), 0);
     const nonR = g.reduce((t, [, v]) => t + (v.PERM_NR ?? 0) + (v.ASS_INGIUST ?? 0), 0);
-    // solo ore non retribuite (o nessuna ora): per il MOG è come non essere nel tracking
-    if (!lav && !ass) continue;
+    const giorniMal = g.filter(([, v]) => MALATTIA.some((k) => v[k])).map(([d]) => d).sort();
+    const oreMalTracking = g.reduce((t, [, v]) => t + MALATTIA.reduce((s, k) => s + (v[k] ?? 0), 0), 0);
+    if (!lav && !ass && !nonR && !giorniMal.length) continue;
     const cf = normCf(l.cf);
     let c = contratti.find((k) => !usati.has(k.cf) && cf && k.cf === cf);
     let perNome = false;
     if (!c) { c = contratti.find((k) => !usati.has(k.cf) && stessoNome(`${k.cognome} ${k.nome}`, l.nome)); perNome = !!c; }
-    const computo = r1(lav + ass);
-    const base = { station: x.station, nome: l.nome, oreLavorate: r1(lav), assenzeRetribuite: r1(ass), nonRetribuite: r1(nonR), computo, abbinatoPerNome: perNome, soloAssenze: !lav && ass > 0 };
+    // malattia/infortunio: ore MOG di un giorno per ogni giorno lun–sab del periodo (Adecco); senza contratto le ore del tracking
+    const malattia = c && giorniMal.length ? giorniMog(c, giorniMal[0], giorniMal.at(-1)!).reduce((t, d) => t + (oreMogGiorno(c!, d, x.variazioni) ?? 0), 0) : oreMalTracking;
+    const computo = r1(lav + ass + nonR + malattia);
+    const base = { station: x.station, nome: l.nome, oreLavorate: r1(lav), assenzeRetribuite: r1(ass + malattia), nonRetribuite: r1(nonR), computo, abbinatoPerNome: perNome, soloAssenze: !lav && computo > 0 };
     if (!c) { out.push({ ...base, cf, pctMog: null, oreMog: null, dataFine: null, gap: null, stato: "NON IN FILE MOG", proiezione: null, giorniResidui: 0, oreMancanti: 0, costo: 0, rischioConsolidamento: false }); continue; }
     usati.add(c.cf);
     const mog = mogDelMese(c, x.mese, x.variazioni);
-    // solo assenze (es. malattia tutto il mese) e nessuna ora lavorata: Adecco integra tutto il MOG
-    if (!lav && mog !== null && mog > 0) {
-      out.push({ ...base, cf: c.cf, pctMog: c.pctMog, oreMog: mog, dataFine: c.dataFine, gap: r1(-mog), stato: "ZERO ORE", proiezione: null, giorniResidui: 0, oreMancanti: mog,
-        costo: Math.round(mog * tariffa * 100) / 100, rischioConsolidamento: /^s/i.test(c.rischioConsolidamento ?? "") });
-      continue;
-    }
     // proiezione: media ore per giorno lavorato × giorni lavorativi residui (5 su 7 dei giorni di calendario fino alla fine del contratto/mese)
     const fineEff = c.dataFine && c.dataFine < fine ? c.dataFine : fine;
     const residui = chiuso ? 0 : Math.max(0, Math.round(giorni(addG(finoA, 1), fineEff) * 5 / 7));
@@ -169,8 +182,8 @@ export function controlloMog(x: { station: string; mese: string; lavoratori: Lav
       });
       continue;
     }
-    const attivoAFine = !c.dataFine || c.dataFine >= fine;
-    const zero = attivoAFine && (mog ?? 0) > 0;
+    // contratto attivo almeno una parte del mese (anche finito nel mese) e nessuna ora: Adecco integra il MOG pro-rata
+    const zero = (mog ?? 0) > 0;
     out.push({
       station: x.station, nome: `${c.nome} ${c.cognome}`.trim(), cf: c.cf, pctMog: c.pctMog, oreMog: mog, dataFine: c.dataFine, oreLavorate: 0, assenzeRetribuite: 0, nonRetribuite: 0, computo: 0,
       gap: mog === null ? null : -mog, stato: zero ? "ZERO ORE" : "NON NEL TRACKING", proiezione: null, giorniResidui: 0, oreMancanti: zero ? mog ?? 0 : 0,

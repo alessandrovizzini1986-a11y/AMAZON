@@ -48,12 +48,13 @@ describe.skipIf(!haFile)("MOG aumenti ottobre 2026 (file reali)", () => {
     // effetto su DLO4 ottobre: il MOG dei 3 lavoratori aumenta dal 1/10
     const variazioni = u.map((a) => ({ cf: a.cf!, pctNuova: a.pctNuova, validaDal: a.validaDal! }));
     const dlo4 = u.filter((a) => a.station === "DLO4");
-    for (const a of dlo4) expect(mogDelMese(contratti.find((c) => c.cf === a.cf)!, "2026-10", variazioni)).toBe(Math.round(a.pctNuova / 100 * 169 * 10) / 10);
+    for (const a of dlo4) expect(mogDelMese(contratti.find((c) => c.cf === a.cf)!, "2026-10", variazioni)).toBeCloseTo(a.pctNuova / 100 * 169, 1); // 26 giorni lun–sab a ottobre
     const { lavoratori } = leggiLavoratori(await grids(esempio("tracking_ott26_dlo4", "10_Tracking_Amazon_Drivers_2026_STD_ADECCO_DLO4.xlsx")), 2026, 10);
     const r = riepilogoMog(controlloMog({ station: "DLO4", mese: "2026-10", lavoratori, contratti, variazioni }));
-    // con gli aumenti: 2 lavoratori a 72 h passano da OK a SOTTO MOG (MOG 82,0 e 84,3 h)
-    expect([r.ok, r.sotto, r.zeroOre, r.nonInFile, r.nonNelTracking]).toEqual([28, 7, 1, 19, 2]);
-    expect([r.oreMancanti, Math.round(r.costo)]).toEqual([86.3, 1800]);
+    // con gli aumenti: 2 lavoratori a 72 h passano da OK a SOTTO MOG (MOG 81,98 e 84,31 h)
+    expect([r.ok, r.sotto, r.zeroOre, r.nonInFile, r.nonNelTracking]).toEqual([30, 8, 0, 21, 0]);
+    // 66,9 h senza aumenti + i due lavoratori aumentati (12,3 e 10,0 h) = 89,2 h, come nella lista integrazioni Adecco di ottobre (12,31 e 9,98)
+    expect([r.oreMancanti, Math.round(r.costo * 100) / 100]).toEqual([89.2, 1860.72]);
     // gli aumenti coprono consolidamenti che il file dava come previsti
     expect(consolidamentiPrevisti(contratti, undefined, variazioni).length).toBe(consolidamentiPrevisti(contratti).length - u.filter((a) => { const c = contratti.find((k) => k.cf === a.cf)!; return /^s/i.test(c.supera20 ?? "") && c.nuovaPct !== null && a.pctNuova >= c.nuovaPct - 0.005; }).length);
   }, 300_000);

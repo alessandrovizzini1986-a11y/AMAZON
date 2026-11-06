@@ -1,4 +1,5 @@
 import "server-only";
+import { dsAmazon } from "@/domain/fatture/fatturato";
 import { db } from "@/lib/db";
 import { calibra, finestra, type Calibrazione, type RigaCalibrazione } from "@/domain/forecast/tariffe";
 import { reale } from "@/domain/forecast/previsione";
@@ -19,11 +20,11 @@ export async function calcolaStorico(n: number, oggi: string): Promise<DatiStori
     db.forecastRoute.findMany({ select: { fileId: true, data: true, station: true, cycle: true, classe: true, routes: true } }),
     db.vehicle.groupBy({ by: ["stationId", "stato"], where: { stato: { in: ["ATTIVO", "SOSTITUTIVO", "IN_OFFICINA"] } }, _count: { _all: true } }),
   ]);
-  const righeFc = rotte.map((r) => ({ fileId: r.fileId, data: r.data.toISOString().slice(0, 10), station: r.station, cycle: r.cycle, classe: r.classe, routes: r.routes }));
+  const righeFc = rotte.map((r) => ({ fileId: r.fileId, data: r.data.toISOString().slice(0, 10), station: dsAmazon(r.station), cycle: r.cycle, classe: r.classe, routes: r.routes }));
   const primaData = righeFc.reduce((m, r) => (r.data < m ? r.data : m), addGiorni(oggi, -14));
   const daQuando = addGiorni(inizioSettimana(primaData), -7 * (n + 8));
   const linee = await db.amazonInvoiceLine.findMany({ where: { data: { gte: new Date(daQuando + "T00:00:00Z") } }, select: { ds: true, data: true, classe: true, quantita: true, avere: true } });
-  const righe: RigaCalibrazione[] = linee.map((l) => ({ ds: l.ds, data: l.data.toISOString().slice(0, 10), classe: l.classe, quantita: l.quantita, avere: Number(l.avere) }));
+  const righe: RigaCalibrazione[] = linee.map((l) => ({ ds: dsAmazon(l.ds), data: l.data.toISOString().slice(0, 10), classe: l.classe, quantita: l.quantita, avere: Number(l.avere) }));
   const calOggi = calibra(righe, finestra(righe, n, oggi));
   const cache = new Map<string, Calibrazione>();
   const calPer = (w: string) => {

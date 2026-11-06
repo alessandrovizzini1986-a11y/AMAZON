@@ -1,4 +1,5 @@
 import "server-only";
+import { dsAmazon } from "@/domain/fatture/fatturato";
 import { db } from "@/lib/db";
 import { calibra, finestra, type Calibrazione, type RigaCalibrazione } from "@/domain/forecast/tariffe";
 import { confronta, perMese, prevedi, type Backtest, type Previsione, type RigaForecast } from "@/domain/forecast/previsione";
@@ -19,7 +20,7 @@ export async function calcolaForecast(n: number, oggi: string): Promise<DatiFore
   const [rotte, vers] = await Promise.all([db.forecastRoute.findMany({ select: { data: true, station: true, cycle: true, classe: true, routes: true, fileId: true } }), versioniForecast()]);
   // "ultimo" = per station, giorno e linea il file con versione più alta (settimana di emissione), poi caricato più tardi:
   // ricaricare un file vecchio non scavalca i nuovi e le classi sparite dalla versione nuova non sopravvivono
-  const fc: RigaForecast[] = statoAlla(vers, rotte.map((r) => ({ fileId: r.fileId, data: r.data.toISOString().slice(0, 10), station: r.station, cycle: r.cycle, classe: r.classe, routes: r.routes })), "9999-12-31")
+  const fc: RigaForecast[] = statoAlla(vers, rotte.map((r) => ({ fileId: r.fileId, data: r.data.toISOString().slice(0, 10), station: dsAmazon(r.station), cycle: r.cycle, classe: r.classe, routes: r.routes })), "9999-12-31")
     .map((r) => ({ data: r.data, station: r.station, classe: r.classe, routes: r.routes }));
   const primaData = fc.reduce((m, r) => (r.data < m ? r.data : m), addGiorni(oggi, -14));
   const daQuando = addGiorni(inizioSettimana(primaData), -7 * (n + 8));
@@ -28,7 +29,7 @@ export async function calcolaForecast(n: number, oggi: string): Promise<DatiFore
   const daStima = `${Number(mesi[0].slice(0, 4)) - 1}${mesi[0].slice(4)}-01`;
   const da = daStima < daQuando ? daStima : daQuando;
   const linee = await db.amazonInvoiceLine.findMany({ where: { data: { gte: new Date(da + "T00:00:00Z") } }, select: { ds: true, data: true, classe: true, quantita: true, avere: true } });
-  const righe: RigaCalibrazione[] = linee.map((l) => ({ ds: l.ds, data: l.data.toISOString().slice(0, 10), classe: l.classe, quantita: l.quantita, avere: Number(l.avere) }));
+  const righe: RigaCalibrazione[] = linee.map((l) => ({ ds: dsAmazon(l.ds), data: l.data.toISOString().slice(0, 10), classe: l.classe, quantita: l.quantita, avere: Number(l.avere) }));
   const cal = calibra(righe, finestra(righe, n, oggi));
 
   const aperte = fc.filter((r) => !chiusa(inizioSettimana(r.data), oggi));

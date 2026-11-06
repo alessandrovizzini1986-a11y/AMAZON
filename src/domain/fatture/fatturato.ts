@@ -8,7 +8,14 @@ import { CLASSI, isRotta } from "./classifica";
 export type RigaFatturato = { ds: string; anno: number; mese: number; week: number; classe: string; avere: number; quantita: number };
 
 /** Station sempre in tabella (anche a zero), nell'ordine del file. */
-export const DS_FATTURATO = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1", "DVN5", "DVN6"];
+export const DS_FATTURATO = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1"];
+
+/** Codici Amazon che sono rotte extra fatte da un'altra station: DVN5 e DVN6 sono di DVN1 (fatture e forecast). */
+export const DS_ACCORPATE: Record<string, string> = { DVN5: "DVN1", DVN6: "DVN1" };
+/** Station a cui va il fatturato / il forecast di un codice Amazon. */
+export const dsAmazon = (ds: string) => DS_ACCORPATE[ds.trim().toUpperCase()] ?? ds;
+/** Codici da cercare nei dati per una station (DVN1 → DVN1, DVN5, DVN6). */
+export const codiciDs = (ds: string) => [ds, ...Object.entries(DS_ACCORPATE).filter(([, a]) => a === ds).map(([k]) => k)];
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
