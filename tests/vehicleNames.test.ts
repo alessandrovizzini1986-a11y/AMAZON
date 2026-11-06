@@ -91,7 +91,16 @@ describe("normalizeLeasingCompany", () => {
     expect(normalizeLeasingCompany("EUROPCAR")).toBe("Europcar");
     expect(normalizeLeasingCompany("HERTZ")).toBe("Hertz");
     expect(normalizeLeasingCompany("Herz")).toBe("Hertz");
-    expect(normalizeLeasingCompany("Ayvenes")).toBe("Ayvens");
+    expect(normalizeLeasingCompany("Ayvenes")).toBe("ALD"); // Ayvens = nuovo nome di ALD
+    expect(normalizeLeasingCompany("ALD 3 mesi")).toBe("ALD MT");
+    expect(normalizeLeasingCompany("herzt")).toBe("Hertz");
+    expect(normalizeModello("VOLSWAGHEN CRAFTEN")).toBe("Volkswagen Crafter");
+    expect(normalizeModello("MAXIUS DELIVER")).toBe("Maxus Deliver 9");
+    expect(normalizeModello("Maxus Delivery")).toBe("Maxus Deliver 9");
+    expect(normalizeModello("SAIK MOTOR")).toBe("Maxus Saic Motor");
+    expect(normalizeModello("Ford Custom")).toBe("Ford Transit Custom");
+    expect(normalizeModello("Peugeot Exspert")).toBe("Peugeot Expert");
+    expect(normalizeModello("Citroen Berling")).toBe("Citroen Berlingo");
     expect(normalizeLeasingCompany("ARVAL FINE NOLEGGIO")).toBe("Arval");
     expect(normalizeLeasingCompany("ARVAL BT")).toBe("Arval");
     expect(normalizeLeasingCompany("ARVAL midterm")).toBe("Arval");
