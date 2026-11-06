@@ -2,7 +2,7 @@
 title: "Costi del personale a fine mese"
 order: 15
 category: "Personale"
-updated: "2026-11-03"
+updated: "2026-11-06"
 ---
 
 A fine mese il sito stima quanto costa il personale delle sette station (DER1, DER2, DLO2, DLO4, DLO5, DLZ2, DVN1), prima che arrivino le fatture. Si fa tutto nella sezione **Costi del personale**.
@@ -54,3 +54,17 @@ I file restano **sul tuo PC**: il sito li legge nel browser. Sul server vanno so
   - le **tariffe trasferta per data**: 22,50 € dal 1/1/2026, 23,50 € dal 1/1/2027, 24,00 € dal 1/6/2027; la domenica +7,00 €. Un avviso compare 60, 30 e 7 giorni prima di ogni cambio;
   - i **coefficienti con storico**;
   - i **festivi**: nazionali, 24/12 e 31/12, e il patrono di ogni station.
+
+### GLS Castel Maggiore ([/costi/gls](/costi/gls))
+
+L'appalto GLS (CDC **5565**) è **open book**: ogni mese si fatturano a GLS i costi del mese prima più le percentuali del contratto. Le ore non vengono dai tracking ma dal **file presenze di Castel Maggiore** compilato in sede.
+
+1. Trascina insieme nella scheda **GLS**: le presenze di Castel Maggiore del **mese** e del **mese prima**, il **DB_CDL_base** (il sito legge il foglio **SIC GLS BO**), l'export **Badgebox** del mese e, se è già arrivato, il **Costi del personale** del mese. Il sito riconosce i file dal contenuto e non li salva.
+2. **Busta SIC pagata il 27**: CDL dei SIC attivi nel mese + variabili del mese prima (trasferte, straordinari, festività non godute, malattia netta della carenza, assenze non pagate, ferie/ROL/ExF godute). Stesse regole e parametri di Amazon. Su settembre 2026 la stima (293.770 €) era a +0,7 % dal payroll vero (291.633 €). Se carichi il payroll, nel F.O. va la busta vera.
+3. **STD**: ore degli STD del file presenze × tariffe ADIT (oggi quelle Amazon, finché il sito non legge anche il CDC 5565 dell'ADIT).
+4. Scarica i fogli **MM_AA** e **MMAA_ft** per il file **GLS_Costi_F.O.** e il foglio **GLS_MMM_AA** per **Stima_Costo_personale**, e spostali nei tuoi file con *Sposta o copia*.
+   - Nel foglio F.O.: P60 = busta del mese − accantonamenti del mese prima + accantonamenti del mese; P61 = stima STD; danni a forfait (4.050 €/mese); P71 = totale del foglio _ft.
+   - Nel foglio _ft: costo del lavoro, mezzi e carburante dal foglio F.O. del **mese prima**, pedaggi da **due mesi prima**; voci b e c = persone **attive** nell'anagrafica del file presenze × 129,25 € e × 37,42 €; poi 7 % di struttura e 6,5 % di margine.
+5. **Badgebox** (formalità: chi timbra): il sito tiene solo il gruppo *GLS - Castel Maggiore (BO)* e segnala chi lavora nel file presenze ma non timbra mai, i giorni lavorati senza ore Badgebox, gli scarti oltre 8 ore nel mese e le timbrature dispari. Scarica la tabella e mandala al referente di sede: il costo si calcola comunque dal file presenze.
+
+Gli **extra costi** (driver Amazon mandati su GLS nei picchi) non entrano nel F.O. GLS né nell'open book: si fatturano a GLS a parte, dopo la sua autorizzazione. Il patrono di Castel Maggiore è il **30 novembre**.

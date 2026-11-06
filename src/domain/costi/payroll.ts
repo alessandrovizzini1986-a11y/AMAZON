@@ -42,8 +42,12 @@ const num = (v: Cell) => (typeof v === "number" ? v : Number(String(v ?? "").rep
 const foglio = (s: SheetGrid[]) => s.find((x) => x.name.trim().toLowerCase() === "det" && x.rows.slice(0, 5).some((r) => r.some((v) => text(v).trim() === "IMPORTO")));
 export const isPayroll = (s: SheetGrid[]) => !!foglio(s);
 
-/** `dipendenti` = matricole con almeno una riga CDC 5569 (anche fuori dai conti 6*, es. solo debiti). */
-export function leggiPayroll(sheets: SheetGrid[]): { righe: RigaPayroll[]; altriCdc: number; dipendenti: number } {
+/**
+ * `dipendenti` = matricole con almeno una riga del CDC (anche fuori dai conti 6*, es. solo debiti).
+ * `cdc`: 5569 Amazon (default) o 5565 GLS Castel Maggiore; per GLS le voci "_gls" (indennità di trasferta GLS)
+ * sono trasferta, non una riclassifica.
+ */
+export function leggiPayroll(sheets: SheetGrid[], cdc = 5569): { righe: RigaPayroll[]; altriCdc: number; dipendenti: number } {
   const ws = foglio(sheets);
   if (!ws) throw new Error('foglio "det" con la colonna IMPORTO non trovato');
   const hr = ws.rows.findIndex((r) => r.some((v) => text(v).trim() === "IMPORTO"));
@@ -58,11 +62,12 @@ export function leggiPayroll(sheets: SheetGrid[]): { righe: RigaPayroll[]; altri
   for (let r = hr + 1; r < ws.rows.length; r++) {
     const conto = text(at(ws, r, k.conto)).trim();
     if (!conto) continue;
-    if (text(at(ws, r, k.cdc)).trim().replace(/\.0$/, "") !== "5569") { altriCdc++; continue; }
+    if (text(at(ws, r, k.cdc)).trim().replace(/\.0$/, "") !== String(cdc)) { altriCdc++; continue; }
     matr.add(text(at(ws, r, k.matr)).trim().replace(/\.0$/, ""));
     if (!conto.startsWith("6")) continue;
     const cod1 = text(at(ws, r, k.cod1)).trim().replace(/\.0$/, ""), cod2 = text(at(ws, r, k.cod2)).trim(), descrizione = text(at(ws, r, k.d)).trim();
-    righe.push({ matr: text(at(ws, r, k.matr)).trim().replace(/\.0$/, ""), dipe: text(at(ws, r, k.dipe)).trim(), cod1, cod2, descrizione, conto, importo: num(at(ws, r, k.imp)), ...classifica(cod1, cod2, descrizione) });
+    const cl = classifica(cod1, cod2, descrizione);
+    righe.push({ matr: text(at(ws, r, k.matr)).trim().replace(/\.0$/, ""), dipe: text(at(ws, r, k.dipe)).trim(), cod1, cod2, descrizione, conto, importo: num(at(ws, r, k.imp)), ...(cdc !== 5569 && cl.componente === "GLS" ? { componente: "TRASFERTA" as const, istituto: "TRASFERTA" } : cl) });
   }
   return { righe, altriCdc, dipendenti: matr.size };
 }
@@ -91,3 +96,6 @@ export function componentiPerStation(righe: (RigaPayroll & { station: string | n
   for (const [s, set] of dip) out[s].dipendenti = set.size;
   return out;
 }
+
+/** Totale della busta del CDC (righe RECLASS e GLS escluse, come componentiPerStation). */
+export const totalePayroll = (righe: Pick<RigaPayroll, "componente" | "importo">[]) => Math.round(righe.filter((r) => r.componente !== "RECLASS" && r.componente !== "GLS").reduce((a, r) => a + r.importo, 0) * 100) / 100;
