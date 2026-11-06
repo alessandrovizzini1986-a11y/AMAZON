@@ -6,8 +6,10 @@ import { normalizzaNumero, progressivo } from "./numero";
 import { classifica } from "./classifica";
 
 export type Lettura = { file: string; sha256: string; fattura?: Fattura; errore?: string };
-export type InfoRegistro = { esportataIl: string | null; presenteInFatt2026Il: string | null };
-export type Stato = "nuova" | "già presente" | "doppione nel caricamento" | "errore";
+/** Dati del registro per un numero; nRighe/sommaAvere/importoDovuto servono a riconoscere una fattura rivista da Amazon. */
+export type InfoRegistro = { esportataIl: string | null; presenteInFatt2026Il: string | null; pdfSha256?: string | null; nRighe?: number; sommaAvere?: number; importoDovuto?: number };
+/** "da sostituire": stesso numero già esportato, ma il PDF nuovo ha righe o importi diversi (fattura che era in revisione). */
+export type Stato = "nuova" | "da sostituire" | "già presente" | "doppione nel caricamento" | "errore";
 export type EsitoFile = { file: string; sha256: string; stato: Stato; motivo: string; numero: string | null; fattura?: Fattura };
 
 const gg = (iso: string) => new Date(iso).toLocaleDateString("it-IT", { timeZone: "Europe/Rome" });
@@ -17,6 +19,14 @@ export function erroreFattura(f: Fattura): string | null {
   if (!f.numero || f.righe.length === 0 || f.template === "?") return "template non riconosciuto";
   if (!f.ds) return "station (DS) non trovata nel PDF";
   return null;
+}
+
+/** Il PDF ha righe o importi diversi da quelli registrati (solo se il registro li conosce). */
+function cambiata(r: InfoRegistro, f: Fattura): boolean {
+  if (r.nRighe === undefined || r.sommaAvere === undefined) return false;
+  if (r.nRighe !== f.righe.length) return true;
+  if (Math.abs(r.sommaAvere - f.sommaAvere) > 0.005) return true;
+  return r.importoDovuto !== undefined && f.importoDovuto !== null && Math.abs(r.importoDovuto - f.importoDovuto) > 0.005;
 }
 
 export function statiCaricamento(letture: Lettura[], registro: Record<string, InfoRegistro>): EsitoFile[] {
@@ -30,6 +40,10 @@ export function statiCaricamento(letture: Lettura[], registro: Record<string, In
     if (visti.has(numero)) return { ...base, stato: "doppione nel caricamento", motivo: `${numero} è già in un altro file di questo caricamento`, numero };
     visti.add(numero);
     const r = registro[numero];
+    if (r && (r.esportataIl || r.presenteInFatt2026Il) && cambiata(r, l.fattura)) {
+      const e2 = (x: number) => x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return { ...base, stato: "da sostituire", motivo: `rivista da Amazon: prima ${r.nRighe} righe, ${e2(r.sommaAvere!)} € imponibile; ora ${l.fattura.righe.length} righe, ${e2(l.fattura.sommaAvere)} €`, numero, fattura: l.fattura };
+    }
     if (r && (r.esportataIl || r.presenteInFatt2026Il)) {
       const motivi = [r.esportataIl ? `esportata il ${gg(r.esportataIl)}` : "", r.presenteInFatt2026Il ? "presente in fatt_2026" : ""].filter(Boolean);
       return { ...base, stato: "già presente", motivo: motivi.join(" · "), numero, fattura: l.fattura };

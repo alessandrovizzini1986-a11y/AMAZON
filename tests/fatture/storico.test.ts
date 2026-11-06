@@ -41,4 +41,12 @@ describe("§2 stati del caricamento", () => {
     expect(s[2].motivo).toMatch(/esportata il 03\/11\/2026/);
     expect(s[3].motivo).toBe("template non riconosciuto");
   });
+  it("fattura rivista da Amazon (stesso numero, righe o importi diversi): da sostituire", () => {
+    const f = (n: number, avere: number) => ({ ...fatt("INV-X-0003", n), sommaAvere: avere, importoDovuto: avere * 1.22 }) as unknown as Fattura;
+    const reg = { "INV-X-0003": { esportataIl: "2026-11-04T10:00:00Z", presenteInFatt2026Il: "2026-11-06T10:00:00Z", nRighe: 46, sommaAvere: 85301.03, importoDovuto: 85301.03 * 1.22 } };
+    expect(statiCaricamento([{ file: "a.pdf", sha256: "1", fattura: f(46, 85301.03) }], reg)[0].stato).toBe("già presente");
+    const s = statiCaricamento([{ file: "a.pdf", sha256: "2", fattura: f(48, 86100) }], reg)[0];
+    expect(s.stato).toBe("da sostituire");
+    expect(s.motivo).toMatch(/prima 46 righe.*ora 48 righe/);
+  });
 });

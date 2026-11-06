@@ -18,6 +18,7 @@ const ggmm = (d: Date | null) => (d ? d.toLocaleDateString("it-IT", { timeZone: 
 
 const BADGE: Record<EsitoFile["stato"], string> = {
   nuova: "badge-ok",
+  "da sostituire": "badge-warn",
   "già presente": "badge-neutral",
   "doppione nel caricamento": "badge-warn",
   errore: "badge-danger",
@@ -64,14 +65,15 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
     }
   };
 
-  const nuove = esiti.filter((e) => e.stato === "nuova" && e.fattura) as (EsitoFile & { fattura: Fattura; numero: string })[];
+  const nuove = esiti.filter((e) => (e.stato === "nuova" || e.stato === "da sostituire") && e.fattura) as (EsitoFile & { fattura: Fattura; numero: string })[];
   const righe: RigaFatt[] = useMemo(() => {
     const r = ordinaRighe(nuove.flatMap((e) => e.fattura.righe.map((x) => daRigaPdf(x, e.numero, e.fattura.ds!))));
     return precompila ? r.map((x) => ({ ...x, microarea: macro[x.descrizione]?.microarea ?? null, macroarea: macro[x.descrizione]?.macroarea ?? null })) : r;
   }, [nuove, precompila, macro]);
   const nonMappate = precompila ? [...new Set(righe.filter((r) => !r.macroarea).map((r) => r.descrizione))] : [];
   const descrizioni = useMemo(() => riepilogoDescrizioni(nuove.map((e) => e.fattura), new Set(note)), [nuove, note]);
-  const conteggi = (["nuova", "già presente", "doppione nel caricamento", "errore"] as const).map((s) => [s, esiti.filter((e) => e.stato === s).length] as const);
+  const daSostituire = esiti.filter((e) => e.stato === "da sostituire").map((e) => e.numero!);
+  const conteggi = (["nuova", "da sostituire", "già presente", "doppione nel caricamento", "errore"] as const).map((s) => [s, esiti.filter((e) => e.stato === s).length] as const);
 
   /** Al primo Scarica / Copia: salva fatture e righe nel registro, a lotti di massimo 500 righe. */
   const registra = async () => {
@@ -82,7 +84,7 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
       return {
         numero: e.numero, ds: f.ds!, tipo: f.tipoDoc, dataFattura: isoD(f.dataFattura) ?? isoD(f.periodoA) ?? isoD(primo)!, periodoDa: isoD(f.periodoDa) ?? isoD(primo)!,
         periodoA: isoD(f.periodoA) ?? isoD(f.righe[f.righe.length - 1].Data)!, importoDovuto: f.importoDovuto ?? f.sommaTotale, sommaTotale: f.sommaTotale, sommaAvere: f.sommaAvere,
-        rifNotaCredito: f.rifNotaCredito, pdfNome: e.file, pdfSha256: e.sha256, righe: righe.filter((r) => r.numero === e.numero),
+        rifNotaCredito: f.rifNotaCredito, pdfNome: e.file, pdfSha256: e.sha256, righe: righe.filter((r) => r.numero === e.numero), sostituisci: e.stato === "da sostituire",
       };
     });
     const lotti: FatturaDaRegistrare[][] = [];
@@ -99,7 +101,7 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
     }
     setStato("");
     setRegistrato(true);
-    setMsg(`${reg} fatture registrate come esportate (${righe.length} righe).`);
+    setMsg(`${reg} fatture registrate come esportate (${righe.length} righe)${daSostituire.length ? `, di cui ${daSostituire.length} sostituite: in fatt_2026 cancella prima le righe vecchie di ${daSostituire.join(", ")}` : ""}.`);
     router.refresh();
   };
 
@@ -112,7 +114,7 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
         importoDovuto: e.fattura!.importoDovuto, sommaTotale: e.fattura!.sommaTotale, sommaAvere: e.fattura!.sommaAvere, delta: e.fattura!.delta, nRighe: e.fattura!.righe.length,
         stato: e.motivo ? `${e.stato} (${e.motivo})` : e.stato, file: e.file,
       }));
-      const scartate = esiti.filter((e) => e.stato !== "nuova").map((e) => ({ file: e.file, stato: e.stato, motivo: e.motivo }));
+      const scartate = esiti.filter((e) => e.stato !== "nuova" && e.stato !== "da sostituire").map((e) => ({ file: e.file, stato: e.stato, motivo: e.motivo }));
       await scarica(excelImport(righe, fatture, scartate, descrizioni), nomeFileImport());
     } catch (e) {
       setErrore(e instanceof Error ? e.message : String(e));
@@ -136,7 +138,7 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
         document.execCommand("copy");
         ta.remove();
       }
-      setMsg(`${righe.length} righe copiate: incollale in fondo a fatt_2026 (prima colonna DS).`);
+      setMsg(`${righe.length} righe copiate: incollale in fondo a fatt_2026 (prima colonna DS).${daSostituire.length ? ` Prima cancella in fatt_2026 le righe vecchie di ${daSostituire.join(", ")}.` : ""}`);
     } catch (e) {
       setErrore(e instanceof Error ? e.message : String(e));
     } finally {
@@ -168,6 +170,7 @@ export function ImportaClient({ ultimo, prossimo, note, macro }: {
               <button type="button" className="btn-primary h-10" disabled={lavoro || !righe.length} onClick={excel}>Scarica Excel</button> <Aiuto k="fatture.excel" />
               <button type="button" className="btn-secondary h-10" disabled={lavoro || !righe.length} onClick={copia}>Copia righe</button> <Aiuto k="fatture.copia" />
             </div>
+            {daSostituire.length > 0 && <p role="alert" className="mb-3 rounded-control bg-warn-soft px-3 py-2 text-sm text-warn"><b>{daSostituire.length} fatture rivista da Amazon</b> ({daSostituire.join(", ")}): con Scarica o Copia il sito sostituisce righe e importi vecchi con quelli nuovi. In fatt_2026 cancella le righe vecchie di questi numeri prima di incollare le nuove, poi fai Allinea.</p>}
             {msg && <p className="mb-3 rounded-control bg-ok-soft px-3 py-2 text-sm text-ok">{msg}</p>}
             {nonMappate.length > 0 && <p className="mb-3 rounded-control bg-warn-soft px-3 py-2 text-sm text-warn">{nonMappate.length} descrizioni senza MICRO/MACROAREA nel mapping: restano vuote ({nonMappate.slice(0, 5).join("; ")}{nonMappate.length > 5 ? "…" : ""}).</p>}
             <div className="overflow-x-auto">
