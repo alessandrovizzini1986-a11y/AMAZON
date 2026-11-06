@@ -16,6 +16,10 @@ const BRAND_ALIASES: Record<string, string> = {
   FORD: "Ford",
   IVECO: "Iveco",
   MAXUS: "Maxus",
+  MAXIUS: "Maxus",
+  // SAIC Motor è il gruppo che produce i Maxus: "SAIC MOTORS" / "SAIK MOTOR" nella Lista
+  SAIC: "Maxus",
+  SAIK: "Maxus",
   MERCEDES: "Mercedes-Benz",
   "MERCEDES-BENZ": "Mercedes-Benz",
   MERCEDESBENZ: "Mercedes-Benz",
@@ -33,6 +37,9 @@ const BRAND_ALIASES: Record<string, string> = {
   VW: "Volkswagen",
   WOLSVAGEN: "Volkswagen",
   VOLSWAGEN: "Volkswagen",
+  VOLSWAGHEN: "Volkswagen",
+  VOLSVAGHEN: "Volkswagen",
+  VOLKSWAGHEN: "Volkswagen",
 };
 
 // Solo varianti di scrittura della stessa auto — mai alias tra modelli reali
@@ -40,23 +47,24 @@ const BRAND_ALIASES: Record<string, string> = {
 // di quelle a una parola.
 const MODEL_ALIASES: Record<string, Record<string, string>> = {
   Citroen: {
-    BERLINGO: "Berlingo", JUMPER: "Jumper", JUMPY: "Jumpy", TRAFFIC: "Trafic", TRAFIC: "Trafic",
+    BERLINGO: "Berlingo", BERLING: "Berlingo", JUMPER: "Jumper", JUMPY: "Jumpy", TRAFFIC: "Trafic", TRAFIC: "Trafic",
   },
   Fiat: {
     DUCATO: "Ducato", DOBLO: "Doblò", "DOBLO'": "Doblò", DOBLÒ: "Doblò",
     SCUDO: "Scudo", TALENTO: "Talento", FIORINO: "Fiorino", TRANSIT: "Transit",
   },
   Ford: {
-    TRANSIT: "Transit", TRANIST: "Transit", TRANISIT: "Transit", TRANST: "Transit",
+    TRANSIT: "Transit", TRASNIT: "Transit", TRANIST: "Transit", TRANISIT: "Transit", TRANST: "Transit",
     "TRANSIT CUSTOM": "Transit Custom", "TRANSIT CUSTUM": "Transit Custom", "TRANST CUSTOM": "Transit Custom",
-    CUSTOM: "Custom", COSTUM: "Custom", CUSTUM: "Custom",
+    // "Ford Custom" è sempre il Transit Custom
+    CUSTOM: "Transit Custom", COSTUM: "Transit Custom", CUSTUM: "Transit Custom",
     TOURNEO: "Tourneo", CURIER: "Courier", COURIER: "Courier",
     "E-TRANSIT": "E-Transit", VIVARO: "Vivaro",
   },
   Iveco: { DAILY: "Daily" },
   Maxus: {
-    DELIVER: "Deliver 9", DELIVER9: "Deliver 9", "DELIVER 9": "Deliver 9",
-    "E-DELIVER": "e-Deliver", "SAIC MOTOR": "Saic Motor",
+    DELIVER: "Deliver 9", DELIVERY: "Deliver 9", DELIVER9: "Deliver 9", "DELIVER 9": "Deliver 9",
+    "E-DELIVER": "e-Deliver", "SAIC MOTOR": "Saic Motor", MOTOR: "Saic Motor", MOTORS: "Saic Motor",
   },
   "Mercedes-Benz": { SPRINTER: "Sprinter", VITO: "Vito" },
   Nissan: {
@@ -66,14 +74,14 @@ const MODEL_ALIASES: Record<string, Record<string, string>> = {
     MOVANO: "Movano", VIVARO: "Vivaro", "COMBO CARGO": "Combo Cargo", COMBO: "Combo",
   },
   Peugeot: {
-    BOXER: "Boxer", BOXSTER: "Boxer", EXPERT: "Expert", EXSPORT: "Expert", EXPRESS: "Express",
+    BOXER: "Boxer", BOXSTER: "Boxer", EXPERT: "Expert", EXSPERT: "Expert", EXSPORT: "Expert", EXPRESS: "Express",
   },
   Renault: {
-    MASTER: "Master", TRAFFIC: "Trafic", TRAFIC: "Trafic", TRIFFIC: "Trafic", KANGOO: "Kangoo",
+    MASTER: "Master", TRAFFIC: "Trafic", TRAFIC: "Trafic", TRIFFIC: "Trafic", KANGOO: "Kangoo", EXPRESS: "Express", EXSPRESS: "Express",
   },
   Toyota: { PROACE: "Proace", PROCACE: "Proace", PORACE: "Proace" },
   Volkswagen: {
-    CRAFTER: "Crafter", TRANSPORTER: "Transporter", TRASNPORTER: "Transporter",
+    CRAFTER: "Crafter", CRAFTEN: "Crafter", CADDY: "Caddy", TRANSPORTER: "Transporter", TRASNPORTER: "Transporter",
   },
 };
 
@@ -134,14 +142,17 @@ const COMPANY_ALIASES: Record<string, string> = {
   ALD: "ALD",
   "ALD MT": "ALD MT",
   "ALD MID TERM": "ALD MT",
+  "ALD 3 MESI": "ALD MT",
+  "AYVENS MT": "ALD MT",
   ARVAL: "Arval",
   "ARVAL MIDTERM": "Arval",
   "ARVAL BT": "Arval",
   "ARVAL FINE NOLEGGIO": "Arval",
   AUTOVIA: "Autovia",
   AVIS: "Avis",
-  AYVENES: "Ayvens",
-  AYVENS: "Ayvens",
+  // Ayvens è il nuovo nome di ALD: sul sito si scrive sempre ALD (righe F.O., fatture ALD YTD)
+  AYVENES: "ALD",
+  AYVENS: "ALD",
   DRIVALIA: "Drivalia",
   EUROPCAR: "Europcar",
   HERTZ: "Hertz",
