@@ -76,7 +76,7 @@ export async function aggiungiParametro(input: { chiave: string; validaDal: stri
 export async function aggiungiFestivo(input: { data: string; descrizione: string; station: string }) {
   const user = await requireUser();
   assertCan(user, "costi.parametri");
-  const x = z.object({ data: iso, descrizione: z.string().min(1).max(100), station: z.string().regex(/^(TUTTE|[A-Z]{3}\d)$/) }).parse(input);
+  const x = z.object({ data: iso, descrizione: z.string().min(1).max(100), station: z.string().regex(/^(TUTTE|GLS|[A-Z]{3}\d)$/) }).parse(input);
   await db.festivo.upsert({ where: { data_station: { data: d(x.data), station: x.station } }, create: { ...x, data: d(x.data) }, update: { descrizione: x.descrizione } });
   await audit({ userId: user.id, action: "costi.festivo", entity: "Festivo", meta: x });
   revalidatePath(BASE, "layout");

@@ -76,7 +76,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
           <tbody>{fest.map((f) => <tr key={f.id}><td>{it(f.data)}</td><td>{new Date(f.data + "T12:00:00Z").toLocaleDateString("it-IT", { weekday: "long", timeZone: "UTC" })}</td><td>{f.descrizione}</td><td>{f.station}</td>{edit && <td><EliminaFestivo id={f.id} /></td>}</tr>)}</tbody>
         </table></div>
         {fest.length === 0 && <p className="text-sm text-warn">Nessun festivo per il {anno}: aggiungili (nazionali con station TUTTE, patroni con la station).</p>}
-        {edit && <NuovoFestivo stations={[...STATIONS_COSTI]} />}
+        {edit && <NuovoFestivo stations={[...STATIONS_COSTI, "GLS"]} />}
       </section>
 
       <section id="mog" className="card p-4 md:p-5">
