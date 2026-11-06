@@ -35,7 +35,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
             const pc = prossimoCambio(tar, v, oggi);
             return (
               <div key={v}>
-                <h3 className="mb-2 font-semibold">{v === "TRASFERTA" ? "Trasferta feriale" : "Extra domenica"} — oggi {eur(valoreAlla(tar, v, oggi) ?? 0)} €</h3>
+                <h3 className="mb-2 font-semibold">{v === "TRASFERTA" ? "Trasferta feriale" : v === "TRASFERTA_GLS" ? "Trasferta GLS (tutti i giorni, nessun extra)" : "Extra domenica"} — oggi {eur(valoreAlla(tar, v, oggi) ?? 0)} €</h3>
                 <table className="table-base text-sm"><thead><tr><th>Valida dal</th><th className="text-right">€/giorno</th><th>Fonte</th></tr></thead>
                   <tbody>{tar.filter((t) => t.voce === v).map((t) => <tr key={t.validaDal} className={t.validaDal === pc?.validaDal ? "bg-warn-soft" : ""}><td>{it(t.validaDal)}</td><td className="text-right font-mono">{eur(t.valore)}</td><td className="text-ink-muted">{t.fonte ?? ""}</td></tr>)}</tbody>
                 </table>

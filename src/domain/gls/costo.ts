@@ -2,12 +2,12 @@
  * Costo del personale GLS Castel Maggiore (CDC 5565) dal file presenze (docs/costi-kit/PROMPT_GLS_mensile.md §3).
  *
  * SIC — busta pagata il 27 del mese M = CDL (foglio "SIC GLS BO") dei SIC attivi a M + variabili del mese M−1
- * dalla griglia presenze: trasferte (giorni con "Indennità Trasferta" × tariffa alla data, extra la domenica),
+ * dalla griglia presenze: trasferte (giorni con "Indennità Trasferta" × tariffa GLS alla data, 25 € anche la domenica),
  * straordinari × €/h SIC, festività non godute (sabato/domenica a tutti, in settimana solo a chi ha lavorato),
  * malattia −€/h netta della carenza, assenze non pagate (PNR, 104, altri giustificativi) al costo orario,
  * ferie/ROL/ExF godute al saving del CDL. Tutto × oneri tranne la trasferta (esente).
  * Stesse regole e parametri della busta Amazon (bustaLavoratore); verificata su settembre 2026:
- * stima 293.770 € contro payroll CDC 5565 291.633 € (+0,7 %).
+ * stima ~297.900 € contro payroll CDC 5565 291.633 € (+2,2 %; trasferte 20.050 contro 20.925).
  *
  * STD — ore del mese M dalla griglia (persone STD in anagrafica) × tariffe ADIT, con stimaStd.
  */
@@ -16,7 +16,7 @@ import type { Festivo } from "@/domain/costi/festivi";
 import type { ParametriSic } from "@/domain/costi/sic";
 import { stimaStd, type OreStation, type ParametriStd, type StimaStdStation } from "@/domain/costi/std";
 import type { TariffeStd } from "@/domain/costi/adit";
-import { trasfertaGiorno, type ValorePerData } from "@/domain/costi/tariffe";
+import { trasfertaGiorno, valoreAlla, type ValorePerData } from "@/domain/costi/tariffe";
 import { trovaCDL } from "@/domain/costi/anagrafica";
 import { attivoNel, totVoce, type PersonaAnagraficaGls, type PersonaGrigliaGls, type PresenzeGls } from "./presenze";
 
@@ -24,6 +24,12 @@ export const STATION_GLS = "GLS";
 export const CDC_GLS = 5565;
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
+
+/**
+ * Trasferta GLS del giorno: tariffa TRASFERTA_GLS (25 € dal lunedì alla domenica, nessun extra domenicale;
+ * confermato da Alessandro il 06/11/2026). Senza tariffa GLS si usa quella Amazon.
+ */
+export const trasfertaGls = (tariffe: ValorePerData[], d: string) => valoreAlla(tariffe, "TRASFERTA_GLS", d) ?? trasfertaGiorno(tariffe, d, isDom(d));
 const isDom = (d: string) => new Date(d + "T12:00:00Z").getUTCDay() === 0;
 const isWeekend = (d: string) => { const g = new Date(d + "T12:00:00Z").getUTCDay(); return g === 0 || g === 6; };
 const ultimoGiorno = (mese: string) => { const [a, m] = mese.split("-").map(Number); return `${mese}-${String(new Date(Date.UTC(a, m, 0)).getUTCDate()).padStart(2, "0")}`; };
@@ -95,7 +101,7 @@ export function bustaGls(x: { mese: string; variabili: PresenzeGls; anagMese: Pe
     // trasferte del mese prima
     const tr = g?.voci["Indennità Trasferta"] ?? {};
     let trasferta = 0, trasfGg = 0, trasfDom = 0;
-    for (const [d, n] of Object.entries(tr)) { if (!n) continue; const dom = isDom(d); trasfGg++; if (dom) trasfDom++; trasferta += trasfertaGiorno(x.tariffe, d, dom); }
+    for (const [d, n] of Object.entries(tr)) { if (!n) continue; const dom = isDom(d); trasfGg++; if (dom) trasfDom++; trasferta += trasfertaGls(x.tariffe, d); }
     // straordinari
     const oreStraord = totVoce(g, "Straordinari") + totVoce(g, "Straordinari notturni");
     const strTar = pct >= 0.99 || dispatcher ? p.STR_FT : p.STR_PT;
@@ -165,7 +171,7 @@ export function oreGls(presenze: PresenzeGls, tipo: "SIC" | "STD", festivi: Fest
       const ord = g.voci.Ordinarie?.[d] ?? 0, str = (g.voci.Straordinari?.[d] ?? 0) + (g.voci["Straordinari notturni"]?.[d] ?? 0);
       o.standard += ord; o.straord += str;
       if (df) { o.standardDF += ord; o.straordDom += str; }
-      if (g.voci["Indennità Trasferta"]?.[d]) { const dom = isDom(d); o.trasfGg++; if (dom) o.trasfDom++; o.trasfEuro += trasfertaGiorno(tariffe, d, dom); }
+      if (g.voci["Indennità Trasferta"]?.[d]) { const dom = isDom(d); o.trasfGg++; if (dom) o.trasfDom++; o.trasfEuro += trasfertaGls(tariffe, d); }
     }
     o.ferie += totVoce(g, "FERIE"); o.rol += totVoce(g, "ROL"); o.exf += totVoce(g, "EXF"); o.malattia += totVoce(g, "MALATTIA"); o.notturno += totVoce(g, "Notturno");
   }

@@ -2,7 +2,7 @@
 title: "Fatture Amazon: compilazione di fatt_2026"
 order: 6
 category: "Fatture"
-updated: "2026-11-04"
+updated: "2026-11-06"
 ---
 
 Ogni riga della sezione **"Dettagli fattura"** del PDF diventa una riga del foglio `fatt_2026`. Non si usa mai il "Riepilogo" in testa alla fattura: è aggregato per descrizione, non per giorno.
@@ -71,3 +71,14 @@ Le colonne Tasse (`VAT 22`), Rateo IVA (`0,22`), MESE (9) e ANNO (2026) sono ugu
 | DER1 | 05/04/2026 | Incentivi - Pedaggi | 1 | 5.894,75 | 1.296,85 | 7.191,60 | 5.894,75 | Pedaggi | INV-IT3JDBF-0002151 |
 
 La stessa fattura ha più righe con la stessa descrizione nello stesso giorno ma prezzo diverso (es. due "AMZL Late Cancel - weekday" a 145,00 e a 243,35): sono due righe distinte, non sommarle.
+
+### Rimborsi da controllare ([/fatture-amazon/rimborsi](/fatture-amazon/rimborsi))
+
+Nella scheda **Rimborsi** ci sono quattro tabelline per mese e DS, IVA esclusa, da tenere a portata di mano per le contestazioni:
+
+- **Parcheggi**: rimborso in fattura (*Incentivi - Parcheggio*, datato il 1° del mese) contro il costo del parcheggio di ogni DS (Costi → Parametri, `PARCHEGGIO_<DS>`, con la data da cui vale: DLO2 dal 15/11/2026 è 0 perché il parcheggio è di Amazon; DER2 ha il temporaneo da 3.500 €/mese dal 01/10/2026 al 15/01/2027).
+- **Pedaggi**: righe *Pedaggi* in fattura contro l'elaborazione Telepass del mese.
+- **Carburante**: *FuelAllowance* contro l'elaborazione Q8 del mese.
+- **Training**: giornate *Training Day* (80 € l'una) contro i nuovi STD del mese (data inizio contratto nel file MOG) × 80 €. I nuovi SIC non hanno data di assunzione nel sito: se ci sono, il fatturato è giustamente più alto.
+
+La differenza in **rosso** vuol dire rimborsato meno del costo: da controllare o contestare. Le note credito vanno nella voce della fattura che stornano. "Scarica Excel" dà il recap dell'anno e tutte le righe di fattura con il numero, da allegare alla contestazione.

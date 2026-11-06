@@ -141,7 +141,8 @@ export function GlsClient(p: Props) {
     const B: Bucket[] = ["CTI FT", "CTI PT", "CTI PT 32h", "DISPATCHER"];
     const teste = Object.fromEntries(B.map((k) => [k, conCdl.filter((x) => bucket(x.a, x.c) === k).length])) as Record<Bucket, number>;
     const costoMedio = Object.fromEntries(B.map((k) => { const g = conCdl.filter((x) => bucket(x.a, x.c) === k); return [k, g.length ? g.reduce((s, x) => s + x.c!.cdl, 0) / g.length : 0]; })) as Record<Bucket, number>;
-    const tr = valoreAlla(p.tariffe, "TRASFERTA", primo) ?? 0, ex = valoreAlla(p.tariffe, "TRASFERTA_DOM_EXTRA", primo) ?? 0;
+    const trGls = valoreAlla(p.tariffe, "TRASFERTA_GLS", primo);
+    const tr = trGls ?? valoreAlla(p.tariffe, "TRASFERTA", primo) ?? 0, ex = trGls !== null ? 0 : valoreAlla(p.tariffe, "TRASFERTA_DOM_EXTRA", primo) ?? 0;
     const nome = `GLS_${MESI3[Number(p.mese.slice(5, 7)) - 1]}_${p.mese.slice(2, 4)}`;
     const wb = foglioStimaPersonale({
       mese: p.mese, nome, stazioni: [{ codice: "GLS", etichetta: "GLS-CASTELMAGGIORE (BO)" }],

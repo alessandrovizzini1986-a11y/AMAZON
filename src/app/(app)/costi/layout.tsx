@@ -32,7 +32,7 @@ export default async function CostiLayout({ children }: { children: React.ReactN
       {percorsi.map((p) => <Percorso key={p.id} p={p} />)}
       {allerte.map((a) => (
         <p key={a.voce} role="alert" className={`mb-4 rounded-control px-4 py-3 text-sm ${a.allerta === 7 ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn"}`}>
-          <b>Cambio tariffa {a.voce === "TRASFERTA" ? "trasferta" : "extra domenica"} tra {a.giorni} giorni</b>: dal {it(a.validaDal!)} {eur(a.precedente ?? 0)} → {eur(a.valore!)} €/giorno. Il calcolo usa già la tariffa alla data di ogni giorno. <Link className="underline" href="/costi/parametri#tariffe">Tariffe</Link>
+          <b>Cambio tariffa {a.voce === "TRASFERTA" ? "trasferta" : a.voce === "TRASFERTA_GLS" ? "trasferta GLS" : "extra domenica"} tra {a.giorni} giorni</b>: dal {it(a.validaDal!)} {eur(a.precedente ?? 0)} → {eur(a.valore!)} €/giorno. Il calcolo usa già la tariffa alla data di ogni giorno. <Link className="underline" href="/costi/parametri#tariffe">Tariffe</Link>
         </p>
       ))}
       {mog[0] && (Date.now() - Date.parse(mog[0].versione)) / 864e5 > 40 && <p role="alert" className="mb-4 rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">Il file MOG di Adecco è del {mog[0].versione.split("-").reverse().join("/")}: ha più di 40 giorni. Chiedi a Erika il file aggiornato. <Link className="underline" href="/costi/parametri#mog">File MOG</Link></p>}
