@@ -38,6 +38,7 @@ export function patrono(station: string, y: number): string | null {
     case "DLO5": return ennesimaDomenica(y, 5, 2);
     case "DLZ2": return iso(y, 7, 11);
     case "DVN1": return iso(y, 7, 20);
+    case "GLS": return iso(y, 11, 30); // GLS Castel Maggiore: Sant'Andrea, 30 novembre di ogni anno
     default: return null;
   }
 }
@@ -48,7 +49,7 @@ export function festiviAnno(y: number): Festivo[] {
   const out: Festivo[] = naz.map(([m, d, t]) => ({ data: iso(y, m, d), descrizione: `Nazionale: ${t}`, station: "TUTTE" }));
   out.push({ data: piuGiorni(pasqua(y), 1), descrizione: "Nazionale: Lunedì dell'Angelo", station: "TUTTE" });
   out.push({ data: iso(y, 12, 24), descrizione: "Semifestivo (art. 10 Accordo)", station: "TUTTE" }, { data: iso(y, 12, 31), descrizione: "Semifestivo (art. 10 Accordo)", station: "TUTTE" });
-  for (const s of STATIONS_COSTI) out.push({ data: patrono(s, y)!, descrizione: "Patrono", station: s });
+  for (const s of [...STATIONS_COSTI, "GLS"]) out.push({ data: patrono(s, y)!, descrizione: "Patrono", station: s });
   return out.sort((a, b) => a.data.localeCompare(b.data) || a.station.localeCompare(b.station));
 }
 
