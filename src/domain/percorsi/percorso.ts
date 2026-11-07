@@ -87,3 +87,15 @@ export function percorsoTelepass(x: { mese: string; anagraficheAggiornate: boole
     ]),
   };
 }
+
+export type DaFare = { id: string; titolo: string; completo: boolean; fatti: number; obbligatori: number; prossimo: Passo | null };
+
+/** Riepilogo per la Home: per ogni percorso quanti passi obbligatori sono fatti e il prossimo; prima quelli da fare. */
+export function daFare(percorsi: Percorso[]): DaFare[] {
+  return percorsi
+    .map((p) => {
+      const obb = p.passi.filter((x) => x.stato !== "facoltativo");
+      return { id: p.id, titolo: p.titolo, completo: completato(p), fatti: obb.filter((x) => x.stato === "fatto").length, obbligatori: obb.length, prossimo: prossimo(p) };
+    })
+    .sort((a, b) => Number(a.completo) - Number(b.completo));
+}
