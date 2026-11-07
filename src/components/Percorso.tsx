@@ -19,7 +19,7 @@ export function Percorso({ p }: { p: P }) {
   const n = p.passi.findIndex((x) => x.stato === "ora") + 1;
   const obbligatori = p.passi.filter((x) => x.stato !== "facoltativo").length;
   return (
-    <section aria-label={`Percorso: ${p.titolo}`} className={`mb-5 rounded-control border px-4 py-2.5 text-sm print:hidden ${ora ? "border-brand/30 bg-brand-light" : "border-ok/30 bg-ok-soft"}`}>
+    <section aria-label={`Percorso: ${p.titolo}`} className={`mb-3 rounded-control border px-4 py-2 text-sm print:hidden ${ora ? "border-brand/30 bg-brand-light" : "border-ok/30 bg-ok-soft"}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-semibold">{p.titolo}</span>
         {ora ? (

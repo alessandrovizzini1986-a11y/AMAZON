@@ -1,4 +1,5 @@
 import { can } from "@/lib/rbac";
+import { SchedePagina } from "@/components/SchedePagina";
 import { PageHeader } from "@/components/ui";
 import { PARAMETRI } from "@/domain/costi/parametri";
 import { prossimoCambio, valoreAlla } from "@/domain/costi/tariffe";
@@ -24,10 +25,11 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
   const chiavi = [...new Set([...Object.keys(PARAMETRI), ...par.map((p) => p.chiave)])];
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Costi del personale · parametri" title="Parametri e anagrafica"
+      <PageHeader eyebrow="Personale · parametri" title="Parametri e anagrafica"
         subtitle="Tariffe per data, coefficienti con storico, festivi e patroni, anagrafica CDL di HR. Il calcolo di fine mese usa sempre il valore valido alla data di ogni giorno." />
+      <SchedePagina schede={[{ id: "tariffe", label: "Tariffe trasferta" }, { id: "coefficienti", label: "Coefficienti e rimborsi" }, { id: "festivi", label: "Festivi" }, { id: "mog", label: "File MOG" }, { id: "anagrafica", label: "Anagrafica CDL" }]} />
 
-      <section id="tariffe" className="card p-4 md:p-5">
+      <section id="tariffe" data-scheda="tariffe" className="card p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">Tariffe trasferta</h2>
         <p className="mb-3 text-sm text-ink-muted">Giorno con più di 4 ore lavorate (Standard + Straordinario + Supplementare + Accordo). Domenica = feriale + extra. Avviso in testa al modulo 60, 30 e 7 giorni prima di ogni cambio.</p>
         <div className="grid gap-4 md:grid-cols-2">
@@ -47,7 +49,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
         {edit && <NuovaTariffa />}
       </section>
 
-      <section id="coefficienti" className="card p-4 md:p-5">
+      <section id="coefficienti" data-scheda="coefficienti" className="card p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">Coefficienti</h2>
         <p className="mb-3 text-sm text-ink-muted">Si ricalcolano dal consuntivo (Costi del personale PS e ADIT) con &quot;Aggiorna parametri&quot;; qui si può anche inserire a mano un nuovo valore con la sua data di validità. Le tariffe STD per voce si prendono dall&apos;ultimo ADIT caricato.</p>
         <div className="overflow-x-auto"><table className="table-base text-sm">
@@ -65,7 +67,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
         {edit && <NuovoParametro chiavi={chiavi} />}
       </section>
 
-      <section id="festivi" className="card p-4 md:p-5">
+      <section id="festivi" data-scheda="festivi" className="card p-4 md:p-5">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <h2 className="text-[19px] font-semibold">Festivi {anno}</h2>
           {[anno - 1, anno + 1].map((a) => <a key={a} className="btn-secondary px-3 py-1 text-xs" href={`?anno=${a}#festivi`}>{a}</a>)}
@@ -79,7 +81,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
         {edit && <NuovoFestivo stations={[...STATIONS_COSTI, "GLS"]} />}
       </section>
 
-      <section id="mog" className="card p-4 md:p-5">
+      <section id="mog" data-scheda="mog" className="card p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">File MOG Adecco (somministrati STD)</h2>
         <p className="mb-3 text-sm text-ink-muted">Monte ore garantito: se un somministrato chiude il mese sotto le sue ore MOG, Adecco fattura la differenza come &quot;Integrazione MOG&quot;. Il file serve ai controlli MOG di Presenze (settimanale e fine mese) e alla riga Integrazione MOG dei costi. Va aggiornato ogni mese: oltre 40 giorni il sito lo segnala.</p>
         {vMog.length > 0 && (
@@ -97,7 +99,7 @@ export default async function ParametriPage({ searchParams }: { searchParams: Pr
         {edit && cMog.contratti.length > 0 && <VariazioneMog lavoratori={cMog.contratti.map((c) => ({ cf: c.cf, nome: `${c.cognome} ${c.nome}`, station: c.station, pct: c.pctMog }))} />}
       </section>
 
-      <section id="anagrafica" className="card p-4 md:p-5">
+      <section id="anagrafica" data-scheda="anagrafica" className="card p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">Anagrafica CDL</h2>
         <p className="mb-3 text-sm text-ink-muted">File di HR <code>DB_CDL_base_MMAA_AmazonGLS_BO.xlsx</code>, foglio <code>SIC Amazon TR</code>. Ogni caricamento è una nuova versione per mese; la stima usa l&apos;ultima disponibile e scrive quale. Il file non viene salvato: si leggono solo le colonne che servono.</p>
         {versioni.length > 0 && (

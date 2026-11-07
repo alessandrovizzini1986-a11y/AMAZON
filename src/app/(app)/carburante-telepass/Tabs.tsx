@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/carburante-telepass", label: "Stato del mese", exact: true },
-  { href: "/carburante-telepass/anagrafiche", label: "Anagrafiche" },
+  { href: "/carburante-telepass/anagrafiche", label: "Carte e dispositivi" },
   { href: "/carburante-telepass/telepass", label: "Telepass" },
-  { href: "/carburante-telepass/q8", label: "Q8" },
+  { href: "/carburante-telepass/q8", label: "Carburante Q8" },
 ];
 
 export function Tabs() {

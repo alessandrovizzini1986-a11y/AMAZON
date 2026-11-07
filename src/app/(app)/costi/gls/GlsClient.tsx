@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ExcelJS from "exceljs";
 import { Dropzone } from "@/components/Dropzone";
+import { SelettoreMese } from "@/components/SelettoreMese";
 import { Aiuto } from "@/components/Aiuto";
 import { workbookToGrids } from "@/lib/presenze/excelGrid";
 import { scarica } from "@/lib/presenze/excelUtil";
@@ -175,10 +176,9 @@ export function GlsClient(p: Props) {
   return (
     <div className="flex flex-col gap-6">
       <section className="card p-4 md:p-5">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span>Mese:</span>
-          <input type="month" className="input w-auto" value={p.mese} onChange={(e) => e.target.value && router.push(`/costi/gls?mese=${e.target.value}`)} aria-label="Mese" />
-          <span className="text-ink-muted">busta SIC pagata il 27/{p.mese.slice(5, 7)} con le variabili di {it(mPrec)}</span>
+        <div className="flex flex-wrap items-end gap-3 text-sm">
+          <SelettoreMese value={p.mese} href="/costi/gls" />
+          <span className="pb-3 text-ink-muted">busta SIC pagata il 27/{p.mese.slice(5, 7)} con le variabili di {it(mPrec)}</span>
         </div>
         <ul className="mt-3 flex flex-col gap-1 text-sm">
           <Semaforo ok={!!presM}>Presenze di {it(p.mese)} {presM ? `— ${pres[p.mese].nome}` : "— servono per STD, accantonamenti, teste del foglio _ft e Badgebox"}</Semaforo>

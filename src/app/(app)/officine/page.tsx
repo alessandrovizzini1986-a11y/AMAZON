@@ -40,7 +40,7 @@ export default async function OfficinePage({ searchParams }: { searchParams: Pro
     <div>
       <PageHeader
         eyebrow="Rete Ayvens · veicoli commerciali"
-        title="Officine e carrozzerie autorizzate"
+        title="Officine"
         subtitle={fonte && caricato ? `File ${fonte} · caricato il ${caricato.toLocaleDateString("it-IT")}` : undefined}
         action={upload}
       />

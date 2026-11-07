@@ -30,8 +30,8 @@ export default async function CarburanteTelepassPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Telepass e carburante"
-        title="Telepass e carte carburante"
+        eyebrow="Spese mezzi"
+        title="Telepass e carburante"
         subtitle="Ogni mese: aggiorna le anagrafiche se è cambiato qualcosa, elabora il CSV Telepass e l'export Q8, controlla le anomalie e salva. Qui vedi cosa è già fatto."
       />
 

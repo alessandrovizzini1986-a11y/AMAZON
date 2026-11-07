@@ -50,7 +50,7 @@ export default async function ConsuntivoPage({ searchParams }: { searchParams: P
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Costi del personale · consuntivo" title="Consuntivo e riconciliazione"
+      <PageHeader eyebrow="Personale · consuntivo" title="Consuntivo e riconciliazione"
         subtitle="Quando arrivano le fatture ADIT (~5 settimane dopo il mese) e i Costi del personale PS (dopo il 27), trascinali qui: il sito confronta la stima STD di M con l'ADIT di M e la stima SIC di M con la paga del mese dopo." />
       {can(user, "costi.run") && <ConsuntivoClient righeCdl={righeCdl} />}
 

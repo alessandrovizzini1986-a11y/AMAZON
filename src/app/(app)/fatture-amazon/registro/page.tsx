@@ -33,7 +33,7 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
   const puoAnnullare = can(user, "fatture.annulla");
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Fatture Amazon · registro" title="Registro delle fatture"
+      <PageHeader eyebrow="Amazon · registro" title="Registro delle fatture"
         subtitle="Tutte le fatture conosciute dal sito: quelle esportate da Importa e quelle trovate in fatt_2026 con l'allineamento." />
       {daIncollare > 0 && stato !== "da-incollare" && (
         <Link href="/fatture-amazon/registro?stato=da-incollare" className="rounded-control bg-warn-soft px-4 py-3 text-sm font-semibold text-warn">

@@ -1,4 +1,5 @@
 import { can } from "@/lib/rbac";
+import { meseScelto } from "@/lib/meseServer";
 import { PageHeader } from "@/components/ui";
 import { aggregaAdit, tariffeDaAdit, type VoceAdit } from "@/domain/costi/adit";
 import { versioneParametri } from "@/domain/costi/parametri";
@@ -12,7 +13,7 @@ export const metadata = { title: "Costi a fine mese — FleetDSP" };
 export default async function FineMesePage({ searchParams }: { searchParams: Promise<{ mese?: string }> }) {
   const user = await utenteCosti("costi.view");
   const q = (await searchParams).mese;
-  const mese = q && /^\d{4}-\d{2}$/.test(q) ? q : mesePrec(oggiIso().slice(0, 7));
+  const mese = await meseScelto(q, mesePrec(oggiIso().slice(0, 7)));
   const anno = Number(mese.slice(0, 4));
   const [tar, par, fest, versioni, zuc, meseTariffe, meseCtrl, prec, mog] = await Promise.all([
     tariffe(), parametri(), festivi(anno), versioniCDL(), zucchettiControllato(mese), ultimoAdit(mesePrec(mese)), ultimoAdit(mese), stimaSalvata(mesePrec(mese), "STD"), datiMog(),
@@ -31,7 +32,7 @@ export default async function FineMesePage({ searchParams }: { searchParams: Pro
   const oreLavoroPrec = prec ? Object.fromEntries([...new Set(prec.righe.map((r) => r.station))].map((s) => [s, prec.righe.filter((r) => r.station === s && r.voce === "ORE_LAVORO").reduce((a, r) => a + (r.quantita ?? 0), 0)])) : null;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Costi del personale · fine mese" title="Costi a fine mese"
+      <PageHeader eyebrow="Personale · fine mese" title="Costi a fine mese"
         subtitle="Il giorno di chiusura: controlla il semaforo, premi Calcola costi, leggi i controlli rossi, salva la stima. I tracking si leggono qui nel browser dall'archivio del modulo Presenze." />
       <FineMeseClient
         mese={mese} fineMese={fineMese} canRun={can(user, "costi.run")}

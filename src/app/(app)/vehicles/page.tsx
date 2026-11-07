@@ -91,7 +91,7 @@ export default async function VehiclesPage({
     <div>
       <PageHeader
         eyebrow="Flotta"
-        title={scope.stationId ? "Le targhe della tua stazione" : "Dove si trova ogni targa"}
+        title={scope.stationId ? "Le targhe della tua stazione" : "Mezzi"}
         action={can(user, "vehicle.manage") ? <span className="inline-flex flex-wrap items-center gap-2"><Link href="/vehicles/listini" className="btn-secondary">Listini noleggiatori</Link><Link href="/vehicles/new" className="btn-primary">+ Nuovo veicolo</Link><Aiuto k="flotta.nuovo" /></span> : undefined}
       />
 

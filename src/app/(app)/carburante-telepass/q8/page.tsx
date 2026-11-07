@@ -13,7 +13,7 @@ export default async function Q8Page() {
   return (
     <div>
       <PageHeader
-        eyebrow="Telepass e carburante · Q8"
+        eyebrow="Spese mezzi · Carburante Q8"
         title="Rifornimenti Q8 del mese"
         subtitle="Trascina l'export Excel del portale Q8 Flotte: il sito tiene solo le carte AMZ e GLS, attribuisce ogni rifornimento alla DS con il censimento fuel card e genera l'Excel del mese."
       />
