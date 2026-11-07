@@ -4,6 +4,7 @@
  */
 
 export type IconName =
+  | "home"
   | "dashboard"
   | "fleet"
   | "wrench"
@@ -25,6 +26,13 @@ export type IconName =
   | "menu";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  home: (
+    <>
+      <path d="m3 10 9-7 9 7" />
+      <path d="M5 9v11h14V9" />
+      <path d="M10 20v-6h4v6" />
+    </>
+  ),
   menu: (
     <>
       <path d="M4 6h16" />

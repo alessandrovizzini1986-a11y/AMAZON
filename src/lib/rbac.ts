@@ -37,7 +37,8 @@ export type Action =
   | "costi.run"
   | "costi.parametri"
   | "training.view"
-  | "training.admin";
+  | "training.admin"
+  | "home.view";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -53,6 +54,7 @@ const MATRIX: Record<Role, Action[]> = {
   ],
   // stagista dei controlli: moduli Presenze e Telepass/carburante, vademecum
   CONTROLLO: [
+    "home.view",
     "vademecum.view",
     "presenze.view",
     "presenze.run",
@@ -71,6 +73,7 @@ const MATRIX: Record<Role, Action[]> = {
     "training.view",
   ],
   ADMIN: [
+    "home.view",
     "vehicle.view",
     "vehicle.manage",
     "dashboard.station",

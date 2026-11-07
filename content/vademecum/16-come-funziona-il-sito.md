@@ -2,10 +2,26 @@
 title: "Come funziona il sito"
 order: 16
 category: "Base"
-updated: "2026-11-03"
+updated: "2026-11-07"
 ---
 
 Questa pagina spiega in breve come si usa FleetDSP: dove finiscono i dati che carichi, come ti guida il sito e come usarlo da telefono.
+
+### Il menu e la Home
+
+Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e una riga che dice a cosa servono:
+
+| Gruppo | Pagine |
+|---|---|
+| **Home** | [Da fare](/home): le scadenze della settimana e del mese, gli avvisi e tutte le sezioni |
+| **Flotta** | Situazione per stazione · Mezzi · Furgoni in arrivo · Officine · Listini noleggiatori |
+| **Personale** | Presenze · Costi del personale · Costi GLS |
+| **Amazon** | Fatture · Fatturato · Rimborsi · Forecast |
+| **Spese mezzi** | Telepass e carburante · Telepass · Carburante Q8 · Carte e dispositivi |
+| **Aiuto** | Vademecum · Training · Portali |
+| **Gestione** (solo admin) | Import · Utenti · Configurazione · Audit |
+
+Ognuno vede solo le pagine che può usare. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
 
 ### Dove finisce un dato: le quattro etichette
 
@@ -50,7 +66,7 @@ Il sito ti ferma solo quando c'è un errore vero:
 
 ### Da telefono
 
-- La **barra in basso** ha le prime sezioni e **Menu**, che apre tutte le altre insieme ad Account ed Esci.
+- La **barra in basso** ha Home e i primi gruppi (Flotta, Personale, Amazon) e **Menu**, che apre tutte le pagine divise per gruppo, insieme ad Account ed Esci.
 - Le **tabelle larghe** si scorrono di lato: la prima colonna resta ferma e il bordo destro sfumato indica che la tabella continua.
 - Per **caricare un file** da telefono tocca "Oppure scegli il file". Ricorda che "Solo su questo PC" vuol dire solo su quel telefono.
 
