@@ -15,7 +15,7 @@ export default async function StoricoForecastPage({ searchParams }: { searchPara
   const d = await calcolaStorico(n, oggi);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Fatture Amazon · forecast" title="Storico forecast e furgoni"
+      <PageHeader eyebrow="Amazon · forecast" title="Storico forecast e furgoni"
         subtitle="Ogni forecast caricato resta come versione; per il ricavo previsto vale la versione più recente (settimana di emissione del file). Qui vedi come si è mosso il forecast, quanto ci ha preso e quanti furgoni servono per station nelle prossime settimane." />
       {d.punti.length === 0 ? <p className="card p-5 text-sm text-ink-muted">Nessun forecast caricato: caricali in <Link className="underline" href="/fatture-amazon/forecast">Forecast</Link>.</p> : <StoricoClient {...d} />}
     </div>

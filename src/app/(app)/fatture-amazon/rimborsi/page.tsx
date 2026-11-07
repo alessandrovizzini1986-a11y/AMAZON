@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { meseScelto } from "@/lib/meseServer";
+import { SelettoreMese } from "@/components/SelettoreMese";
+import { SchedePagina } from "@/components/SchedePagina";
 import { PageHeader } from "@/components/ui";
 import { DS_FATTURATO, codiciDs } from "@/domain/fatture/fatturato";
 import { carburanteSettimane, classificaRighe, costoParcheggio, ETICHETTA_VOCE, fatturaStornata, nuoviStd, recapVoce, totaliRun, voceRimborso, VOCI_RIMBORSO, type RecapVoce, type VoceRimborso } from "@/domain/fatture/rimborsi";
@@ -26,7 +29,7 @@ export default async function RimborsiPage({ searchParams }: { searchParams: Pro
   const solo = await stationUtente(user);
   const dsList = solo ? [solo] : DS_FATTURATO;
   const q = (await searchParams).mese;
-  const mese = q && /^\d{4}-\d{2}$/.test(q) ? q : mesePrec(new Date().toISOString().slice(0, 7));
+  const mese = await meseScelto(q, mesePrec(new Date().toISOString().slice(0, 7)));
   const anno = Number(mese.slice(0, 4));
   const da = new Date(`${anno - 1}-01-01T00:00:00Z`), a = new Date(`${anno + 1}-01-01T00:00:00Z`);
   const filtroDs = solo ? { ds: { in: codiciDs(solo) } } : {};
@@ -80,17 +83,16 @@ export default async function RimborsiPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Fatture Amazon · controllo rimborsi" title="Rimborsi: parcheggi, pedaggi, carburante, training"
+      <PageHeader eyebrow="Amazon · parcheggi, pedaggi, carburante, training" title="Rimborsi"
         subtitle="Per ogni DS quanto Amazon ci ha rimborsato in fattura e quanto abbiamo speso, IVA esclusa. Differenza in rosso = rimborsato meno del costo: da controllare o contestare." />
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link className="btn-secondary" href={`/fatture-amazon/rimborsi?mese=${mesePrec(mese)}`}>← {MESI[Number(mesePrec(mese).slice(5, 7))]}</Link>
-        <b className="px-2">{nomeMese}</b>
-        <Link className="btn-secondary" href={`/fatture-amazon/rimborsi?mese=${meseSucc(mese)}`}>{MESI[Number(meseSucc(mese).slice(5, 7))]} →</Link>
+      <div className="flex flex-wrap items-end gap-3 text-sm">
+        <SelettoreMese value={mese} href="/fatture-amazon/rimborsi" />
         <ExportRimborsi anno={anno} righe={righe.filter((r) => r.data.startsWith(String(anno)))} recap={tutti} settimane={settimane} />
       </div>
 
+      <SchedePagina schede={[{ id: "mese", label: `${nomeMese} per DS` }, { id: "andamento", label: `Andamento ${anno} e ${anno - 1}` }, { id: "settimane", label: "Carburante per settimana" }]} />
       {qui.map((r) => (
-        <section key={r.voce} className="card p-4 md:p-5">
+        <section key={r.voce} data-scheda="mese" className="card p-4 md:p-5">
           <h2 className="text-[19px] font-semibold">{ETICHETTA_VOCE[r.voce]} — {nomeMese}</h2>
           <p className="mt-1 text-xs text-ink-muted">{r.notaCosto}</p>
           <div className="mt-2 overflow-x-auto">
@@ -108,7 +110,7 @@ export default async function RimborsiPage({ searchParams }: { searchParams: Pro
       ))}
 
       {[{ y: anno, righe: tutti }, { y: anno - 1, righe: tuttiPrec }].map(({ y, righe: rr }) => (
-        <section key={y} className="card p-4 md:p-5">
+        <section key={y} data-scheda="andamento" className="card p-4 md:p-5">
           <h2 className="text-[19px] font-semibold">Andamento {y} (tutte le DS)</h2>
           <div className="mt-2 overflow-x-auto">
             <table className="table-base text-sm">
@@ -132,7 +134,7 @@ export default async function RimborsiPage({ searchParams }: { searchParams: Pro
         </section>
       ))}
 
-      <section className="card p-4 md:p-5">
+      <section data-scheda="settimane" className="card p-4 md:p-5">
         <h2 className="text-[19px] font-semibold">Carburante per settimana {anno}: FuelAllowance contro Q8</h2>
         <p className="mt-1 text-xs text-ink-muted">Settimana Amazon (domenica–sabato). Q8 = Imp. Scontato no IVA delle carte della DS nella stessa settimana. Differenza in rosso = l&apos;allowance non copre il carburante.</p>
         <div className="mt-2 max-h-[32rem] overflow-auto">

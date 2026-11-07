@@ -28,7 +28,7 @@ export default async function CostiPage() {
   const delta = (s?: number, c?: number) => (s && c ? `${(((s - c) / c) * 100).toLocaleString("it-IT", { maximumFractionDigits: 1, signDisplay: "always" })} %` : "—");
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Costi del personale" title="Costi del personale a fine mese"
+      <PageHeader eyebrow="Personale" title="Costi del personale"
         subtitle="STD (Adecco): costo di competenza del mese, confrontato con l'ADIT che arriva ~5 settimane dopo. SIC (interni): busta che si paga il 27 del mese dopo, confrontata con i Costi del personale PS." />
       <section className="card p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">Mesi</h2>

@@ -93,8 +93,8 @@ export default async function DashboardPage({
   return (
     <div>
       <PageHeader
-        eyebrow={scope ? `Stazione ${scope.code} · ${scope.name}` : "Situazione flotta"}
-        title={scope ? "Veicoli e canone della stazione" : "Veicoli e costi per stazione"}
+        eyebrow={scope ? `Stazione ${scope.code} · ${scope.name}` : "Flotta"}
+        title={scope ? "Veicoli e canone della stazione" : "Situazione per stazione"}
         action={
           isAdmin ? (
             <div className="flex flex-wrap items-end gap-2.5">

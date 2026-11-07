@@ -58,7 +58,7 @@ export default async function ForecastPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Fatture Amazon · forecast" title="Ricavo previsto dai forecast Amazon"
+      <PageHeader eyebrow="Amazon · forecast" title="Forecast"
         subtitle={`Rotte del forecast × tariffa per descrizione ricavata dalle ultime ${n} settimane Amazon chiuse (terminate da almeno 14 giorni), più gli extra per rotta. Incentivi e voci una tantum non sono previsti.`} />
 
       <form className="card flex flex-wrap items-end gap-3 p-4">

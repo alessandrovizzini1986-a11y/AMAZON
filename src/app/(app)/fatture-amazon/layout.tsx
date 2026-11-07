@@ -10,7 +10,7 @@ const SCHEDE: (Scheda & { perm: Action })[] = [
   { href: "/fatture-amazon", label: "Stato", exact: true, perm: "fatture.registro" },
   { href: "/fatture-amazon/importa", label: "Importa PDF", perm: "fatture.import" },
   { href: "/fatture-amazon/registro", label: "Registro", perm: "fatture.registro" },
-  { href: "/fatture-amazon/allinea", label: "Allinea e storico", perm: "fatture.allinea" },
+  { href: "/fatture-amazon/allinea", label: "Allinea con fatt_2026", perm: "fatture.allinea" },
   { href: "/fatture-amazon/fatturato", label: "Fatturato", perm: "fatturato.view" },
   { href: "/fatture-amazon/rimborsi", label: "Rimborsi", perm: "fatturato.view" },
   { href: "/fatture-amazon/forecast", label: "Forecast", exact: true, perm: "forecast.view" },

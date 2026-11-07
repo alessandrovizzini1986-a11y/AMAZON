@@ -1,5 +1,6 @@
 "use client";
 
+import { SelettoreMese } from "@/components/SelettoreMese";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -95,9 +96,7 @@ export function FineMeseClient({ referenti, runs, canRun, mog }: { referenti: Re
   return (
     <div className="flex flex-col gap-6">
       <section className="card flex flex-wrap items-end gap-3 p-4 md:p-5">
-        <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Mese
-          <input type="month" className="input h-11 w-48" value={mese} onChange={(e) => setMese(e.target.value)} />
-        </label>
+        <SelettoreMese value={mese} onChange={setMese} />
         <div className="text-xs text-ink-muted">Servono: tracking SIC (e STD per i consecutivi) e file Zucchetti del mese, per ogni station.</div>
         <button type="button" className="btn-primary ml-auto h-11" onClick={esegui} disabled={lavoro || !mese}>{lavoro ? "Controllo in corso…" : "Esegui controllo"}</button> <Aiuto k="presenze.finemese.esegui" />
         {stato && <p className="w-full text-sm text-ink-muted">{stato}</p>}

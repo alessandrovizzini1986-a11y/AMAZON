@@ -1,5 +1,6 @@
 "use client";
 
+import { SelettoreMese } from "@/components/SelettoreMese";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { STATIONS } from "@/domain/presenze/regole";
@@ -134,10 +135,7 @@ export function ArchivioClient({ mese, registrati, canRun }: { mese: string; reg
             <h2 className="text-[19px] font-semibold">Cosa c&apos;è e cosa manca</h2>
             <p className="text-sm text-ink-muted">Verde = CSV Amazon del giorno presente. A destra i tracking e Zucchetti del mese.</p>
           </div>
-          <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">
-            Mese
-            <input type="month" className="input h-10 w-44" value={mese} onChange={(e) => e.target.value && router.push(`/presenze/archivio?mese=${e.target.value}`)} />
-          </label>
+          <SelettoreMese value={mese} href="/presenze/archivio" />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs">

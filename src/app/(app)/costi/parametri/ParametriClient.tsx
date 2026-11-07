@@ -1,5 +1,6 @@
 "use client";
 
+import { SelettoreMese } from "@/components/SelettoreMese";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Dropzone } from "@/components/Dropzone";
@@ -121,8 +122,7 @@ export function AnagraficaCDLClient() {
       {dati && (
         <div className="rounded-control border border-[#d5dbe3] p-4">
           <h3 className="mb-2 font-semibold">Anteprima {dati.nome}</h3>
-          <label className="mb-3 flex items-center gap-2 text-sm">Versione (mese)
-            <input className="input w-32" type="month" value={dati.mese} onChange={(e) => setDati({ ...dati, mese: e.target.value })} />
+          <label className="mb-3 flex flex-wrap items-end gap-2 text-sm"><SelettoreMese etichetta="Versione (mese)" value={dati.mese} onChange={(m) => setDati({ ...dati, mese: m })} ricorda={false} />
             {dati.ante.sovrascrive && <span className="text-warn">esiste già: verrà sostituita</span>}
           </label>
           <div className="overflow-x-auto"><table className="table-base text-sm">

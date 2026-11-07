@@ -1,5 +1,6 @@
 "use client";
 
+import { SelettoreMese } from "@/components/SelettoreMese";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dropzone } from "@/components/Dropzone";
@@ -122,7 +123,7 @@ function AnteprimaPayroll({ l, onMese }: { l: Extract<Letto, { tipo: "PAYROLL" }
   return (
     <div className="rounded-control border border-[#d5dbe3] p-4">
       <h3 className="mb-2 font-semibold">Costi del personale PS — {l.nome}</h3>
-      <label className="mb-2 flex items-center gap-2 text-sm">Mese di paga <input className="input w-36" type="month" value={l.mesePaga} onChange={(e) => onMese(e.target.value)} /> <span className="text-ink-muted">(confronta con la stima SIC del mese prima)</span></label>
+      <div className="mb-2 flex flex-wrap items-end gap-2 text-sm"><SelettoreMese etichetta="Mese di paga" value={l.mesePaga} onChange={onMese} ricorda={false} /> <span className="pb-3 text-ink-muted">(confronta con la stima SIC del mese prima)</span></div>
       <p className="mb-2 text-sm text-ink-muted">CDC 5569, conti 6*: {eur(tot)} € · {l.dipendenti} dipendenti · {per["(non in anagrafica)"]?.dipendenti ?? 0} non trovati nell&apos;anagrafica CDL per nome · riclassifiche a somma zero (Cod1 = 6, tredicesime e liquidazioni) tenute ma non contate</p>
       <div className="overflow-x-auto"><table className="table-base text-xs">
         <thead><tr><th>Componente</th>{st.map((s) => <th key={s} className="text-right">{s}</th>)}<th className="text-right">Totale</th></tr></thead>

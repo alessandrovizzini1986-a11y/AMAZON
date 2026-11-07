@@ -14,7 +14,7 @@ export default async function SettimanalePage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Presenze · passo 2"
+        eyebrow="Personale · Presenze · passo 2"
         title="Controllo settimanale: tracking vs Amazon"
         subtitle="Usa i file caricati nell'archivio di questo PC. Scegli periodo e station, esegui il controllo, copia i messaggi per gli Ops e salva l'esecuzione."
       />

@@ -13,7 +13,7 @@ export default async function TelepassPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Telepass e carburante · Telepass"
+        eyebrow="Spese mezzi · Telepass"
         title="Transazioni Telepass del mese"
         subtitle="Trascina il CSV scaricato da Telepass Business: il sito attribuisce ogni transazione a una station con la mappa dei dispositivi, mostra l'anteprima e genera l'Excel del mese."
       />

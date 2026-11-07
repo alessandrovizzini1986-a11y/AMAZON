@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dropzone } from "@/components/Dropzone";
+import { SelettoreMese } from "@/components/SelettoreMese";
 import { elencoFile, salvaFile } from "@/lib/presenze/archivioLocale";
 import { riconosci } from "@/lib/presenze/riconosci";
 import { caricaDatiMese } from "@/lib/presenze/carica";
@@ -304,7 +305,7 @@ export function FineMeseClient(p: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col text-sm">Mese di competenza<input className="input" type="month" value={p.mese} onChange={(e) => e.target.value && vai(e.target.value)} /></label>
+        <SelettoreMese etichetta="Mese di competenza" value={p.mese} onChange={vai} />
       </div>
 
       <section className="card p-4 md:p-5">

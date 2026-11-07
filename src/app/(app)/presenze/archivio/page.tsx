@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { meseScelto } from "@/lib/meseServer";
 import { can } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
@@ -15,7 +16,7 @@ function meseDefault(): string {
 export default async function ArchivioPage({ searchParams }: { searchParams: Promise<{ mese?: string }> }) {
   const user = await requireUser();
   const params = await searchParams;
-  const mese = /^\d{4}-\d{2}$/.test(params.mese ?? "") ? params.mese! : meseDefault();
+  const mese = await meseScelto(params.mese, meseDefault());
   const [anno, m] = mese.split("-").map(Number);
   let registrati: Registrato[] = [];
   let tableMissing = false;
@@ -29,7 +30,7 @@ export default async function ArchivioPage({ searchParams }: { searchParams: Pro
   return (
     <div>
       <PageHeader
-        eyebrow="Presenze · passo 1"
+        eyebrow="Personale · Presenze · passo 1"
         title="Archivio file"
         subtitle="Trascina qui CSV Amazon, tracking SIC/STD e export Zucchetti, anche tutti insieme. I file restano su questo PC: al sito arrivano solo nome, tipo, station e giorni."
       />

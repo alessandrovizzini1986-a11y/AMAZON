@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SchedePagina } from "@/components/SchedePagina";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/rbac";
@@ -34,7 +35,8 @@ export default async function TrainingAdmin({ searchParams }: { searchParams: Pr
       </div>
       <div className="max-w-xl"><Barra fatte={av.fatte} totali={av.totali} /></div>
 
-      <section className="card p-4 md:p-5">
+      <SchedePagina schede={[{ id: "validare", label: `Da validare (${daValidare.length})` }, { id: "giorni", label: "Giorno per giorno" }]} />
+      <section data-scheda="validare" className="card p-4 md:p-5">
         <h2 className="font-semibold">Da validare ({daValidare.length})</h2>
         {daValidare.length ? (
           <ul className="mt-2 flex flex-col divide-y divide-line">
@@ -48,7 +50,7 @@ export default async function TrainingAdmin({ searchParams }: { searchParams: Pr
         ) : <p className="mt-1 text-sm text-ink-muted">Nessun check fatto in attesa di validazione.</p>}
       </section>
 
-      <section className="card p-4 md:p-5">
+      <section data-scheda="validare" className="card p-4 md:p-5">
         <h2 className="font-semibold">Moduli</h2>
         <ul className="mt-2 flex flex-wrap gap-2">
           {piano.moduli.map((m) => <li key={m.id} className={moduloSuperato(m, stato) ? "badge-ok" : "badge-neutral"}>{m.titolo}: {moduloSuperato(m, stato) ? "superato" : "da superare"}</li>)}
@@ -60,7 +62,7 @@ export default async function TrainingAdmin({ searchParams }: { searchParams: Pr
         const a = av.giorni[g.day - 1];
         const nota = note.get(g.day);
         return (
-          <section key={g.day} className="card overflow-hidden">
+          <section key={g.day} data-scheda="giorni" className="card overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
               <Link href={`/training/${g.day}${q}`} className="font-semibold text-info underline-offset-2 hover:underline">Giorno {g.day} · {g.title}</Link>
               <span className={STATO_GIORNO[a.stato]}>{a.stato} · {a.fatte}/{a.totali}</span>

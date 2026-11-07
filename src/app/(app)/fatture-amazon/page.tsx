@@ -26,7 +26,7 @@ export default async function FatturePage() {
   );
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="Fatture Amazon" title="Fatture Amazon"
+      <PageHeader eyebrow="Amazon" title="Fatture"
         subtitle="Ogni lunedì: scarica i PDF della settimana, trascinali in Importa, scarica l'Excel (o copia le righe) e incollale in fondo a fatt_2026. Il registro evita di inserire due volte la stessa fattura." />
       <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
         {card("Ultima fattura registrata", ultimo ?? "nessuna", "/fatture-amazon/registro")}

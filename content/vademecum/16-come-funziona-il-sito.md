@@ -21,7 +21,7 @@ Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e u
 | **Aiuto** | Vademecum · Training · Portali |
 | **Gestione** (solo admin) | Import · Utenti · Configurazione · Audit |
 
-Ognuno vede solo le pagine che può usare. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
+Ognuno vede solo le pagine che può usare. Il **mese** si sceglie sempre allo stesso modo (‹ Ottobre 2026 ›) e resta quello scelto anche cambiando sezione, finché non chiudi il browser. Le pagine lunghe (Parametri, Listini, Rimborsi, Training) sono divise in **schede** sotto il titolo; i link con #sezione aprono la scheda giusta. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
 
 ### Dove finisce un dato: le quattro etichette
 

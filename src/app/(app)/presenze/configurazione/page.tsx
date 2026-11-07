@@ -25,7 +25,7 @@ export default async function ConfigurazionePresenzePage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Presenze · solo admin"
+        eyebrow="Personale · Presenze · solo admin"
         title="Configurazione dei controlli"
         subtitle="Referenti da salutare nei messaggi Teams, dispatcher esclusi dagli alert e codici della riga RIPOSO che giustificano il giorno. Le modifiche valgono dal prossimo controllo."
       />
