@@ -255,3 +255,18 @@ export async function salvaEsitiMog(input: { mese: string; righe: z.infer<typeof
   await audit({ userId: user.id, action: "presenze.mog", entity: "MogEsito", meta: { mese: m, righe: righe.length, costo: Math.round(righe.reduce((t, r) => t + r.costoIntegrazione, 0)) } });
   revalidatePath("/costi", "layout");
 }
+
+const voceGls = z.object({ voce: z.enum(["BUSTA_SIC", "ACC_STRAORD", "ACC_FERIE", "STD", "TESTE", "DANNI", "ALTRI"]), importo: z.number().finite(), quantita: z.number().finite().nullable() });
+
+/** Costi GLS del mese per il conto economico (totali, nessun dato per persona): nuova versione, vale l'ultima. */
+export async function salvaCostiGls(input: { mese: string; voci: z.infer<typeof voceGls>[]; nota: string }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  const m = mese.parse(input.mese);
+  const voci = z.array(voceGls).min(1).max(20).parse(input.voci);
+  const creataIl = new Date();
+  await db.stimaCosti.createMany({ data: voci.map((v) => ({ mese: m, popolazione: "GLS", station: "GLS", voce: v.voce, importo: v.importo, quantita: v.quantita, creataIl, creataDa: user.name, versioneAnagrafica: z.string().max(300).parse(input.nota) })) }); // per GLS il campo tiene la fonte della busta (payroll o stima)
+  await audit({ userId: user.id, action: "costi.gls", entity: "StimaCosti", meta: { mese: m, voci: voci.map((v) => [v.voce, v.importo]) } });
+  revalidatePath("/conto-economico");
+  return { creataIl: creataIl.toISOString() };
+}

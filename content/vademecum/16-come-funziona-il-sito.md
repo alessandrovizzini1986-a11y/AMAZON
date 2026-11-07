@@ -13,12 +13,12 @@ Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e u
 
 | Gruppo | Pagine |
 |---|---|
-| **Home** | [Da fare](/home): le scadenze della settimana e del mese, gli avvisi e tutte le sezioni |
-| **Flotta** | Situazione per stazione · Mezzi · Furgoni in arrivo · Officine · Listini noleggiatori |
+| **Home** | [Da fare](/home): le scadenze della settimana e del mese · [Conto economico](/conto-economico): ricavi, costi e margine per cliente · [Archivio file](/archivio): i file trascinati su questo PC |
+| **Flotta** | Situazione per stazione · Mezzi · Furgoni in arrivo · Officine · Listini noleggiatori · Aggiorna da Lista Targhe |
 | **Personale** | Presenze · Costi del personale · Costi GLS |
 | **Amazon** | Fatture · Fatturato · Rimborsi · Forecast |
-| **Spese mezzi** | Telepass e carburante · Telepass · Carburante Q8 · Carte e dispositivi |
-| **Aiuto** | Vademecum · Training · Portali |
+| **Spese mezzi** | Telepass e carburante · Telepass · Carburante Q8 · File già elaborati · Carte e dispositivi |
+| **Aiuto** | Vademecum · [Glossario](/vademecum/18-glossario) · Training · Portali |
 | **Gestione** (solo admin) | Import · Utenti · Configurazione · Audit |
 
 Ognuno vede solo le pagine che può usare. Il **mese** si sceglie sempre allo stesso modo (‹ Ottobre 2026 ›) e resta quello scelto anche cambiando sezione, finché non chiudi il browser. Le pagine lunghe (Parametri, Listini, Rimborsi, Training) sono divise in **schede** sotto il titolo; i link con #sezione aprono la scheda giusta. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
@@ -35,6 +35,12 @@ Accanto a ogni zona di caricamento e a ogni pulsante importante c'è un **?**: t
 | **Scarichi un file** | Il file va nella cartella Download di questo PC. | Il sito non ne tiene copia: per riaverlo rifai il passo. |
 
 I file originali (PDF, Excel, CSV) **non vengono mai salvati sul sito**: si leggono nel browser e al sito arrivano solo i dati che servono.
+
+**Archivio di questo PC.** Ogni file che trascini resta anche nell'archivio del browser per 120 giorni dall'ultimo uso: dopo un aggiornamento della pagina, o in un'altra sezione, premi **Dall'archivio di questo PC** sotto la zona di trascinamento e scegli il file invece di ritrascinarlo. In [Archivio file](/archivio) li vedi tutti, li riscarichi o li togli. Il file di Portali (credenziali) non entra mai nell'archivio.
+
+**Sigle.** Le sigle sottolineate a puntini (SIC, STD, CDC, F.O.…) mostrano il significato al passaggio del mouse e portano al [Glossario](/vademecum/18-glossario).
+
+**Conto economico.** In [Conto economico](/conto-economico) vedi per mese, per DS e per cliente ricavi, costi e margine con quello che il sito ha già: fatture Amazon, stima o consuntivo del personale, canoni, Q8, Telepass, parcheggi. Per GLS i costi del mese si salvano da Costi GLS (**Salva nel conto economico**) e il ricavo è la fattura open book stimata. Passa il mouse su un numero per vedere da dove viene; "—" vuol dire che il dato manca.
 
 ### Il binario: il sito ti dice il prossimo passo
 
