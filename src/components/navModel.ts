@@ -22,6 +22,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/orders", label: "Furgoni in arrivo", icon: "orders", perm: "orders.view", descr: "ordini ai noleggiatori" },
       { href: "/officine", label: "Officine", icon: "wrench", perm: "officine.view", descr: "officine e carrozzerie autorizzate" },
       { href: "/vehicles/listini", label: "Listini noleggiatori", icon: "receipt", perm: "vehicle.manage", descr: "tariffe e confronto per classe" },
+      { href: "/vehicles/aggiorna", label: "Aggiorna da Lista Targhe", icon: "import", perm: "import.run", descr: "targhe, contratti e canoni dal file" },
     ],
   },
   {
@@ -44,6 +45,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/carburante-telepass", label: "Telepass e carburante", icon: "fuel", perm: "telepass.view", descr: "stato del mese" },
       { href: "/carburante-telepass/telepass", label: "Telepass", icon: "fuel", perm: "telepass.run", descr: "elabora il file del mese" },
       { href: "/carburante-telepass/q8", label: "Carburante Q8", icon: "fuel", perm: "telepass.run", descr: "elabora l'export Q8" },
+      { href: "/carburante-telepass/storico", label: "File già elaborati", icon: "import", perm: "telepass.run", descr: "mesi lavorati fuori dal sito" },
       { href: "/carburante-telepass/anagrafiche", label: "Carte e dispositivi", icon: "settings", perm: "telepass.view", descr: "anagrafiche Telepass e fuel card" },
     ],
   },

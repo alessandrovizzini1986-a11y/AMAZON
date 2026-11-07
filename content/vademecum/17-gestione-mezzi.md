@@ -29,6 +29,7 @@ Il file `Lista_Targhe` (cartella Teste+mezzi) dice **quali targhe sono attive, i
 1. **Attivi**: una riga per targa in flotta. Distingui sempre **attivo** e **sostitutivo**: cambia il costo. Nelle note scrivi quale targa sostituisce ("sostituisce GD…") o il passaggio tra station ("passata da DLO5 a GLS", "in GLS fino al 25/9").
 2. **Cessati**: quando una targa viene riconsegnata o il contratto si chiude, **sposti la riga** in Cessati con la data di fine. Non cancellarla: è lo storico che conferma le uscite.
 3. **Sul sito**: la riconciliazione flotta legge Attivi e Cessati più le fatture dei noleggiatori. Crea le targhe nuove, dismette quelle uscite (solo se sono in Cessati), aggiorna stato, contratto e canone. Le regole sono in `docs/flotta-kit/PROMPT_aggiorna_targhe_tariffe.md`.
+4. **Come si fa** ([/vehicles/aggiorna](/vehicles/aggiorna), Flotta → Aggiorna da Lista Targhe): trascini la Lista Targhe (e, se le hai, le fatture dei noleggiatori del mese), guardi l'anteprima (nuove, rientrate, dismesse, cambi campo per campo, targhe da verificare) e premi **Applica**. Se nel frattempo qualcuno ha cambiato la flotta, il sito chiede di rifare l'anteprima. Con "tieni il canone del sito" acceso (consigliato se non carichi fatture) il canone già sul sito non viene sovrascritto dalla tariffa della Lista. Alla fine trovi i controlli (attivi senza canone, sostitutivi con canone, doppie) e puoi salvare un **canone stimato** (mediana dei mezzi uguali) o scriverlo a mano per i mezzi senza un simile.
 
 ### Attività e periodicità
 

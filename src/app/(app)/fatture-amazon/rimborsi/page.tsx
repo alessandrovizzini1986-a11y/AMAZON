@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui";
 import { DS_FATTURATO, codiciDs } from "@/domain/fatture/fatturato";
 import { carburanteSettimane, classificaRighe, costoParcheggio, ETICHETTA_VOCE, fatturaStornata, nuoviStd, recapVoce, totaliRun, voceRimborso, VOCI_RIMBORSO, type RecapVoce, type VoceRimborso } from "@/domain/fatture/rimborsi";
 import { parametriAlla } from "@/domain/costi/parametri";
+import { can } from "@/lib/rbac";
 import { stationUtente, utenteCon } from "../dati";
 import { ExportRimborsi } from "./ExportRimborsi";
 
@@ -88,6 +89,7 @@ export default async function RimborsiPage({ searchParams }: { searchParams: Pro
       <div className="flex flex-wrap items-end gap-3 text-sm">
         <SelettoreMese value={mese} href="/fatture-amazon/rimborsi" />
         <ExportRimborsi anno={anno} righe={righe.filter((r) => r.data.startsWith(String(anno)))} recap={tutti} settimane={settimane} />
+        {can(user, "import.run") && <Link href="/fatture-amazon/rimborsi/consuntivo" className="btn-secondary">Carica consuntivo contabile</Link>}
       </div>
 
       <SchedePagina schede={[{ id: "mese", label: `${nomeMese} per DS` }, { id: "andamento", label: `Andamento ${anno} e ${anno - 1}` }, { id: "settimane", label: "Carburante per settimana" }]} />

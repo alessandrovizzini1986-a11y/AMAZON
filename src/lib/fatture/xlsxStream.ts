@@ -117,6 +117,8 @@ export async function leggiFoglio(
     colonne?: string[]; onRiga?: (riga: Record<string, CellaX>, n: number) => void; onProgress?: (fase: string, byte: number) => void;
     /** riga di intestazione: la prima per cui restituisce true (default: la prima riga) */
     intestazione?: (celle: CellaX[]) => boolean;
+    /** tutte le righe come elenco di celle per posizione (per i lettori a matrice); con questo onRiga non serve */
+    onCelle?: (celle: CellaX[]) => void;
   } = {},
 ): Promise<{ intestazioni: string[]; righe: number; mancanti: string[]; rigaIntestazione: CellaX[] }> {
   const zip = await JSZip.loadAsync(data);
@@ -154,6 +156,7 @@ export async function leggiFoglio(
       celle[i] = valore(c[1], c[2] ?? "");
       if (celle[i] !== null && celle[i] !== "") piena = true;
     }
+    if (opz.onCelle) { if (piena) { n++; opz.onCelle(Array.from(celle, (v) => v ?? null)); } return; }
     if (!intest) {
       if (opz.intestazione && !opz.intestazione(Array.from(celle, (v) => v ?? null))) return;
       rigaInt = Array.from(celle, (v) => v ?? null);
@@ -180,3 +183,15 @@ export async function leggiFoglio(
 
 /** Seriale Excel → data UTC (sistema 1900). */
 export const dataDaSeriale = (x: number) => new Date(Date.UTC(1899, 11, 30) + Math.round(x * 86400000));
+
+/** Nomi dei fogli di un .xlsx (senza leggerne il contenuto). */
+export async function fogliDelFile(data: ArrayBuffer | Uint8Array): Promise<string[]> {
+  return nomiFogli(await JSZip.loadAsync(data));
+}
+
+/** Un foglio come matrice di celle (righe non vuote, colonne per posizione), per i lettori a matrice. */
+export async function matriceFoglio(data: ArrayBuffer | Uint8Array, nome: string): Promise<CellaX[][]> {
+  const m: CellaX[][] = [];
+  await leggiFoglio(data, nome, { onCelle: (c) => m.push(c) });
+  return m;
+}

@@ -89,3 +89,20 @@ describe.skipIf(!haKit)("flotta: Lista Targhe 04/11/2026 + fatture (file reali)"
     expect(e.aggiorna.filter((a) => a.cambi.some((c) => c.campo === "station")).length).toBe(0);
   }, 300_000);
 });
+
+describe("aggiornamento senza fatture", () => {
+  it("con preferisciSito il canone del sito batte la tariffa della Lista; la firma cambia se cambiano le modifiche", async () => {
+    const { sceltaCanone: sc, riconcilia: ric, firmaEsito } = await import("@/domain/flotta/riconcilia");
+    const L = { targa: "AA111AA", station: "DER1", marca: "Ford", modello: "Transit", stato: "Attivo", societa: "Europcar", tipo: "BT", ra: null, inizio: null, fine: null, note: null, tariffa: 835, franchigiaDanni: null };
+    expect(sc(L, null, 835.17, true)).toMatchObject({ scelto: 835.17, fonte: "sito (invariato)" });
+    expect(sc(L, null, 835.17)).toMatchObject({ scelto: 835, fonte: "Lista Targhe" });
+    expect(sc(L, null, null, true)).toMatchObject({ scelto: 835 });
+    const V = { id: "v1", targa: "AA111AA", station: "DER1", stato: "ATTIVO" as const, modello: "Ford Transit", leasingCompany: "Europcar", tipoContratto: "BT" as const, contrattoLeasingNo: null, contrattoDataInizio: null, contrattoDataFine: null, canoneMese: 835.17, note: null, franchigiaDanni: null };
+    const a = ric({ lista: [L], cessati: [], fatture: [], sito: [V], preferisciSito: true });
+    expect(a.aggiorna).toHaveLength(0);
+    const b = ric({ lista: [L], cessati: [], fatture: [], sito: [V] });
+    expect(b.aggiorna[0].cambi).toEqual([{ campo: "canoneMese", prima: 835.17, dopo: 835 }]);
+    expect(firmaEsito(a)).not.toBe(firmaEsito(b));
+    expect(firmaEsito(b)).toBe(firmaEsito(ric({ lista: [L], cessati: [], fatture: [], sito: [V] })));
+  });
+});

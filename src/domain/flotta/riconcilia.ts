@@ -96,16 +96,20 @@ export type Esito = {
 
 const r2 = (x: number | null) => (x === null ? null : Math.round(x * 100) / 100);
 
-/** Canone da tenere: fattura (mese pieno) > tariffa Lista > canone del sito. */
-export function sceltaCanone(lista: ListaRiga, fatt: CanoneFatturato | null, sito: number | null): { scelto: number | null; fonte: string } {
+/**
+ * Canone da tenere: fattura (mese pieno) > tariffa Lista > canone del sito. Con `preferisciSito` (aggiornamento
+ * senza fatture) il canone già sul sito vale più della tariffa della Lista: spesso viene da una fattura di prima.
+ */
+export function sceltaCanone(lista: ListaRiga, fatt: CanoneFatturato | null, sito: number | null, preferisciSito = false): { scelto: number | null; fonte: string } {
   // i sostitutivi non si pagano: nessun canone, qualunque cosa dicano Lista o fattura
   if (statoDaLista(lista.stato) === "SOSTITUTIVO") return { scelto: null, fonte: "sostitutivo (non a carico)" };
   if (fatt) return { scelto: fatt.importo, fonte: `fattura ${fatt.fornitore} ${fatt.mese}` };
+  if (preferisciSito && sito !== null && sito > 0) return { scelto: sito, fonte: "sito (invariato)" };
   if (lista.tariffa !== null && lista.tariffa > 0) return { scelto: r2(lista.tariffa), fonte: "Lista Targhe" };
   return { scelto: sito, fonte: sito === null ? "nessuna" : "sito (invariato)" };
 }
 
-export function riconcilia(x: { lista: ListaRiga[]; cessati: CessatoRiga[]; fatture: FatturaRiga[]; sito: VeicoloSito[]; ultimoMese?: Partial<Record<FatturaRiga["fornitore"], string>> }): Esito {
+export function riconcilia(x: { lista: ListaRiga[]; cessati: CessatoRiga[]; fatture: FatturaRiga[]; sito: VeicoloSito[]; ultimoMese?: Partial<Record<FatturaRiga["fornitore"], string>>; preferisciSito?: boolean }): Esito {
   const lista = new Map<string, ListaRiga>();
   for (const r of x.lista) lista.set(r.targa, r); // in caso di doppioni vale l'ultima riga
   const cessati = new Map<string, CessatoRiga[]>();
@@ -150,7 +154,7 @@ export function riconcilia(x: { lista: ListaRiga[]; cessati: CessatoRiga[]; fatt
   for (const r of lista.values()) {
     const f = fattDi(r);
     const v = vivi.get(r.targa);
-    const { scelto, fonte } = sceltaCanone(r, f, v?.canoneMese ?? null);
+    const { scelto, fonte } = sceltaCanone(r, f, v?.canoneMese ?? null, x.preferisciSito ?? false);
     esito.canoni.push({ targa: r.targa, station: r.station, societa: r.societa, lista: r.tariffa, fattura: f, sito: v?.canoneMese ?? null, scelto, fonte });
     if (v) {
       const cambi = cambiDa(v, r, scelto);
@@ -223,4 +227,17 @@ export function perStation(v: { station: string; stato: string; canoneMese: numb
     o.canone = Math.round((o.canone + (x.canoneMese ?? 0)) * 100) / 100;
   }
   return out;
+}
+
+/** Firma delle modifiche di un esito: l'anteprima e l'applica devono dare la stessa (altrimenti il sito è cambiato nel frattempo). */
+export function firmaEsito(e: Esito): string {
+  const parti = [
+    ...e.crea.map((c) => `C:${c.lista.targa}:${c.lista.station}:${c.canone ?? ""}`),
+    ...e.riattiva.map((r) => `R:${r.veicolo.id}:${r.cambi.map((c) => `${c.campo}=${c.dopo ?? ""}`).join(",")}`),
+    ...e.aggiorna.map((a) => `A:${a.veicolo.id}:${a.cambi.map((c) => `${c.campo}=${c.dopo ?? ""}`).join(",")}`),
+    ...e.dismetti.map((d) => `D:${d.veicolo.id}:${d.cessato.fine ?? ""}`),
+  ].sort();
+  let h = 0;
+  for (const ch of parti.join("|")) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+  return `${parti.length}-${(h >>> 0).toString(36)}`;
 }

@@ -30,6 +30,8 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
     db.amazonInvoice.findMany({ distinct: ["ds"], select: { ds: true }, orderBy: { ds: "asc" } }),
     db.amazonInvoice.count({ where: { esportataIl: { not: null }, presenteInFatt2026Il: null } }),
   ]);
+  // fatture con righe forse doppie (stesso giorno, quantità e imponibile; rotte escluse): stesso criterio di src/domain/fatture/doppioni.ts
+  const doppie = await db.$queryRaw<{ numero: string; gruppi: bigint }[]>`select i.numero, count(*) gruppi from (select "invoiceId" from "AmazonInvoiceLine" where abs(avere) >= 0.005 and descrizione !~* 'block of' group by "invoiceId", data::date, quantita, avere having count(*) > 1) x join "AmazonInvoice" i on i.id = x."invoiceId" group by i.numero order by i.numero`.catch(() => []);
   const puoAnnullare = can(user, "fatture.annulla");
   return (
     <div className="flex flex-col gap-6">
@@ -39,6 +41,12 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
         <Link href="/fatture-amazon/registro?stato=da-incollare" className="rounded-control bg-warn-soft px-4 py-3 text-sm font-semibold text-warn">
           {daIncollare} fatture esportate ma non ancora viste in fatt_2026: scaricate ma non incollate? Mostra l&apos;elenco →
         </Link>
+      )}
+      {doppie.length > 0 && (
+        <details className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">
+          <summary className="cursor-pointer font-semibold">{doppie.length} fatture con righe forse doppie (stesso giorno, quantità e importo): aprile e controlla <Aiuto k="fatture.elimina-riga" /></summary>
+          <div className="mt-2 flex flex-wrap gap-2">{doppie.map((d) => <Link key={d.numero} className="rounded-control bg-surface-raised px-2 py-1 font-mono text-xs text-ink underline" href={`/fatture-amazon/registro/${encodeURIComponent(d.numero)}`}>{d.numero} ({Number(d.gruppi)})</Link>)}</div>
+        </details>
       )}
       <form className="card flex flex-wrap items-end gap-3 p-4">
         <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Numero<input name="q" defaultValue={p.q ?? ""} className="input h-10 w-44" placeholder="es. 2543" /></label>
@@ -59,7 +67,7 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
           <tbody>
             {fatture.map((f) => (
               <tr key={f.id}>
-                <td className="font-mono text-xs">{f.numero}</td><td className="font-mono">{f.ds}</td><td>{f.tipo}</td><td>{gg(f.dataFattura)}</td>
+                <td className="font-mono text-xs"><Link className="underline" href={`/fatture-amazon/registro/${encodeURIComponent(f.numero)}`}>{f.numero}</Link></td><td className="font-mono">{f.ds}</td><td>{f.tipo}</td><td>{gg(f.dataFattura)}</td>
                 <td className="whitespace-nowrap">{gg(f.periodoDa)} – {gg(f.periodoA)}</td><td className="text-right font-mono">{eur(f.importoDovuto)}</td><td className="text-right font-mono">{eur(f.sommaAvere)}</td>
                 <td>{f.nRighe}</td><td>{f.fonte}</td>
                 <td>{f.esportataIl ? <span className="badge-ok">{gg(f.esportataIl)}</span> : ""}</td>
