@@ -14,7 +14,7 @@ type Voce = NavItem & { perm: Action };
 type Gruppo = { id: string; label: string; icon: IconName; voci: Voce[] };
 
 export const GRUPPI: Gruppo[] = [
-  { id: "home", label: "Home", icon: "home", voci: [{ href: "/home", label: "Da fare", icon: "home", perm: "home.view", descr: "scadenze della settimana e del mese" }] },
+  { id: "home", label: "Home", icon: "home", voci: [{ href: "/home", label: "Da fare", icon: "home", perm: "home.view", descr: "scadenze della settimana e del mese" }, { href: "/conto-economico", label: "Conto economico", icon: "euro", perm: "costi.view", descr: "ricavi, costi e margine per cliente" }, { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" }] },
   {
     id: "flotta", label: "Flotta", icon: "fleet", voci: [
       { href: "/dashboard", label: "Situazione per stazione", icon: "dashboard", perm: "dashboard.station", descr: "furgoni e canoni per stazione" },
@@ -53,6 +53,7 @@ export const GRUPPI: Gruppo[] = [
     id: "aiuto", label: "Aiuto", icon: "book", voci: [
       { href: "/training", label: "Il mio training", icon: "book", perm: "training.view", descr: "percorso della stagista" },
       { href: "/vademecum", label: "Vademecum", icon: "book", perm: "vademecum.view", descr: "come si fa, passo per passo" },
+      { href: "/vademecum/18-glossario", label: "Glossario", icon: "book", perm: "vademecum.view", descr: "sigle e parole del lavoro" },
       { href: "/training/admin", label: "Training (tutor)", icon: "users", perm: "training.admin", descr: "avanzamento e validazioni" },
       { href: "/portali", label: "Portali", icon: "settings", perm: "users.manage", descr: "accessi ai portali dei fornitori" },
     ],

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConSigle } from "./Sigle";
 
 export function PageHeader({
   eyebrow,
@@ -31,7 +32,7 @@ export function PageHeader({
           <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-muted">{eyebrow}</div>
         )}
         <h1 className={`text-[26px] font-bold tracking-[-0.02em] md:text-[34px] ${eyebrow ? "mt-1.5" : ""}`}>{title}</h1>
-        {subtitle && <p className="mt-1 max-w-3xl text-sm text-ink-muted">{subtitle}</p>}
+        {subtitle && <p className="mt-1 max-w-3xl text-sm text-ink-muted"><ConSigle testo={subtitle} /></p>}
       </div>
       {action}
     </div>

@@ -22,6 +22,7 @@ import { excelFOGls, foglioFOGls, type CellaNoleggioGls } from "@/lib/costi/exce
 import { bloccoOre, foglioStimaPersonale } from "@/lib/costi/excelStimaPersonale";
 import type { Bucket } from "@/domain/costi/sic";
 import { trovaCDL } from "@/domain/costi/anagrafica";
+import { salvaCostiGls } from "../actions";
 
 type Props = {
   mese: string; fineMese: string; canRun: boolean; tariffe: ValorePerData[]; parametri: ValorePerData[]; festivi: Festivo[];
@@ -125,6 +126,24 @@ export function GlsClient(p: Props) {
       teste: ris.testeFt,
     });
     await scarica(wb, `${foglioFOGls(p.mese).trim()}_GLS_per_Costi_FO.xlsx`);
+  };
+
+  const [salvato, setSalvato] = useState<string | null>(null);
+  const salvaConto = async () => {
+    if (!ris || bustaSic === null) return;
+    setLavoro(true); setErrore(null);
+    try {
+      await salvaCostiGls({ mese: p.mese, nota: pay ? `payroll ${it(p.mese)}` : "stima busta dalle presenze", voci: [
+        { voce: "BUSTA_SIC", importo: Math.round(bustaSic * 100) / 100, quantita: null },
+        { voce: "ACC_STRAORD", importo: Math.round((ris.acc?.straord ?? 0) * 100) / 100, quantita: null },
+        { voce: "ACC_FERIE", importo: Math.round((ris.acc?.ferie ?? 0) * 100) / 100, quantita: null },
+        { voce: "STD", importo: Math.round((ris.std?.totale ?? 0) * 100) / 100, quantita: null },
+        { voce: "TESTE", importo: 0, quantita: ris.testeFt },
+        { voce: "DANNI", importo: n(danni), quantita: null },
+        { voce: "ALTRI", importo: Math.round((n(elettrico) + n(wind) + n(elmec)) * 100) / 100, quantita: null },
+      ] });
+      setSalvato(`Costi GLS di ${it(p.mese)} salvati: li trovi nel Conto economico.`);
+    } catch (e) { setErrore((e as Error).message); } finally { setLavoro(false); }
   };
 
   const scaricaPersonale = async () => {
@@ -239,7 +258,9 @@ export function GlsClient(p: Props) {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button type="button" className="btn-primary" onClick={scaricaFO}>Fogli {foglioFOGls(p.mese).trim()} e {p.mese.slice(5, 7)}{p.mese.slice(2, 4)}_ft (Costi F.O. GLS)</button><Aiuto k="costi.gls.fo" />
             <button type="button" className="btn-secondary" disabled={!cdl || !p.tariffeStd} onClick={scaricaPersonale}>Foglio GLS_{MESI3[Number(p.mese.slice(5, 7)) - 1]}_{p.mese.slice(2, 4)} (Stima costo personale)</button><Aiuto k="costi.gls.personale" />
+            {p.canRun && <><button type="button" className="btn-secondary" disabled={lavoro || bustaSic === null} onClick={salvaConto}>Salva nel conto economico</button><Aiuto k="costi.gls.conto" /></>}
           </div>
+          {salvato && <p className="mt-2 text-sm text-ok">✓ {salvato} <a className="underline" href={`/conto-economico?mese=${p.mese}`}>Apri</a></p>}
         </section>
       )}
 

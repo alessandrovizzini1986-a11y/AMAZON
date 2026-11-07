@@ -12,7 +12,7 @@ describe("menu a gruppi", () => {
     expect(menuPer("CONTROLLO").map((g) => g.label)).toEqual(["Home", "Personale", "Amazon", "Spese mezzi", "Aiuto"]);
     expect(menuPer("RESP_MEZZI").map((g) => g.label)).toEqual(["Flotta", "Amazon", "Aiuto"]);
     expect(menuPer("DRIVER").flatMap((g) => g.items.map((v) => v.href))).toEqual(["/vehicles"]);
-    expect(menuPer("STAGISTA").flatMap((g) => g.items.map((v) => v.href))).toEqual(["/training", "/vademecum"]);
+    expect(menuPer("STAGISTA").flatMap((g) => g.items.map((v) => v.href))).toEqual(["/training", "/vademecum", "/vademecum/18-glossario"]);
     expect(vociPer("ADMIN").map((v) => v.href)).not.toContain("/training"); // l'admin vede il training da tutor
     const hrefs = GRUPPI.flatMap((g) => g.voci.map((v) => v.href));
     expect(new Set(hrefs).size).toBe(hrefs.length);

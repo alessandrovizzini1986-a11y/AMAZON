@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { AIUTO, DOVE, type Dove } from "@/content/aiuto";
+import { ConSigle } from "./Sigle";
 
 const TONO: Record<string, string> = { ok: "badge-ok", info: "badge-info", warn: "badge-warn", neutral: "badge-neutral" };
 
@@ -36,8 +37,8 @@ export function Aiuto({ k, className = "" }: { k: string; className?: string }) 
       {aperto && (
         <span id={id} role="dialog" aria-label="Aiuto"
           className="absolute left-1/2 top-full z-40 mt-2 w-[min(320px,85vw)] -translate-x-1/2 rounded-control border border-line bg-surface-raised p-3 text-left text-sm font-normal normal-case leading-snug tracking-normal text-ink shadow-lg">
-          <span className="block"><b>Cosa fa:</b> {v.fa}</span>
-          <span className="mt-1.5 block"><b>Prima di premere:</b> {v.prima}</span>
+          <span className="block"><b>Cosa fa:</b> <ConSigle testo={v.fa} /></span>
+          <span className="mt-1.5 block"><b>Prima di premere:</b> <ConSigle testo={v.prima} /></span>
           <span className="mt-1.5 block"><b>Dove finisce:</b> <DoveFinisce tipo={v.dove} className="ml-1" /><span className="mt-1 block text-ink-muted">{d.spiega}</span></span>
           {v.nota && <span className="mt-1.5 block text-ink-muted">{v.nota}</span>}
         </span>

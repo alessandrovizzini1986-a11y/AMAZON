@@ -95,7 +95,7 @@ export function PortaliClient({ portali }: { portali: Portale[] }) {
 
       <section className="card p-4 md:p-5">
         <h2 className="mb-2 text-[19px] font-semibold">Carica da file</h2>
-        <Dropzone titolo="Trascina il file con il foglio Portali" accept=".xlsx" lavoro={lavoro} onFiles={importa} aiuto="portali.importa"
+        <Dropzone archivio={false} titolo="Trascina il file con il foglio Portali" accept=".xlsx" lavoro={lavoro} onFiles={importa} aiuto="portali.importa"
           testo={<>Es. <code>Passaggio_Consegne_Mezzi.xlsx</code>, foglio Portali (colonne Portale, URL, Username, Password, Note). Il file si legge nel browser e non si salva; sul sito va solo la password cifrata.</>} />
         {msg && <p className="mt-2 rounded-control bg-ok-soft px-3 py-2 text-sm text-ok">{msg}</p>}
         {errore && <p className="mt-2 rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">{errore}</p>}
