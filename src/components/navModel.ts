@@ -22,6 +22,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/orders", label: "Furgoni in arrivo", icon: "orders", perm: "orders.view", descr: "ordini ai noleggiatori" },
       { href: "/officine", label: "Officine", icon: "wrench", perm: "officine.view", descr: "officine e carrozzerie autorizzate" },
       { href: "/vehicles/listini", label: "Listini noleggiatori", icon: "receipt", perm: "vehicle.manage", descr: "tariffe e confronto per classe" },
+      { href: "/vehicles/aggiorna", label: "Aggiorna da Lista Targhe", icon: "import", perm: "import.run", descr: "targhe, contratti e canoni dal file" },
     ],
   },
   {
