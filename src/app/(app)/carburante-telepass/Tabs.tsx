@@ -8,6 +8,7 @@ const TABS = [
   { href: "/carburante-telepass/anagrafiche", label: "Carte e dispositivi" },
   { href: "/carburante-telepass/telepass", label: "Telepass" },
   { href: "/carburante-telepass/q8", label: "Carburante Q8" },
+  { href: "/carburante-telepass/storico", label: "File già elaborati" },
 ];
 
 export function Tabs() {

@@ -54,6 +54,10 @@ Le carte con **DS vuoto o "Da verificare"** sono evidenziate in giallo: vanno at
 | Telepass | tabella **Toll** (una riga per transazione, colonna STATION, WEEK), **PVT** (somma Importo per station e settimana, con RMPP, ZTL e TOTALE), **ztlrimini**, **RMPP**, **Anomalie** | gli importi sono negativi come nel CSV; TOTALE = −Totale + RMPP + ZTL |
 | Q8 | **Recap** (Imp. Scontato no IVA per station e settimana + giornaliero della station scelta), tabella **Q8_** (una riga per rifornimento, colonne STATION, AMZ, WEEK), **Anomalie** | le griglie sono a formule: se Alessandro vuole la pivot la aggiunge lui |
 
+### Mesi elaborati fuori dal sito ([/carburante-telepass/storico](/carburante-telepass/storico))
+
+Per i mesi lavorati a mano (prima del sito, o in emergenza) trascini i file già elaborati: **Q8** con la colonna STATION su ogni transazione e **Telepass** con il foglio **PVT**. Anche tanti mesi insieme. Il sito legge mese, totali per station e settimana e li confronta con quello che ha già: i mesi già presenti sono deselezionati e li salvi solo se vuoi che valga il file. Salvando, il mese vale in Rimborsi, nel foglio F.O. e nello stato del mese, come se l'avesse elaborato il sito.
+
 **Regole fisse**
 
 - Il tipo di file e il mese si capiscono dal **contenuto**, mai dal nome.

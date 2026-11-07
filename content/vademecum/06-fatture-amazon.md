@@ -72,6 +72,8 @@ Le colonne Tasse (`VAT 22`), Rateo IVA (`0,22`), MESE (9) e ANNO (2026) sono ugu
 
 La stessa fattura ha più righe con la stessa descrizione nello stesso giorno ma prezzo diverso (es. due "AMZL Late Cancel - weekday" a 145,00 e a 243,35): sono due righe distinte, non sommarle.
 
+**Righe doppie** ([/fatture-amazon/registro](/fatture-amazon/registro)): clicca il numero di una fattura per vederne le righe. In cima al registro c'è l'elenco delle fatture con **righe forse doppie** (stesso giorno, quantità e importo; le rotte non contano perché più rotte uguali nello stesso giorno sono normali). Le righe sospette sono segnate con ⚠: confrontale col PDF e, se è davvero un doppione, l'amministratore la elimina (i totali della fattura si ricalcolano, la riga resta nell'Audit). Se la fattura viene da fatt_2026, togli la riga anche lì.
+
 ### Rimborsi da controllare ([/fatture-amazon/rimborsi](/fatture-amazon/rimborsi))
 
 Nella scheda **Rimborsi** ci sono quattro tabelline per mese e DS, IVA esclusa, da tenere a portata di mano per le contestazioni:
@@ -82,5 +84,7 @@ Nella scheda **Rimborsi** ci sono quattro tabelline per mese e DS, IVA esclusa, 
 - **Training**: giornate *Training Day* (80 € l'una) contro i nuovi STD del mese (data inizio contratto nel file MOG) × 80 €. I nuovi SIC non hanno data di assunzione nel sito: se ci sono, il fatturato è giustamente più alto.
 
 Sotto ci sono l'andamento dell'anno e di quello prima (il 2025 usa i costi del consuntivo contabile, per mese di registrazione) e la tabella del **carburante per settimana** (FuelAllowance contro Q8 della stessa settimana Amazon), utile per contestare le settimane scoperte.
+
+**Consuntivo contabile** ([/fatture-amazon/rimborsi/consuntivo](/fatture-amazon/rimborsi/consuntivo), pulsante "Carica consuntivo contabile"): trascini `consuntivo_costi_fatturato_AAAA.xlsx`; dal foglio SOLITO il sito somma il Costo Effettivo del CDC 5569 per mese, DS e voce (carburante, pedaggi, parcheggi = Affitti Amazon). In anteprima vedi file contro sito; salvando, per i mesi del file i costi della contabilità sostituiscono quelli stimati. Controlla l'anno (si prende dal nome del file).
 
 La differenza in **rosso** vuol dire rimborsato meno del costo: da controllare o contestare. Le note credito vanno nella voce della fattura che stornano. "Scarica Excel" dà il recap dell'anno e tutte le righe di fattura con il numero, da allegare alla contestazione.
