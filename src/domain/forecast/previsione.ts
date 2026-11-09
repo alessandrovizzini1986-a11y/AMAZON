@@ -84,11 +84,30 @@ export function perMese(p: Previsione[]): Record<string, Record<string, number>>
   return m;
 }
 
-/** Fatturato reale comparabile con la previsione: classi rotta + le 4 classi extra previste. */
-export function reale(righe: RigaCalibrazione[], ds: string, settimana: string): { avere: number; rotte: number } | null {
+export type Reale = { avere: number; rotte: number; avereND: number; rotteND: number; avereSD: number; rotteSD: number };
+
+/**
+ * Fatturato reale comparabile con la previsione: classi rotta + le 4 classi extra previste.
+ * Le rotte si contano come nel forecast: next tutte (SWA/MFN comprese); same day ogni giorno A + il maggiore tra B e C
+ * (B e C li fa lo stesso furgone). Gli extra si dividono tra next e same in proporzione alle rotte, come nella previsione.
+ */
+export function reale(righe: RigaCalibrazione[], ds: string, settimana: string): Reale | null {
   const rs = righe.filter((r) => r.ds === ds && inizioSettimana(r.data) === settimana && (isRotta(r.classe) || CLASSI_EXTRA_PREVISTE.includes(r.classe)));
   if (!rs.length) return null;
-  return { avere: r2(rs.reduce((s, r) => s + r.avere, 0)), rotte: rs.filter((r) => isRotta(r.classe)).reduce((s, r) => s + r.quantita, 0) };
+  const somma = (f: (r: RigaCalibrazione) => boolean, v: (r: RigaCalibrazione) => number) => rs.filter(f).reduce((s, r) => s + v(r), 0);
+  const nd = (r: RigaCalibrazione) => r.classe.startsWith("ND_"), sd = (r: RigaCalibrazione) => r.classe.startsWith("SD_");
+  const rotteND = somma(nd, (r) => r.quantita);
+  const giorni = new Map<string, { a: number; b: number; c: number }>();
+  for (const r of rs.filter(sd)) {
+    const g = giorni.get(r.data) ?? { a: 0, b: 0, c: 0 };
+    if (r.classe === "SD_B") g.b += r.quantita; else if (r.classe === "SD_C") g.c += r.quantita; else g.a += r.quantita;
+    giorni.set(r.data, g);
+  }
+  const rotteSD = [...giorni.values()].reduce((s, g) => s + g.a + Math.max(g.b, g.c), 0);
+  const extra = somma((r) => !isRotta(r.classe), (r) => r.avere);
+  const quotaND = rotteND + rotteSD ? rotteND / (rotteND + rotteSD) : 1;
+  const avereND = somma(nd, (r) => r.avere) + extra * quotaND, avereSD = somma(sd, (r) => r.avere) + extra * (1 - quotaND);
+  return { avere: r2(avereND + avereSD), rotte: rotteND + rotteSD, avereND: r2(avereND), rotteND, avereSD: r2(avereSD), rotteSD };
 }
 
 export type Backtest = { ds: string; settimana: string; week: number; previsto: number; reale: number; erroreTot: number; rottePreviste: number; rotteFatturate: number; erroreRotte: number };
