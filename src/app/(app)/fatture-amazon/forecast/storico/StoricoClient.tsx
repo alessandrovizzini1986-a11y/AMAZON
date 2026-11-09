@@ -48,11 +48,11 @@ export function StoricoClient(p: Props) {
   const perSett = (w: string) => agg.filter((a) => a.settimana === w).sort((a, b) => a.versione.localeCompare(b.versione));
   const ultimo = (w: string) => perSett(w).at(-1) ?? null;
   const reale = (w: string): number | null => {
-    if (linea !== "TUTTE") return null;
     const st = ds === "TUTTE" ? p.stations : [ds];
     const xs = st.map((s) => p.reale[`${s}|${w}`]).filter(Boolean);
     if (!xs.length) return null;
-    return xs.reduce((t, r) => t + (misura === "eur" ? r.eur : r.rotte), 0);
+    // stessa linea e stessa logica di conteggio del forecast (same day: A + max(B, C) al giorno)
+    return xs.reduce((t, r) => t + (misura === "eur" ? (linea === "ND" ? r.eurND : linea === "SD" ? r.eurSD : r.eur) : linea === "ND" ? r.rotteND : linea === "SD" ? r.rotteSD : r.rotte), 0);
   };
 
   // KPI
@@ -142,7 +142,7 @@ export function StoricoClient(p: Props) {
         </div>
         <div className="flex flex-wrap gap-4 text-xs text-ink-muted">
           <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: BLU }} />Ultima versione</span>
-          {linea === "TUTTE" && <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: ARANCIO }} />Fatturato (settimane chiuse)</span>}
+          <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: ARANCIO }} />Fatturato{linea === "ND" ? " next" : linea === "SD" ? " same day" : ""} (settimane fatturate)</span>
           {["1 sett. prima", "2 sett. prima", "3+ sett. prima"].map((l, i) => <span key={l} className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-full border" style={{ background: SEQ[i + 1], borderColor: BLU }} />{l}</span>)}
         </div>
         <div className="overflow-x-auto">
@@ -164,7 +164,7 @@ export function StoricoClient(p: Props) {
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Settimana per l'evoluzione">
           {finestra.map((w) => <button key={w} type="button" aria-pressed={w === sel} onClick={() => setSel(w)} className={`h-9 rounded-full border px-3 text-xs ${w === sel ? "border-brand bg-brand text-white" : "border-[#d5dbe3] bg-surface-raised"}`}>{wk(w)}</button>)}
         </div>
-        <p className="text-xs text-ink-muted">I punti chiari sono i forecast fatti 1, 2, 3 settimane prima: se stanno sotto la linea blu il forecast è cresciuto avvicinandosi alla settimana; la distanza dalla linea arancione è l&apos;errore finale. Le rotte SWA/MFN pickup oltre le 3 settimane del next sono simulate.</p>
+        <p className="text-xs text-ink-muted">I punti chiari sono i forecast fatti 1, 2, 3 settimane prima: se stanno sotto la linea blu il forecast è cresciuto avvicinandosi alla settimana; la distanza dalla linea arancione è l&apos;errore finale. Le rotte SWA/MFN pickup oltre le 3 settimane del next sono simulate. Le rotte fatturate si contano come nel forecast: next tutte (SWA/MFN comprese), same day ogni giorno A + il maggiore tra B e C.</p>
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -197,14 +197,14 @@ export function StoricoClient(p: Props) {
           <span className="text-xs text-ink-muted">{misura === "eur" ? "k€ previsti" : "rotte"} · in grassetto la versione in uso · tra parentesi la variazione sulla versione prima</span>
         </div>
         <div className="overflow-x-auto"><table className="table-base min-w-[820px] text-sm">
-          <thead><tr><th>Settimana target</th>{versioni.map((v) => <th key={v} className="text-right">versione {numeroSettimana(v)}</th>)}{linea === "TUTTE" && <><th className="text-right">Fatturato</th><th className="text-right">Errore</th></>}</tr></thead>
+          <thead><tr><th>Settimana target</th>{versioni.map((v) => <th key={v} className="text-right">versione {numeroSettimana(v)}</th>)}{<><th className="text-right">Fatturato</th><th className="text-right">Errore</th></>}</tr></thead>
           <tbody>{finestra.map((w) => {
             const xs = perSett(w); const u = xs.at(-1); const r = reale(w); let prev: number | null = null;
             const err = u && r ? ((u.v - r) / r) * 100 : null;
             return <tr key={w}><td className="font-semibold">{wk(w)}{w >= S ? " (aperta)" : ""}</td>
               {versioni.map((v) => { const a = xs.find((x) => x.versione === v); if (!a) return <td key={v} />; const dd = prev ? ((a.v - prev) / prev) * 100 : null; prev = a.v;
                 return <td key={v} className={`text-right font-mono ${a === u ? "font-bold" : ""} ${colDelta(dd)}`}>{misura === "eur" ? it(a.v / 1000, 1) : it(a.v)}{dd === null ? "" : ` (${dd >= 0 ? "+" : ""}${it(dd, 1)} %)`}{a.parziale ? "*" : ""}</td>; })}
-              {linea === "TUTTE" && <><td className="text-right font-mono text-[#a8481a]">{r === null ? "—" : misura === "eur" ? it(r / 1000, 1) : it(r)}</td><td className={`text-right font-mono ${colDelta(err)}`}>{err === null ? "—" : `${err >= 0 ? "+" : ""}${it(err, 1)} %`}</td></>}</tr>;
+              {<><td className="text-right font-mono text-[#a8481a]">{r === null ? "—" : misura === "eur" ? it(r / 1000, 1) : it(r)}</td><td className={`text-right font-mono ${colDelta(err)}`}>{err === null ? "—" : `${err >= 0 ? "+" : ""}${it(err, 1)} %`}</td></>}</tr>;
           })}</tbody>
         </table></div>
         <p className="text-xs text-ink-muted">* parziale: settimana oltre l&apos;orizzonte del next (solo same day e SWA simulate). Variazione entro ±5 % neutra, fino a 15 % gialla, oltre rossa. Il fatturato compare appena le fatture coprono tutti e 7 i giorni della settimana (al più tardi 14 giorni dopo il sabato).</p>

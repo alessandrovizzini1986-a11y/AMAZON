@@ -9,7 +9,7 @@ import { versioniForecast } from "@/lib/forecastVersioni";
 
 export type DatiStorico = {
   oggi: string; settimanaCorrente: string; versioneInUso: { nd: string | null; sd: string | null };
-  punti: PuntoVersione[]; reale: Record<string, { eur: number; rotte: number }>; precisione: Precisione[];
+  punti: PuntoVersione[]; reale: Record<string, { eur: number; rotte: number; eurND: number; rotteND: number; eurSD: number; rotteSD: number }>; precisione: Precisione[];
   flotta: Record<string, { attivi: number; sostitutivi: number; officina: number }>; stations: string[];
 };
 
@@ -41,7 +41,7 @@ export async function calcolaStorico(n: number, oggi: string): Promise<DatiStori
   for (const p of ultimaVersione(punti)) {
     if (!conFatturato(p.station, p.settimana)) continue;
     const r = reale(righe, p.station, p.settimana);
-    if (r) realeMap[`${p.station}|${p.settimana}`] = { eur: r.avere, rotte: r.rotte };
+    if (r) realeMap[`${p.station}|${p.settimana}`] = { eur: r.avere, rotte: r.rotte, eurND: r.avereND, rotteND: r.rotteND, eurSD: r.avereSD, rotteSD: r.rotteSD };
   }
   const prec = precisione(punti, (s, w) => realeMap[`${s}|${w}`]?.eur ?? null, (w) => chiusa(w, oggi) || Object.keys(realeMap).some((k) => k.endsWith(`|${w}`)));
   const stationsDb = await db.station.findMany({ select: { id: true, code: true } });
