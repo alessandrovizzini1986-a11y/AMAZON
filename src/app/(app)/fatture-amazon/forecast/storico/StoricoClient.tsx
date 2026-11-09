@@ -157,6 +157,22 @@ export function StoricoClient(p: Props) {
               return <circle key={a.versione} cx={X(i)} cy={Y(a.v)} r={last ? 4.5 : 4} fill={last ? BLU : SEQ[Math.min(3, Math.max(1, a.anticipo))]} stroke={BLU}><title>{`${wk(w)} · versione ${wk(a.versione)} · anticipo ${a.anticipo} sett. · ${fmtM(a.v, misura)}${a.parziale ? " · parziale (senza next)" : ""}${a.swa ? ` · ${it(a.swa)} rotte SWA simulate` : ""}`}</title></circle>;
             }))}
             {finestra.map((w, i) => reale(w) !== null && <circle key={w} cx={X(i)} cy={Y(reale(w)!)} r={4} fill={ARANCIO}><title>{`${wk(w)} · fatturato ${fmtM(reale(w)!, misura)}`}</title></circle>)}
+            {finestra.map((w, i) => {
+              // fatturato contro ultima versione del forecast: + = fatto più del previsto
+              const r = reale(w), u = ultimo(w)?.v;
+              if (r === null || !u) return null;
+              const pct = ((r - u) / u) * 100;
+              const sopra = Math.max(T + 18, Math.min(Y(r), Y(u)) - 10);
+              return (
+                <g key={`pct-${w}`}>
+                  <rect x={X(i) - 30} y={sopra - 15} width={60} height={20} rx={10} fill={pct >= 0 ? "#e6f4ea" : "#fdecea"} />
+                  <text x={X(i)} y={sopra} textAnchor="middle" fontSize="12" fontWeight={700} fill={pct >= 0 ? "#1e7b3c" : "#b42318"}>
+                    {`${pct >= 0 ? "+" : "−"}${it(Math.abs(pct), 1)} %`}
+                    <title>{`${wk(w)}: fatturato ${fmtM(r, misura)} contro ultimo forecast ${fmtM(u, misura)}`}</title>
+                  </text>
+                </g>
+              );
+            })}
             {finestra.map((w, i) => <text key={w} x={X(i)} y={326} textAnchor="middle" fontSize="11" fontWeight={w === sel ? 700 : 400} fill="#5b6778">{wk(w)}</text>)}
             {finestra.includes(sel) && <rect x={X(finestra.indexOf(sel)) - step / 2 + 6} y={T} width={step - 12} height={B - T} fill="none" stroke="#123e73" strokeWidth={1.5} strokeDasharray="4 3" rx={4} />}
           </svg>
@@ -164,7 +180,7 @@ export function StoricoClient(p: Props) {
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Settimana per l'evoluzione">
           {finestra.map((w) => <button key={w} type="button" aria-pressed={w === sel} onClick={() => setSel(w)} className={`h-9 rounded-full border px-3 text-xs ${w === sel ? "border-brand bg-brand text-white" : "border-[#d5dbe3] bg-surface-raised"}`}>{wk(w)}</button>)}
         </div>
-        <p className="text-xs text-ink-muted">I punti chiari sono i forecast fatti 1, 2, 3 settimane prima: se stanno sotto la linea blu il forecast è cresciuto avvicinandosi alla settimana; la distanza dalla linea arancione è l&apos;errore finale. Le rotte SWA/MFN pickup oltre le 3 settimane del next sono simulate. Le rotte fatturate si contano come nel forecast: next tutte (SWA/MFN comprese), same day ogni giorno A + il maggiore tra B e C.</p>
+        <p className="text-xs text-ink-muted">I punti chiari sono i forecast fatti 1, 2, 3 settimane prima: se stanno sotto la linea blu il forecast è cresciuto avvicinandosi alla settimana; la distanza dalla linea arancione è l&apos;errore finale: la percentuale sopra il punto arancione è il fatturato contro l&apos;ultimo forecast (+ = abbiamo fatto più del previsto). Le rotte SWA/MFN pickup oltre le 3 settimane del next sono simulate. Le rotte fatturate si contano come nel forecast: next tutte (SWA/MFN comprese), same day ogni giorno A + il maggiore tra B e C.</p>
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
