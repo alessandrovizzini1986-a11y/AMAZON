@@ -56,7 +56,7 @@ export const LISTINI: Listino[] = [
   {
     id: "amicoblu-2026", fornitore: "Avis (Amicoblu)", titolo: "Tariffe speciali furgoni, rinnovo 2026", fonte: "Rinnovo_2026_PROFESSIONAL_SOLUTIONS_SRL (12/02/2026)", data: "2026-02-12", validoAl: null,
     uso: "Flessibile in rampa peak: permette il no-show. Prenotazioni con il codice cliente MCD.",
-    condizioni: ["150 km/giorno inclusi", "riduzione danni (CDW), furto/incendio (TP) e SKO inclusi", "nolo mensile da 28 a 150 giorni, rinnovabile di 30 (max 180)", "variazioni con 30 giorni di preavviso, adeguamento ISTAT"],
+    condizioni: ["150 km/giorno inclusi", "riduzione danni (CDW), furto/incendio (TP) e SKO inclusi", "nolo mensile da 28 a 150 giorni, rinnovabile di 30 (max 180)", "variazioni con 30 giorni di preavviso, adeguamento ISTAT", "in fattura (consolidato YTD ott 2026) ogni canone è il listino + 2,14 €: I 859,50 · A 948,82 · B 1.093,88 · C 1.118,75; i Ducato DLO4 a 1.140,25 non tornano con nessun gruppo"],
     voci: [
       { gruppo: "J", modello: "furgone piccolo", classe: "SMALL", eurMese: 807.62, kmExtra: 0.10 },
       { gruppo: "Q2", modello: "van piccolo (classe Doblò)", classe: "SMALL", eurMese: 832.49, kmExtra: 0.10 },
@@ -121,7 +121,8 @@ export const LISTINI: Listino[] = [
     ],
   },
   {
-    id: "autovia", fornitore: "Autovia", titolo: "Furgoni", fonte: "Passaggio di consegne mezzi, foglio Tariffe", data: "2026-05-15", validoAl: null, uso: "Standard.", condizioni: [],
+    id: "autovia", fornitore: "Autovia", titolo: "Furgoni", fonte: "Passaggio di consegne mezzi, foglio Tariffe", data: "2026-05-15", validoAl: null, uso: "Standard.",
+    condizioni: ["da fine settembre 2026 Autovia fattura 1.020 €/mese per ogni furgone, qualunque modello (consolidato YTD ott 2026): più del listino; a dicembre 2025 erano 900 €", "franchigia danni fatturata: 422 €"],
     voci: [
       { gruppo: "KPIA", modello: "Fiat Doblò", classe: "SMALL", eurMese: 860 },
       { gruppo: "KMIA", modello: "Fiat Talento", classe: "MEDIUM", eurMese: 900 },
