@@ -5,7 +5,7 @@
  */
 import { CLASSI, isRotta } from "./classifica";
 
-export type RigaFatturato = { ds: string; anno: number; mese: number; week: number; classe: string; avere: number; quantita: number };
+export type RigaFatturato = { ds: string; anno: number; mese: number; week: number; classe: string; avere: number; quantita: number; /** giorno di servizio AAAA-MM-GG: serve a contare il same day come il forecast */ data?: string };
 
 /** Station sempre in tabella (anche a zero), nell'ordine del file. */
 export const DS_FATTURATO = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1"];
@@ -68,19 +68,45 @@ export const meseClasse = (righe: RigaFatturato[], anno: number) => {
 /** Settimana Amazon × DS dell'anno. */
 export const settimanaDs = (righe: RigaFatturato[], anno: number, ds = DS_FATTURATO) => griglia(righe.filter((x) => x.anno === anno), (x) => x.week, (x) => x.ds, ds);
 
-export type IndicatoriDs = { ds: string; rotte: number; avereRotte: number; avereExtra: number; avere: number; euroPerRotta: number | null; extraPerRotta: number | null };
+export type IndicatoriDs = {
+  ds: string;
+  rotteND: number; avereND: number; euroND: number | null;
+  rotteSD: number; avereSD: number; euroSD: number | null;
+  rotte: number; avereRotte: number; euroPerRotta: number | null;
+  avereExtra: number; extraPerRotta: number | null;
+  avere: number; euroTotalePerRotta: number | null;
+};
 
-/** Per DS: rotte (somma Quantità delle classi rotta), € per rotta (AVERE rotte / rotte), extra per rotta (AVERE EXTRA_* / rotte). */
+/**
+ * Per DS: rotte e € next (classi ND_*, SWA/MFN comprese) e same day (classi SD_*), contate come il forecast:
+ * same day di ogni giorno = A + il maggiore tra B e C (B e C le fa lo stesso furgone). Extra = classi EXTRA_*.
+ * € per rotta totale = AVERE totale (rotte + extra) / rotte.
+ */
 export function indicatoriDs(righe: RigaFatturato[], filtro: (r: RigaFatturato) => boolean = () => true, ds = DS_FATTURATO): IndicatoriDs[] {
-  const m = new Map<string, IndicatoriDs>(ds.map((d) => [d, { ds: d, rotte: 0, avereRotte: 0, avereExtra: 0, avere: 0, euroPerRotta: null, extraPerRotta: null }]));
+  type Acc = { rotteND: number; avereND: number; avereSD: number; avereExtra: number; sd: Map<string, { a: number; b: number; c: number }> };
+  const nuovo = (): Acc => ({ rotteND: 0, avereND: 0, avereSD: 0, avereExtra: 0, sd: new Map() });
+  const m = new Map<string, Acc>(ds.map((d) => [d, nuovo()]));
   for (const r of righe.filter(filtro)) {
-    const x = m.get(r.ds) ?? { ds: r.ds, rotte: 0, avereRotte: 0, avereExtra: 0, avere: 0, euroPerRotta: null, extraPerRotta: null };
-    if (isRotta(r.classe)) { x.rotte += r.quantita; x.avereRotte += r.avere; } else x.avereExtra += r.avere;
-    x.avere += r.avere;
-    m.set(r.ds, x);
+    const x = m.get(r.ds) ?? nuovo(); m.set(r.ds, x);
+    if (r.classe.startsWith("ND_")) { x.rotteND += r.quantita; x.avereND += r.avere; }
+    else if (r.classe.startsWith("SD_")) {
+      x.avereSD += r.avere;
+      const k = r.data ?? `${r.anno}-${r.mese}-${r.week}`;
+      const g = x.sd.get(k) ?? { a: 0, b: 0, c: 0 };
+      if (r.classe === "SD_B") g.b += r.quantita; else if (r.classe === "SD_C") g.c += r.quantita; else g.a += r.quantita;
+      x.sd.set(k, g);
+    } else x.avereExtra += r.avere;
   }
-  return [...m.values()].map((x) => ({
-    ...x, avereRotte: r2(x.avereRotte), avereExtra: r2(x.avereExtra), avere: r2(x.avere),
-    euroPerRotta: x.rotte ? r2(x.avereRotte / x.rotte) : null, extraPerRotta: x.rotte ? r2(x.avereExtra / x.rotte) : null,
-  }));
+  const div = (a: number, b: number) => (b ? r2(a / b) : null);
+  return [...m.entries()].map(([d, x]) => {
+    const rotteSD = [...x.sd.values()].reduce((s, g) => s + g.a + Math.max(g.b, g.c), 0);
+    const rotte = x.rotteND + rotteSD, avereRotte = x.avereND + x.avereSD, avere = avereRotte + x.avereExtra;
+    return {
+      ds: d, rotteND: x.rotteND, avereND: r2(x.avereND), euroND: div(x.avereND, x.rotteND),
+      rotteSD, avereSD: r2(x.avereSD), euroSD: div(x.avereSD, rotteSD),
+      rotte, avereRotte: r2(avereRotte), euroPerRotta: div(avereRotte, rotte),
+      avereExtra: r2(x.avereExtra), extraPerRotta: div(x.avereExtra, rotte),
+      avere: r2(avere), euroTotalePerRotta: div(avere, rotte),
+    };
+  });
 }

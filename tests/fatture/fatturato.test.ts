@@ -38,3 +38,13 @@ describe("§8.6 fatturato 2026 dallo storico (12.361 righe)", () => {
     expect(dlo2.euroPerRotta).toBeCloseTo(dlo2.avereRotte / dlo2.rotte, 1);
   });
 });
+
+describe("indicatori: next e same day separati, contati come il forecast", () => {
+  const r = (data: string, classe: string, quantita: number, avere: number) => ({ ds: "DLO2", anno: 2026, mese: 10, week: 44, data, classe, quantita, avere });
+  it("same day = A + max(B, C) al giorno; €/rotta con extra = AVERE totale / rotte", () => {
+    const [x] = indicatoriDs([r("2026-10-26", "ND_STANDARD", 10, 2700), r("2026-10-26", "ND_SWA", 2, 300), r("2026-10-26", "SD_A", 2, 400), r("2026-10-26", "SD_B", 3, 300), r("2026-10-26", "SD_C", 5, 400), r("2026-10-26", "EXTRA_CARBURANTE", 1, 340)], () => true, ["DLO2"]);
+    expect([x.rotteND, x.rotteSD, x.rotte]).toEqual([12, 7, 19]);
+    expect(x.euroND).toBe(250); expect(x.euroSD).toBe(157.14);
+    expect(x.avere).toBe(4440); expect(x.euroTotalePerRotta).toBe(233.68);
+  });
+});

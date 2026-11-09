@@ -16,10 +16,10 @@ const VISTE = { ds: "Mese × DS", classe: "Mese × classe", settimana: "Settiman
 async function righe(anno: number, ds: string | null): Promise<RigaFatturato[]> {
   const r = await db.amazonInvoiceLine.findMany({
     where: { anno, ...(ds ? { ds: { in: codiciDs(ds) } } : {}) },
-    select: { ds: true, anno: true, mese: true, week: true, classe: true, avere: true, quantita: true },
+    select: { ds: true, anno: true, mese: true, week: true, classe: true, avere: true, quantita: true, data: true },
   });
   // DVN5 e DVN6 (rotte extra di DVN1) dentro DVN1
-  return r.map((x) => ({ ...x, ds: dsAmazon(x.ds), avere: Number(x.avere) }));
+  return r.map((x) => ({ ...x, ds: dsAmazon(x.ds), avere: Number(x.avere), data: x.data.toISOString().slice(0, 10) }));
 }
 
 export default async function FatturatoPage({ searchParams }: { searchParams: Promise<{ anno?: string; vista?: string; mese?: string; ds?: string }> }) {
@@ -36,6 +36,13 @@ export default async function FatturatoPage({ searchParams }: { searchParams: Pr
   const gPrec = prec.length ? meseDs(prec, anno - 1, colDs) : null;
   const mese = Number(p.mese) || null;
   const indicatori = indicatoriDs(att, (r) => !mese || r.mese === mese, colDs);
+  const totaleIndicatori = (() => {
+    const s = (f: (x: (typeof indicatori)[number]) => number) => indicatori.reduce((a, x) => a + f(x), 0);
+    const div = (a: number, b: number) => (b ? Math.round((a / b) * 100) / 100 : null);
+    const t = { rotteND: s((x) => x.rotteND), avereND: s((x) => x.avereND), rotteSD: s((x) => x.rotteSD), avereSD: s((x) => x.avereSD), avereExtra: s((x) => x.avereExtra), avere: s((x) => x.avere) };
+    const rotte = t.rotteND + t.rotteSD;
+    return { ds: "Totale", ...t, rotte, avereRotte: t.avereND + t.avereSD, euroND: div(t.avereND, t.rotteND), euroSD: div(t.avereSD, t.rotteSD), euroPerRotta: div(t.avereND + t.avereSD, rotte), extraPerRotta: div(t.avereExtra, rotte), euroTotalePerRotta: div(t.avere, rotte) };
+  })();
   const link = (q: Record<string, string | number | null>) => `/fatture-amazon/fatturato?${new URLSearchParams(Object.entries({ anno, vista, ...q }).filter(([, v]) => v !== null && String(v) !== "").map(([k, v]) => [k, String(v)])).toString()}`;
   const dett = mese && p.ds && (!solo || p.ds === solo)
     ? await db.amazonInvoice.findMany({ where: { righe: { some: { anno, mese, ds: { in: codiciDs(p.ds) } } } }, orderBy: { numero: "asc" }, include: { righe: { where: { anno, mese, ds: { in: codiciDs(p.ds) } }, select: { avere: true } } } })
@@ -65,10 +72,26 @@ export default async function FatturatoPage({ searchParams }: { searchParams: Pr
             {[...new Set(att.map((r) => r.mese))].sort((a, b) => a - b).map((m) => <Link key={m} href={link({ vista: "indicatori", mese: m })} className={mese === m ? "badge-ok" : "badge-neutral"}>{MESI[m]}</Link>)}
           </div>
           <table className="table-base text-sm">
-            <thead><tr><th>DS</th><th className="text-right">Rotte</th><th className="text-right">AVERE rotte</th><th className="text-right">€ per rotta</th><th className="text-right">AVERE extra</th><th className="text-right">Extra per rotta</th><th className="text-right">AVERE totale</th></tr></thead>
-            <tbody>{indicatori.map((x) => <tr key={x.ds}><td className="font-mono font-semibold">{x.ds}</td><td className="text-right">{x.rotte.toLocaleString("it-IT")}</td><td className="text-right font-mono">{eur(x.avereRotte)}</td><td className="text-right font-mono font-semibold">{eur(x.euroPerRotta)}</td><td className="text-right font-mono">{eur(x.avereExtra)}</td><td className="text-right font-mono">{eur(x.extraPerRotta)}</td><td className="text-right font-mono">{eur(x.avere)}</td></tr>)}</tbody>
+            <thead>
+              <tr><th rowSpan={2}>DS</th><th colSpan={3} className="border-l border-line text-center">Next day</th><th colSpan={3} className="border-l border-line text-center">Same day</th><th colSpan={2} className="border-l border-line text-center">Extra</th><th colSpan={3} className="border-l border-line text-center">Totale</th></tr>
+              <tr>
+                <th className="border-l border-line text-right">Rotte</th><th className="text-right">AVERE</th><th className="text-right">€/rotta</th>
+                <th className="border-l border-line text-right">Rotte</th><th className="text-right">AVERE</th><th className="text-right">€/rotta</th>
+                <th className="border-l border-line text-right">AVERE</th><th className="text-right">per rotta</th>
+                <th className="border-l border-line text-right">Rotte</th><th className="text-right">AVERE</th><th className="text-right">€/rotta con extra</th>
+              </tr>
+            </thead>
+            <tbody>{[...indicatori, totaleIndicatori].map((x) => (
+              <tr key={x.ds} className={x.ds === "Totale" ? "font-semibold" : ""}>
+                <td className="font-mono font-semibold">{x.ds}</td>
+                <td className="border-l border-line text-right">{x.rotteND.toLocaleString("it-IT")}</td><td className="text-right font-mono">{eur(x.avereND)}</td><td className="text-right font-mono font-semibold">{eur(x.euroND)}</td>
+                <td className="border-l border-line text-right">{x.rotteSD ? x.rotteSD.toLocaleString("it-IT") : "—"}</td><td className="text-right font-mono">{x.rotteSD ? eur(x.avereSD) : "—"}</td><td className="text-right font-mono font-semibold">{eur(x.euroSD)}</td>
+                <td className="border-l border-line text-right font-mono">{eur(x.avereExtra)}</td><td className="text-right font-mono">{eur(x.extraPerRotta)}</td>
+                <td className="border-l border-line text-right">{x.rotte.toLocaleString("it-IT")}</td><td className="text-right font-mono">{eur(x.avere)}</td><td className="text-right font-mono font-semibold">{eur(x.euroTotalePerRotta)}</td>
+              </tr>
+            ))}</tbody>
           </table>
-          <p className="mt-2 text-xs text-ink-faint">Rotte = somma delle quantità delle classi ND_* e SD_*. Extra = tutte le classi EXTRA_* (carburante, bonus, abort, training, incentivi, altro).</p>
+          <p className="mt-2 text-xs text-ink-faint">Next = classi ND_* (SWA/MFN pickup comprese). Same day contato come il forecast: ogni giorno A + il maggiore tra B e C (B e C le fa lo stesso furgone). Extra = classi EXTRA_* (carburante, bonus, abort, training, incentivi, altro), divisi per tutte le rotte. €/rotta con extra = AVERE totale / rotte totali.</p>
         </section>
       ) : (
         <section className="card p-4 md:p-5">
