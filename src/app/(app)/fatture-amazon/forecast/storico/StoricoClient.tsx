@@ -207,7 +207,7 @@ export function StoricoClient(p: Props) {
               {linea === "TUTTE" && <><td className="text-right font-mono text-[#a8481a]">{r === null ? "—" : misura === "eur" ? it(r / 1000, 1) : it(r)}</td><td className={`text-right font-mono ${colDelta(err)}`}>{err === null ? "—" : `${err >= 0 ? "+" : ""}${it(err, 1)} %`}</td></>}</tr>;
           })}</tbody>
         </table></div>
-        <p className="text-xs text-ink-muted">* parziale: settimana oltre l&apos;orizzonte del next (solo same day e SWA simulate). Variazione entro ±5 % neutra, fino a 15 % gialla, oltre rossa. Il fatturato compare quando la settimana è chiusa (14 giorni dopo il sabato).</p>
+        <p className="text-xs text-ink-muted">* parziale: settimana oltre l&apos;orizzonte del next (solo same day e SWA simulate). Variazione entro ±5 % neutra, fino a 15 % gialla, oltre rossa. Il fatturato compare appena le fatture coprono tutti e 7 i giorni della settimana (al più tardi 14 giorni dopo il sabato).</p>
       </section>
 
       <section className="card flex flex-col gap-3 p-4 md:p-5">

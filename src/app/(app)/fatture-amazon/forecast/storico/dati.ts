@@ -3,7 +3,7 @@ import { dsAmazon } from "@/domain/fatture/fatturato";
 import { db } from "@/lib/db";
 import { calibra, finestra, type Calibrazione, type RigaCalibrazione } from "@/domain/forecast/tariffe";
 import { reale } from "@/domain/forecast/previsione";
-import { addGiorni, chiusa, inizioSettimana, numeroSettimana } from "@/domain/forecast/settimane";
+import { addGiorni, chiusa, fatturataTutta, inizioSettimana, numeroSettimana } from "@/domain/forecast/settimane";
 import { precisione, storico, ultimaVersione, type PuntoVersione, type Precisione } from "@/domain/forecast/storico";
 import { versioniForecast } from "@/lib/forecastVersioni";
 
@@ -33,13 +33,17 @@ export async function calcolaStorico(n: number, oggi: string): Promise<DatiStori
     return cache.get(w)!;
   };
   const punti = storico(vers, righeFc, calPer);
+  // giorni con fattura per DS: la settimana conta come fatturata appena ci sono tutti e 7 (o comunque dopo 14 giorni)
+  const giorniDs = new Map<string, Set<string>>();
+  for (const r of righe) { if (!giorniDs.has(r.ds)) giorniDs.set(r.ds, new Set()); giorniDs.get(r.ds)!.add(r.data); }
+  const conFatturato = (s: string, w: string) => chiusa(w, oggi) || fatturataTutta(w, oggi, giorniDs.get(s) ?? new Set());
   const realeMap: DatiStorico["reale"] = {};
   for (const p of ultimaVersione(punti)) {
-    if (!chiusa(p.settimana, oggi)) continue;
+    if (!conFatturato(p.station, p.settimana)) continue;
     const r = reale(righe, p.station, p.settimana);
     if (r) realeMap[`${p.station}|${p.settimana}`] = { eur: r.avere, rotte: r.rotte };
   }
-  const prec = precisione(punti, (s, w) => realeMap[`${s}|${w}`]?.eur ?? null, (w) => chiusa(w, oggi));
+  const prec = precisione(punti, (s, w) => realeMap[`${s}|${w}`]?.eur ?? null, (w) => chiusa(w, oggi) || Object.keys(realeMap).some((k) => k.endsWith(`|${w}`)));
   const stationsDb = await db.station.findMany({ select: { id: true, code: true } });
   const code = new Map(stationsDb.map((s) => [s.id, s.code]));
   const flotta: DatiStorico["flotta"] = {};
