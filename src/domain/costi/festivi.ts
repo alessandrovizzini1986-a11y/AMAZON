@@ -1,6 +1,6 @@
 /**
  * Domeniche e festivi per il modulo Costi (regola §3 "Comuni"): festività
- * nazionali, 24/12 e 31/12 (semifestivi, art. 10 Accordo) e patrono della
+ * nazionali (dal 2026 anche il 4 ottobre, San Francesco), 24/12 e 31/12 (semifestivi, art. 10 Accordo) e patrono della
  * station. Mai il sabato.
  */
 export const STATIONS_COSTI = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1"] as const;
@@ -48,6 +48,8 @@ export function festiviAnno(y: number): Festivo[] {
   const naz: [number, number, string][] = [[1, 1, "Capodanno"], [1, 6, "Epifania"], [4, 25, "Liberazione"], [5, 1, "Festa del lavoro"], [6, 2, "Festa della Repubblica"], [8, 15, "Ferragosto"], [11, 1, "Ognissanti"], [12, 8, "Immacolata"], [12, 25, "Natale"], [12, 26, "Santo Stefano"]];
   const out: Festivo[] = naz.map(([m, d, t]) => ({ data: iso(y, m, d), descrizione: `Nazionale: ${t}`, station: "TUTTE" }));
   out.push({ data: piuGiorni(pasqua(y), 1), descrizione: "Nazionale: Lunedì dell'Angelo", station: "TUTTE" });
+  // San Francesco d'Assisi, patrono d'Italia: festa nazionale dal 2026 (4 ottobre); se cade di domenica Adecco la paga come festività
+  if (y >= 2026) out.push({ data: iso(y, 10, 4), descrizione: "Nazionale: San Francesco d'Assisi", station: "TUTTE" });
   out.push({ data: iso(y, 12, 24), descrizione: "Semifestivo (art. 10 Accordo)", station: "TUTTE" }, { data: iso(y, 12, 31), descrizione: "Semifestivo (art. 10 Accordo)", station: "TUTTE" });
   for (const s of [...STATIONS_COSTI, "GLS"]) out.push({ data: patrono(s, y)!, descrizione: "Patrono", station: s });
   return out.sort((a, b) => a.data.localeCompare(b.data) || a.station.localeCompare(b.station));
