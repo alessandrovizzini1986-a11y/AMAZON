@@ -7,7 +7,7 @@ import { Dropzone } from "@/components/Dropzone";
 import { Aiuto } from "@/components/Aiuto";
 import { fogliDelFile, matriceFoglio } from "@/lib/fatture/xlsxStream";
 import { scarica } from "@/lib/presenze/excelUtil";
-import { abbina, leggiWind, rangoFoglio, righeLocali, type RigaLocale, type Sim, type Telefono } from "@/domain/telefoni/censimento";
+import { abbina, ETICHETTA_SITUAZIONE, leggiWind, rangoFoglio, righeLocali, situazione, type RigaLocale, type Sim, type Situazione, type Telefono } from "@/domain/telefoni/censimento";
 import { mostraCodici, salvaCensimento } from "./actions";
 
 export type SimVista = Omit<Sim, "pin" | "puk" | "fonti"> & { haPin: boolean; haPuk: boolean; fonti: string };
@@ -17,6 +17,31 @@ const STATIONS = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1", "GLS"]
 const PROV = { tutte: "Tutte", abbinate: "Wind e censimento", soloWind: "Solo Wind: paghiamo, non censite", soloCens: "Solo censimento: non a canone Wind" } as const;
 type Prov = keyof typeof PROV;
 const it = (d: string | null) => (d ? d.split("-").reverse().join("/") : "—");
+const BADGE: Record<Situazione, string> = { ASSEGNATO: "badge-ok", ROTAZIONE: "badge-ok", SCORTA: "badge-neutral", ATTIVO: "badge-neutral", DISMESSO: "badge-warn" };
+const SIT_FILTRO = { attivi: "Solo attivi", dismessi: "Solo dismessi", tutti: "Tutti", ...ETICHETTA_SITUAZIONE } as const;
+
+/** Telefoni e SIM attivi per station: totale, assegnati, a rotazione, scorta, stato non indicato. */
+function TabellaStation({ telefoni, sim }: { telefoni: { station: string | null; sit: Situazione }[]; sim: { station: string | null; sit: Situazione }[] }) {
+  const sta = [...STATIONS, "?"];
+  const conta = (xs: { station: string | null; sit: Situazione }[], s: string, f: (x: Situazione) => boolean) => xs.filter((x) => (x.station ?? "?") === s && f(x.sit)).length;
+  const t = telefoni.map((x) => ({ station: x.station, sit: x.sit })), m = sim.map((x) => ({ station: x.station, sit: x.sit }));
+  const righe = sta.map((s) => ({ s, att: conta(t, s, (x) => x !== "DISMESSO"), ass: conta(t, s, (x) => x === "ASSEGNATO"), rot: conta(t, s, (x) => x === "ROTAZIONE"), sco: conta(t, s, (x) => x === "SCORTA"), nd: conta(t, s, (x) => x === "ATTIVO"), dis: conta(t, s, (x) => x === "DISMESSO"), sim: conta(m, s, (x) => x !== "DISMESSO") })).filter((r) => r.att || r.dis || r.sim);
+  const tot = (k: keyof (typeof righe)[number]) => righe.reduce((a, r) => a + (r[k] as number), 0);
+  const n = (v: number) => (v ? v.toLocaleString("it-IT") : "—");
+  return (
+    <section className="card overflow-x-auto p-4 md:p-5">
+      <h2 className="mb-1 text-[19px] font-semibold">Telefoni attivi per station</h2>
+      <p className="mb-3 text-xs text-ink-muted">Attivi = tutto tranne i dismessi (rotti, restituiti, spediti, smarriti, da cessare). Lo stato viene dai file delle station; dove manca si guarda l&apos;assegnatario.</p>
+      <table className="table-base text-sm">
+        <thead><tr><th>Station</th><th className="text-right">Telefoni attivi</th><th className="text-right">Assegnati</th><th className="text-right">A rotazione</th><th className="text-right">Scorta</th><th className="text-right">Stato non indicato</th><th className="text-right">Dismessi</th><th className="text-right">SIM attive</th></tr></thead>
+        <tbody>
+          {righe.map((r) => <tr key={r.s}><td className="font-semibold">{r.s === "?" ? "senza station" : r.s}</td><td className="text-right font-mono font-semibold">{n(r.att)}</td><td className="text-right font-mono">{n(r.ass)}</td><td className="text-right font-mono">{n(r.rot)}</td><td className="text-right font-mono">{n(r.sco)}</td><td className="text-right font-mono text-ink-muted">{n(r.nd)}</td><td className="text-right font-mono text-ink-muted">{n(r.dis)}</td><td className="text-right font-mono">{n(r.sim)}</td></tr>)}
+          <tr className="font-semibold"><td>Totale</td><td className="text-right font-mono">{n(tot("att"))}</td><td className="text-right font-mono">{n(tot("ass"))}</td><td className="text-right font-mono">{n(tot("rot"))}</td><td className="text-right font-mono">{n(tot("sco"))}</td><td className="text-right font-mono">{n(tot("nd"))}</td><td className="text-right font-mono">{n(tot("dis"))}</td><td className="text-right font-mono">{n(tot("sim"))}</td></tr>
+        </tbody>
+      </table>
+    </section>
+  );
+}
 
 function Kpi({ titolo, valore, nota, tono = "" }: { titolo: string; valore: number | string; nota: string; tono?: string }) {
   return <div className="card flex flex-col gap-0.5 p-4"><span className="text-sm font-semibold text-ink-muted">{titolo}</span><span className={`text-[26px] font-bold ${tono}`}>{typeof valore === "number" ? valore.toLocaleString("it-IT") : valore}</span><span className="text-xs text-ink-muted">{nota}</span></div>;
@@ -29,14 +54,18 @@ function Codici({ numero }: { numero: string }) {
   return <button type="button" className="btn-secondary px-2 py-1 text-xs" disabled={busy} onClick={async () => { setBusy(true); try { setC(await mostraCodici(numero)); } finally { setBusy(false); } }}>Mostra</button>;
 }
 
-export function TelefoniClient({ sim, telefoni, aggiornatoIl, puoCaricare, puoCodici }: { sim: SimVista[]; telefoni: TelVista[]; aggiornatoIl: string | null; puoCaricare: boolean; puoCodici: boolean }) {
+export function TelefoniClient({ sim: simDb, telefoni: telDb, aggiornatoIl, puoCaricare, puoCodici }: { sim: SimVista[]; telefoni: TelVista[]; aggiornatoIl: string | null; puoCaricare: boolean; puoCodici: boolean }) {
   const router = useRouter();
+  const sim = useMemo(() => simDb.map((x) => ({ ...x, sit: situazione(x.stato, x.note, x.assegnatario) })), [simDb]);
+  const telefoni = useMemo(() => telDb.map((x) => ({ ...x, sit: situazione(x.stato, x.note, x.assegnatario) })), [telDb]);
+  const [sitF, setSitF] = useState<keyof typeof SIT_FILTRO>("attivi");
+  const okSit = (x: Situazione) => sitF === "tutti" || (sitF === "attivi" ? x !== "DISMESSO" : sitF === "dismessi" ? x === "DISMESSO" : x === sitF);
   const [scheda, setScheda] = useState<"sim" | "tel" | "carica">(sim.length ? "sim" : "carica");
   const [st, setSt] = useState(""); const [prov, setProv] = useState<Prov>("tutte"); const [stato, setStato] = useState(""); const [q, setQ] = useState(""); const [n, setN] = useState(200);
   const prov_ = (inWind: boolean, censita: boolean) => prov === "tutte" || (prov === "abbinate" && inWind && censita) || (prov === "soloWind" && inWind && !censita) || (prov === "soloCens" && !inWind);
   const cerca = (xs: (string | null)[]) => !q.trim() || xs.some((v) => v?.toLowerCase().includes(q.trim().toLowerCase()));
-  const simF = useMemo(() => sim.filter((x) => (!st || (st === "?" ? !x.station : x.station === st)) && prov_(x.inWind, !!x.fonti) && (!stato || (x.stato ?? "—") === stato) && cerca([x.numero, x.iccid, x.tag, x.assegnatario, x.imei, x.note])), [sim, st, prov, stato, q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const telF = useMemo(() => telefoni.filter((x) => (!st || (st === "?" ? !x.station : x.station === st)) && prov_(x.inWind, !!x.fonti) && (!stato || (x.stato ?? "—") === stato) && cerca([x.imei, x.tag, x.modello, x.assegnatario, x.numero, x.note])), [telefoni, st, prov, stato, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  const simF = useMemo(() => sim.filter((x) => okSit(x.sit) && (!st || (st === "?" ? !x.station : x.station === st)) && prov_(x.inWind, !!x.fonti) && (!stato || (x.stato ?? "—") === stato) && cerca([x.numero, x.iccid, x.tag, x.assegnatario, x.imei, x.note])), [sim, st, prov, stato, q, sitF]); // eslint-disable-line react-hooks/exhaustive-deps
+  const telF = useMemo(() => telefoni.filter((x) => okSit(x.sit) && (!st || (st === "?" ? !x.station : x.station === st)) && prov_(x.inWind, !!x.fonti) && (!stato || (x.stato ?? "—") === stato) && cerca([x.imei, x.tag, x.modello, x.assegnatario, x.numero, x.note])), [telefoni, st, prov, stato, q, sitF]); // eslint-disable-line react-hooks/exhaustive-deps
   const stati = [...new Set((scheda === "tel" ? telefoni : sim).map((x) => x.stato ?? "—"))].sort();
   const simW = sim.filter((x) => x.inWind), telW = telefoni.filter((x) => x.inWind);
 
@@ -79,10 +108,10 @@ export function TelefoniClient({ sim, telefoni, aggiornatoIl, puoCaricare, puoCo
     const foglio = (nome: string, col: string[], rows: (string | number | null)[][]) => {
       const ws = wb.addWorksheet(nome); ws.addRow(col).font = { bold: true }; rows.forEach((r) => ws.addRow(r)); ws.columns.forEach((c) => { c.width = 18; }); ws.views = [{ state: "frozen", ySplit: 1 }]; ws.autoFilter = { from: "A1", to: { row: 1, column: col.length } };
     };
-    foglio("SIM", ["Numero", "ICCID", "Wind", "Stato Wind", "Attivazione", "Piano", "Contratto", "Station", "TAG", "Assegnatario", "Stato", "IMEI", "PIN presente", "PUK presente", "Note", "Fonti"],
-      simF.map((x) => [x.numero, x.iccid, x.inWind ? "sì" : "no", x.statoWind, x.attivazione, x.piano, x.contratto, x.station, x.tag, x.assegnatario, x.stato, x.imei, x.haPin ? "sì" : "no", x.haPuk ? "sì" : "no", x.note, x.fonti]));
-    foglio("Telefoni", ["IMEI", "Wind", "Stato Wind", "Attivazione", "Contratto", "Station", "TAG", "Modello", "Assegnatario", "Stato", "Numero SIM", "Note", "Fonti"],
-      telF.map((x) => [x.imei, x.inWind ? "sì" : "no", x.statoWind, x.attivazione, x.contratto, x.station, x.tag, x.modello, x.assegnatario, x.stato, x.numero, x.note, x.fonti]));
+    foglio("SIM", ["Numero", "Situazione", "ICCID", "Wind", "Stato Wind", "Attivazione", "Piano", "Contratto", "Station", "TAG", "Assegnatario", "Stato", "IMEI", "PIN presente", "PUK presente", "Note", "Fonti"],
+      simF.map((x) => [x.numero, ETICHETTA_SITUAZIONE[x.sit], x.iccid, x.inWind ? "sì" : "no", x.statoWind, x.attivazione, x.piano, x.contratto, x.station, x.tag, x.assegnatario, x.stato, x.imei, x.haPin ? "sì" : "no", x.haPuk ? "sì" : "no", x.note, x.fonti]));
+    foglio("Telefoni", ["IMEI", "Situazione", "Wind", "Stato Wind", "Attivazione", "Contratto", "Station", "TAG", "Modello", "Assegnatario", "Stato", "Numero SIM", "Note", "Fonti"],
+      telF.map((x) => [x.imei, ETICHETTA_SITUAZIONE[x.sit], x.inWind ? "sì" : "no", x.statoWind, x.attivazione, x.contratto, x.station, x.tag, x.modello, x.assegnatario, x.stato, x.numero, x.note, x.fonti]));
     await scarica(wb, `Telefoni_e_SIM_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
@@ -90,7 +119,8 @@ export function TelefoniClient({ sim, telefoni, aggiornatoIl, puoCaricare, puoCo
     <div className="card flex flex-wrap items-end gap-3 p-4 text-sm">
       <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Station<select className="input h-10 w-32" value={st} onChange={(e) => setSt(e.target.value)}><option value="">Tutte</option>{STATIONS.map((s) => <option key={s}>{s}</option>)}<option value="?">senza station</option></select></label>
       <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Provenienza<select className="input h-10 w-72" value={prov} onChange={(e) => setProv(e.target.value as Prov)}>{Object.entries(PROV).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-      <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Stato<select className="input h-10 w-56" value={stato} onChange={(e) => setStato(e.target.value)}><option value="">Tutti</option>{stati.map((s) => <option key={s}>{s}</option>)}</select></label>
+      <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Situazione<select className="input h-10 w-56" value={sitF} onChange={(e) => setSitF(e.target.value as keyof typeof SIT_FILTRO)}>{Object.entries(SIT_FILTRO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+      <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Stato nel file<select className="input h-10 w-56" value={stato} onChange={(e) => setStato(e.target.value)}><option value="">Tutti</option>{stati.map((s) => <option key={s}>{s}</option>)}</select></label>
       <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Cerca<input className="input h-10 w-64" placeholder="numero, IMEI, TAG, nome…" value={q} onChange={(e) => setQ(e.target.value)} /></label>
       <button type="button" className="btn-secondary h-10" onClick={esporta}>Scarica Excel (filtrato)</button>
     </div>
@@ -101,9 +131,10 @@ export function TelefoniClient({ sim, telefoni, aggiornatoIl, puoCaricare, puoCo
       <div className="grid gap-3 md:grid-cols-4">
         <Kpi titolo="SIM Wind a canone" valore={simW.length} nota={`${simW.filter((x) => x.fonti).length} trovate nei file delle station`} />
         <Kpi titolo="SIM Wind non censite" valore={simW.filter((x) => !x.fonti).length} nota="paghiamo ma non sappiamo dove sono: da cercare o cessare" tono={simW.some((x) => !x.fonti) ? "text-warn" : ""} />
-        <Kpi titolo="Telefoni Wind a noleggio" valore={telW.length} nota={`${telW.filter((x) => x.fonti).length} trovati, ${telW.filter((x) => !x.fonti).length} non censiti`} />
+        <Kpi titolo="Telefoni attivi" valore={telefoni.filter((x) => x.sit !== "DISMESSO").length} nota={`${telW.length} a noleggio Wind (${telW.filter((x) => !x.fonti).length} non censiti); ${telefoni.filter((x) => x.sit === "DISMESSO").length} dismessi`} />
         <Kpi titolo="PIN / PUK noti" valore={`${sim.filter((x) => x.haPin).length} / ${sim.filter((x) => x.haPuk).length}`} nota={`su ${sim.length} SIM; si leggono con "Mostra"`} />
       </div>
+      {sim.length > 0 && <TabellaStation telefoni={telefoni} sim={sim} />}
       <p className="text-xs text-ink-muted">Ultimo caricamento: {aggiornatoIl ? new Date(aggiornatoIl).toLocaleString("it-IT") : "mai"}.</p>
       <div className="flex flex-wrap gap-2">
         {[["sim", `SIM (${sim.length})`], ["tel", `Telefoni (${telefoni.length})`], ...(puoCaricare ? [["carica", "Carica i file"]] : [])].map(([k, l]) => (
@@ -116,10 +147,10 @@ export function TelefoniClient({ sim, telefoni, aggiornatoIl, puoCaricare, puoCo
         <section className="card overflow-x-auto p-4 md:p-5">
           <h2 className="mb-2 text-[19px] font-semibold">{simF.length.toLocaleString("it-IT")} SIM</h2>
           <table className="table-base text-sm">
-            <thead><tr><th>Numero</th><th>Wind</th><th>Station</th><th>TAG</th><th>Assegnatario</th><th>Stato</th><th>ICCID</th><th>Piano / attivazione</th><th>PIN / PUK</th><th>Note</th></tr></thead>
+            <thead><tr><th>Numero</th><th>Situazione</th><th>Wind</th><th>Station</th><th>TAG</th><th>Assegnatario</th><th>Stato</th><th>ICCID</th><th>Piano / attivazione</th><th>PIN / PUK</th><th>Note</th></tr></thead>
             <tbody>{simF.slice(0, n).map((x) => (
               <tr key={x.numero} className={x.inWind && !x.fonti ? "bg-warn-soft" : ""}>
-                <td className="font-mono">{x.numero}</td>
+                <td className="font-mono">{x.numero}</td><td><span className={BADGE[x.sit]}>{ETICHETTA_SITUAZIONE[x.sit]}</span></td>
                 <td>{x.inWind ? <span className={x.statoWind === "Attivo" ? "badge-ok" : "badge-warn"}>{x.statoWind}</span> : <span className="badge-neutral">no</span>}</td>
                 <td>{x.station ?? "—"}</td><td className="font-mono text-xs">{x.tag ?? ""}</td><td>{x.assegnatario ?? ""}</td><td className="text-xs">{x.stato ?? ""}</td>
                 <td className="font-mono text-xs">{x.iccid ?? ""}</td><td className="text-xs">{x.piano ?? ""}{x.attivazione ? ` · ${it(x.attivazione)}` : ""}</td>
@@ -137,10 +168,10 @@ export function TelefoniClient({ sim, telefoni, aggiornatoIl, puoCaricare, puoCo
         <section className="card overflow-x-auto p-4 md:p-5">
           <h2 className="mb-2 text-[19px] font-semibold">{telF.length.toLocaleString("it-IT")} telefoni</h2>
           <table className="table-base text-sm">
-            <thead><tr><th>IMEI</th><th>Wind</th><th>Station</th><th>TAG</th><th>Modello</th><th>Assegnatario</th><th>Stato</th><th>SIM</th><th>Note</th></tr></thead>
+            <thead><tr><th>IMEI</th><th>Situazione</th><th>Wind</th><th>Station</th><th>TAG</th><th>Modello</th><th>Assegnatario</th><th>Stato</th><th>SIM</th><th>Note</th></tr></thead>
             <tbody>{telF.slice(0, n).map((x) => (
               <tr key={x.imei} className={x.inWind && !x.fonti ? "bg-warn-soft" : ""}>
-                <td className="font-mono text-xs">{x.imei}</td>
+                <td className="font-mono text-xs">{x.imei}</td><td><span className={BADGE[x.sit]}>{ETICHETTA_SITUAZIONE[x.sit]}</span></td>
                 <td>{x.inWind ? <span className={x.statoWind === "Attivo" ? "badge-ok" : "badge-warn"}>{x.statoWind}</span> : <span className="badge-neutral">no</span>}</td>
                 <td>{x.station ?? "—"}</td><td className="font-mono text-xs">{x.tag ?? ""}</td><td>{x.modello ?? ""}</td><td>{x.assegnatario ?? ""}</td><td className="text-xs">{x.stato ?? ""}</td>
                 <td className="font-mono text-xs">{x.numero ?? ""}</td><td className="max-w-[260px] text-xs" title={x.fonti}>{x.note ?? ""}</td>

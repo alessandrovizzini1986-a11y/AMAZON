@@ -22,7 +22,6 @@ export const GRUPPI: Gruppo[] = [
       { href: "/orders", label: "Furgoni in arrivo", icon: "orders", perm: "orders.view", descr: "ordini ai noleggiatori" },
       { href: "/officine", label: "Officine", icon: "wrench", perm: "officine.view", descr: "officine e carrozzerie autorizzate" },
       { href: "/vehicles/listini", label: "Listini noleggiatori", icon: "receipt", perm: "vehicle.manage", descr: "tariffe e confronto per classe" },
-      { href: "/telefoni", label: "Telefoni e SIM", icon: "settings", perm: "telefoni.view", descr: "SIM e telefoni Wind, PIN e PUK" },
       { href: "/vehicles/aggiorna", label: "Aggiorna da Lista Targhe", icon: "import", perm: "import.run", descr: "targhe, contratti e canoni dal file" },
     ],
   },
@@ -31,6 +30,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/presenze", label: "Presenze", icon: "presenze", perm: "presenze.view", descr: "tracking, controllo settimanale e fine mese" },
       { href: "/costi", label: "Costi del personale", icon: "euro", perm: "costi.view", descr: "stima a fine mese e consuntivo Amazon" },
       { href: "/costi/gls", label: "Costi GLS", icon: "euro", perm: "costi.view", descr: "appalto Castel Maggiore e Badgebox" },
+      { href: "/telefoni", label: "Telefoni e SIM", icon: "settings", perm: "telefoni.view", descr: "dotazioni: SIM e telefoni Wind, PIN e PUK" },
     ],
   },
   {

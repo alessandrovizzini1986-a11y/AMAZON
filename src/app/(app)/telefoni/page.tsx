@@ -23,7 +23,7 @@ export default async function TelefoniPage() {
   const ultimo = [...sim, ...tel].reduce<Date | null>((m, x) => (!m || x.aggiornatoIl > m ? x.aggiornatoIl : m), null);
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader eyebrow="Flotta · dotazioni" title="Telefoni e SIM"
+      <PageHeader eyebrow="Personale · dotazioni" title="Telefoni e SIM"
         subtitle="Il file Wind ufficiale dice cosa paghiamo (SIM e telefoni a canone); i file delle station dicono dove sono, a chi sono assegnati, in che stato, e PIN/PUK. Qui li vedi abbinati: in giallo quello che paghiamo ma non risulta da nessuna parte." />
       <TelefoniClient sim={simV} telefoni={telV} aggiornatoIl={ultimo?.toISOString() ?? null} puoCaricare={can(user, "telefoni.manage")} puoCodici={can(user, "telefoni.codici")} />
     </div>

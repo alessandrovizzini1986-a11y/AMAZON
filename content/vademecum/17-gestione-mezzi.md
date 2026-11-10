@@ -117,7 +117,7 @@ Ogni portale ha il suo account: **chiedi il tuo** appena puoi. Gli accessi condi
 - I verbali arrivati a casa del lavoratore si pagano tramite Tesoreria (Nicola Bellopede) e **poi** si addebitano al driver: è una procedura diversa dalle multe normali (vedi [flusso multe](/vademecum/03-multe-flusso)).
 - Controllo fatture: una targa riconsegnata non deve più comparire a canone il mese dopo. La riconciliazione del sito elenca le targhe **fatturate dopo la cessazione**, da contestare al noleggiatore.
 
-### Telefoni e SIM ([/telefoni](/telefoni))
+### Telefoni e SIM ([/telefoni](/telefoni), menu Personale)
 
 Il **file Wind ufficiale** del mese (fogli *Mobile Ricaricabile* = SIM, *terminali* = telefoni) dice cosa paghiamo a canone; i file **&lt;DS&gt;_GESTIONE_BYOD** delle station (e QUERY_BYOD, planning_DEVICE) dicono dove sono, a chi sono assegnati, in che stato, e PIN/PUK. Nella scheda **Carica i file** li trascini tutti insieme: il sito abbina le SIM per numero di telefono e i telefoni per IMEI, mostra l'anteprima e, con **Salva**, sostituisce il censimento. Se un file è protetto da password, aprilo e salvalo senza prima di trascinarlo.
 
@@ -126,3 +126,4 @@ Il **file Wind ufficiale** del mese (fogli *Mobile Ricaricabile* = SIM, *termina
 - **PIN e PUK** non compaiono mai nelle tabelle né nell'Excel: li legge solo l'amministratore con **Mostra**, e ogni lettura resta nell'Audit.
 - Quando più file dicono cose diverse sulla stessa SIM vale il file di gestione della station, poi i fogli per station di QUERY_BYOD, poi i riepiloghi; i fogli dei restituiti e da cessare contano per ultimi.
 
+- **Situazione** (tabellina in alto e filtro, di base *Solo attivi*): *assegnato* e *a rotazione* come scritto nei file; *scorta* per scorta, backup, scatole e uffici; *dismesso* quando stato o note dicono rotto, spedito, restituito, smarrito, furto, batteria, da cessare o da bloccare; dove lo stato manca (DER2, DLZ2) conta l'assegnatario. Il resto è *attivo, stato non indicato*: da completare nei file delle station.
