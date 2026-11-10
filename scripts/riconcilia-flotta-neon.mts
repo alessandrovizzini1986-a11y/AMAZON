@@ -6,12 +6,16 @@
  *   NEON_URL=... npx tsx scripts/riconcilia-flotta-neon.mts --lista Lista_Targhe.xlsx \
  *     [--ald ALD.xlsx] [--arval ARVAL.xlsx] [--avis AVIS.xlsx] [--europcar EUROPCAR.xlsx] [--report out.xlsx]
  * Con --applica scrive sul sito in una sola transazione e registra il riepilogo nel log di audit.
+ * Con --preferisci-sito il canone già sul sito (es. preso da una fattura) non viene sostituito dalla tariffa della Lista.
+ * La Lista si legge a flusso (matriceFoglio): ExcelJS non apre il file per i filtri delle tabelle.
  */
 import crypto from "node:crypto";
 import ExcelJS from "exceljs";
 import { neon } from "@neondatabase/serverless";
 import { ProxyAgent, setGlobalDispatcher } from "undici";
 import { datiDaLista, perStation, riconcilia, type FatturaRiga, type VeicoloSito } from "../src/domain/flotta/riconcilia";
+import { readFileSync } from "node:fs";
+import { matriceFoglio } from "../src/lib/fatture/xlsxStream";
 import { leggiFattureAld, leggiFattureArval, leggiFattureAvis, leggiFattureEuropcar, leggiListaAttivi, leggiListaCessati, type Matrice } from "../src/lib/flotta/leggi";
 
 if (process.env.HTTPS_PROXY) setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
@@ -34,8 +38,9 @@ async function matrici(file: string, fogli?: string[]): Promise<Record<string, M
 }
 const primo = async (f: string) => Object.values(await matrici(f))[0];
 
-const lt = await matrici(arg("lista")!, ["Attivi", "Cessati"]);
-const lista = leggiListaAttivi(lt.Attivi), cessati = leggiListaCessati(lt.Cessati);
+const buf = readFileSync(arg("lista")!); const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+const lista = leggiListaAttivi((await matriceFoglio(ab, "Attivi")) as Matrice), cessati = leggiListaCessati((await matriceFoglio(ab, "Cessati")) as Matrice);
+const PREFERISCI_SITO = process.argv.includes("--preferisci-sito");
 const fatture: FatturaRiga[] = [];
 if (arg("ald")) fatture.push(...leggiFattureAld(await primo(arg("ald")!)));
 if (arg("arval")) fatture.push(...leggiFattureArval(await primo(arg("arval")!)));
@@ -49,7 +54,7 @@ const righe = (await sql.query(`SELECT v.id, v.targa, s.code station, v.stato::t
   v."contrattoDataInizio"::date::text "contrattoDataInizio", v."contrattoDataFine"::date::text "contrattoDataFine", v."canoneMese"::float "canoneMese", v.note, v."franchigiaDanni"::float "franchigiaDanni", v."updatedAt"::text "updatedAt"
   FROM "Vehicle" v JOIN "Station" s ON s.id = v."stationId"`)) as VeicoloSito[];
 
-const e = riconcilia({ lista, cessati, fatture, sito: righe });
+const e = riconcilia({ lista, cessati, fatture, sito: righe, preferisciSito: PREFERISCI_SITO });
 const prima = perStation(righe);
 console.log(`Lista: ${lista.length} attivi · Cessati: ${cessati.length} righe · fatture: ${fatture.length} righe`);
 console.log({ crea: e.crea.length, riattiva: e.riattiva.length, aggiorna: e.aggiorna.length, dismetti: e.dismetti.length, daVerificare: e.daVerificare.map((d) => d.veicolo.targa) });
