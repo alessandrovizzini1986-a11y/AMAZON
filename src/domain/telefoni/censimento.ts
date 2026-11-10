@@ -165,3 +165,34 @@ export function rangoFoglio(nomeFile: string, foglio: string): number {
   if (/allds|all_ds|database/i.test(f)) return 2;
   return 3;
 }
+
+export const SITUAZIONI = ["ASSEGNATO", "ROTAZIONE", "SCORTA", "ATTIVO", "DISMESSO"] as const;
+export type Situazione = (typeof SITUAZIONI)[number];
+export const ETICHETTA_SITUAZIONE: Record<Situazione, string> = { ASSEGNATO: "Assegnato", ROTAZIONE: "A rotazione", SCORTA: "Scorta", ATTIVO: "Attivo, stato non indicato", DISMESSO: "Dismesso" };
+
+const DISMESSO = /ROTT|SPEDIT|RESTITU|SMARRIT|FURTO|RUBAT|BATTERI|NON SI ACCENDE|NON FUNZION|SCHERMO|LICENZIAT|CESSA|DA BLOCCARE|DA CHIUDERE|DISMESS|NON FA LOGGARE|SISTEMA OPERATIVO|FOTOCAMERA|DENUNCI|DISATTIVAT/i;
+const SCORTA = /SCORTA|BACKUP|FUNZIONANTE|IN ATTESA|FERMO|DA ASSEGNARE|SCATOLA/i;
+
+/**
+ * Situazione normalizzata dagli stati e dalle note scritti a mano nei file delle station: stati e note "particolari"
+ * (rotto, spedito, restituito, smarrito…) = dismesso; ASSEGNATO e ROTAZIONE come sono; scorta/backup/scatola = scorta;
+ * il resto (stato vuoto, "ATTIVO") è attivo con stato non indicato. "Vetro rotto ma funzionante" resta attivo.
+ */
+export function situazione(stato: string | null, note: string | null, assegnatario: string | null = null): Situazione {
+  const s = (stato ?? "").trim().toUpperCase(), n = (note ?? "").trim().toUpperCase();
+  const funzionante = (x: string) => /MA FUNZIONANTE|NON DISATTIVARE/.test(x);
+  if (s === "ASSEGNATO") return n && DISMESSO.test(n) && !funzionante(n) ? "DISMESSO" : "ASSEGNATO";
+  if (s === "ROTAZIONE") return n && DISMESSO.test(n) && !funzionante(n) ? "DISMESSO" : "ROTAZIONE";
+  if (s && DISMESSO.test(s) && !funzionante(s)) return "DISMESSO";
+  if (s && SCORTA.test(s)) return "SCORTA";
+  if (n && DISMESSO.test(n) && !funzionante(n)) return "DISMESSO";
+  if (n && SCORTA.test(n)) return "SCORTA";
+  // stato non scritto (DER2, DLZ2): lo dice l'assegnatario
+  const a = (assegnatario ?? "").trim().toUpperCase();
+  if (a && /ROTAZION/.test(a)) return "ROTAZIONE";
+  if (a && /SCORTA|BACKUP|UFFICIO|MAGAZZINO/.test(a)) return "SCORTA";
+  if (a && /[A-Z]{2,}/.test(a)) return "ASSEGNATO";
+  return "ATTIVO";
+}
+
+export const attiva = (x: Situazione) => x !== "DISMESSO";

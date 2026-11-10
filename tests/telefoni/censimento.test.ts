@@ -45,3 +45,26 @@ describe("telefoni e SIM", () => {
     expect(a.telefoni[0]).toMatchObject({ imei: "350000000000001", inWind: true, tag: "T001A", numero: "3330000001" });
   });
 });
+
+import { situazione } from "@/domain/telefoni/censimento";
+describe("situazione normalizzata", () => {
+  it("stati e note particolari = dismesso; il resto attivo", () => {
+    expect(situazione("ASSEGNATO", null)).toBe("ASSEGNATO");
+    expect(situazione("ROTAZIONE", "NO KASKO")).toBe("ROTAZIONE");
+    expect(situazione("ROTTO IN ATTESA DI SOSTITUZIONE", null)).toBe("DISMESSO");
+    expect(situazione("SPEDITO IL 13/07/2022", null)).toBe("DISMESSO");
+    expect(situazione("RESTITUITO", null)).toBe("DISMESSO");
+    expect(situazione("SMARRITO", null)).toBe("DISMESSO");
+    expect(situazione(null, "Dismesso non funziona (non si accende)")).toBe("DISMESSO");
+    expect(situazione(null, "sim da chiudere")).toBe("DISMESSO");
+    expect(situazione("ASSEGNATO", "Vetro rotto ma funzionante")).toBe("ASSEGNATO");
+    expect(situazione("BACKUP NO SIM", null)).toBe("SCORTA");
+    expect(situazione(null, "SCATOLA 4")).toBe("SCORTA");
+    expect(situazione("SCORTA DVN1", null)).toBe("SCORTA");
+    expect(situazione(null, null)).toBe("ATTIVO");
+    expect(situazione("ATTIVO", "NO KASKO")).toBe("ATTIVO");
+    expect(situazione(null, null, "MARIO ROSSI")).toBe("ASSEGNATO");
+    expect(situazione(null, null, "ROTAZIONE")).toBe("ROTAZIONE");
+    expect(situazione(null, null, "UFFICIO DER1")).toBe("SCORTA");
+  });
+});
