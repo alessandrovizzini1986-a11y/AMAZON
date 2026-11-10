@@ -1064,3 +1064,50 @@ model TrainingExtra {
 
   @@index([day])
 }
+
+// ───────────── Telefoni e SIM (Wind) ─────────────
+// SIM: chiave = numero (Service ID Wind). inWind = nel file Wind ufficiale (paghiamo il canone).
+// PIN e PUK: si leggono solo con "Mostra" (ADMIN), ogni lettura va nell'audit.
+model Sim {
+  id           String    @id @default(cuid())
+  numero       String    @unique
+  iccid        String?
+  inWind       Boolean   @default(false)
+  statoWind    String?
+  attivazione  DateTime? @db.Date
+  piano        String?
+  contratto    String?
+  station      String?
+  tag          String?
+  assegnatario String?
+  stato        String?
+  pin          String?
+  puk          String?
+  imei         String?
+  note         String?
+  fonti        String?
+  aggiornatoIl DateTime  @default(now())
+
+  @@index([station])
+}
+
+// Telefono: chiave = IMEI. inWind = nel foglio "terminali" del file Wind (noleggio a canone).
+model Telefono {
+  id           String    @id @default(cuid())
+  imei         String    @unique
+  inWind       Boolean   @default(false)
+  statoWind    String?
+  attivazione  DateTime? @db.Date
+  contratto    String?
+  station      String?
+  tag          String?
+  modello      String?
+  assegnatario String?
+  stato        String?
+  numero       String?
+  note         String?
+  fonti        String?
+  aggiornatoIl DateTime  @default(now())
+
+  @@index([station])
+}

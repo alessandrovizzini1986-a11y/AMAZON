@@ -79,7 +79,7 @@ async function percorsoFoglio(zip: JSZip, nome: string): Promise<string | null> 
   for (const m of wb.matchAll(/<sheet\b([^>]*)\/?>/g)) {
     const attr = m[1];
     const n = decodeXml(/\bname="([^"]*)"/.exec(attr)?.[1] ?? "");
-    if (n.trim().toLowerCase() !== nome.toLowerCase()) continue;
+    if (n.trim().toLowerCase() !== nome.trim().toLowerCase()) continue;
     const id = /\br:id="([^"]*)"/.exec(attr)?.[1];
     for (const r of rels.matchAll(/<Relationship\b([^>]*)\/?>/g)) {
       if (/\bId="([^"]*)"/.exec(r[1])?.[1] !== id) continue;
