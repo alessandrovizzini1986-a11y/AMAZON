@@ -38,7 +38,10 @@ export type Action =
   | "costi.parametri"
   | "training.view"
   | "training.admin"
-  | "home.view";
+  | "home.view"
+  | "telefoni.view"
+  | "telefoni.manage"
+  | "telefoni.codici";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -105,6 +108,9 @@ const MATRIX: Record<Role, Action[]> = {
     "costi.parametri",
     "training.view",
     "training.admin",
+    "telefoni.view",
+    "telefoni.manage",
+    "telefoni.codici",
   ],
 };
 

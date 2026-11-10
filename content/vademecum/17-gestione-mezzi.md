@@ -116,3 +116,13 @@ Ogni portale ha il suo account: **chiedi il tuo** appena puoi. Gli accessi condi
 - Le proroghe dei lungo termine si preparano **un anno prima** della scadenza.
 - I verbali arrivati a casa del lavoratore si pagano tramite Tesoreria (Nicola Bellopede) e **poi** si addebitano al driver: è una procedura diversa dalle multe normali (vedi [flusso multe](/vademecum/03-multe-flusso)).
 - Controllo fatture: una targa riconsegnata non deve più comparire a canone il mese dopo. La riconciliazione del sito elenca le targhe **fatturate dopo la cessazione**, da contestare al noleggiatore.
+
+### Telefoni e SIM ([/telefoni](/telefoni))
+
+Il **file Wind ufficiale** del mese (fogli *Mobile Ricaricabile* = SIM, *terminali* = telefoni) dice cosa paghiamo a canone; i file **&lt;DS&gt;_GESTIONE_BYOD** delle station (e QUERY_BYOD, planning_DEVICE) dicono dove sono, a chi sono assegnati, in che stato, e PIN/PUK. Nella scheda **Carica i file** li trascini tutti insieme: il sito abbina le SIM per numero di telefono e i telefoni per IMEI, mostra l'anteprima e, con **Salva**, sostituisce il censimento. Se un file è protetto da password, aprilo e salvalo senza prima di trascinarlo.
+
+- **SIM Wind non censite** (righe gialle, filtro *Solo Wind*): le paghiamo ma nessuna station le ha: da cercare o da far cessare.
+- **Solo censimento**: SIM o telefoni che le station hanno ma che non sono a canone Wind (cessati, restituiti, di proprietà o di altri contratti).
+- **PIN e PUK** non compaiono mai nelle tabelle né nell'Excel: li legge solo l'amministratore con **Mostra**, e ogni lettura resta nell'Audit.
+- Quando più file dicono cose diverse sulla stessa SIM vale il file di gestione della station, poi i fogli per station di QUERY_BYOD, poi i riepiloghi; i fogli dei restituiti e da cessare contano per ultimi.
+
