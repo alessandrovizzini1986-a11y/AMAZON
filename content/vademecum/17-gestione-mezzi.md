@@ -123,6 +123,7 @@ Il **file Wind ufficiale** del mese (fogli *Mobile Ricaricabile* = SIM, *termina
 
 - **SIM Wind non censite** (righe gialle, filtro *Solo Wind*): le paghiamo ma nessuna station le ha: da cercare o da far cessare.
 - **Solo censimento**: SIM o telefoni che le station hanno ma che non sono a canone Wind (cessati, restituiti, di proprietà o di altri contratti).
+- **PIN e PUK ufficiali** arrivano da Wind nel file *consistenza con pin puk iccid* (protetto da password: aprilo e salvalo senza prima di trascinarlo): caricato insieme agli altri, i suoi codici e ICCID vincono su quelli dei file delle station. Se una station ha cambiato il PIN sul telefono (es. 0000) resta scritto nelle note.
 - **PIN e PUK** non compaiono mai nelle tabelle né nell'Excel: li legge solo l'amministratore con **Mostra**, e ogni lettura resta nell'Audit.
 - Quando più file dicono cose diverse sulla stessa SIM vale il file di gestione della station, poi i fogli per station di QUERY_BYOD, poi i riepiloghi; i fogli dei restituiti e da cessare contano per ultimi.
 
