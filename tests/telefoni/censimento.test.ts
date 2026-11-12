@@ -31,6 +31,9 @@ describe("telefoni e SIM", () => {
     expect(rangoFoglio("QUERY_BYOD.xlsx", "DLO5")).toBe(1);
     expect(rangoFoglio("QUERY_BYOD.xlsx", "Byod_ALLDS")).toBe(2);
     expect(rangoFoglio("planning_DEVICE.xlsx", "RESTITUITI")).toBe(4);
+    expect(rangoFoglio("consistenza_con_pin_puk_iccid_1211.xlsx", "Foglio1")).toBe(-1);
+    const w = righeLocali("consistenza_con_pin_puk_iccid.xlsx", "Foglio1", [["Codice Cliente", "Codice CdF", "SERVICE ID", "data attivazione ", "ICCID", "PIN", "PUK"], ["1", "2", "3330000009", new Date("2024-01-01"), "8939000000000000009", "4321", "11112222"]]);
+    expect(w[0]).toMatchObject({ numero: "3330000009", iccid: "8939000000000000009", pin: "4321", puk: "11112222" });
   });
   it("abbina SIM per numero (anche via ICCID) e telefoni per IMEI", () => {
     const wind = { sim: [{ numero: "3330000001", contratto: "1", stato: "Attivo", attivazione: null, piano: "SUPER Unlimited", cdf: "x" }, { numero: "3200000000", contratto: "1", stato: "Attivo", attivazione: null, piano: "", cdf: "x" }], terminali: [{ imei: "350000000000001", contratto: "2", stato: "Attivo", attivazione: null, cdf: "x" }] };

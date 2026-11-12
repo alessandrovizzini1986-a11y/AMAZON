@@ -154,11 +154,13 @@ export function abbina(wind: { sim: SimWind[]; terminali: TerminaleWind[] }, loc
 }
 
 /**
- * Ordine di lettura dei fogli (il primo valore non vuoto vince): 0 = file di gestione della station (ARCHIVIO, DEVICE…),
+ * Ordine di lettura dei fogli (il primo valore non vuoto vince): −1 = file Wind dei codici (PIN/PUK ufficiali), 0 = file di gestione della station (ARCHIVIO, DEVICE…),
  * 1 = fogli per station dei file riepilogativi, 2 = riepiloghi di tutte le DS, 3 = altri, 4 = restituiti / da cessare.
  */
 export function rangoFoglio(nomeFile: string, foglio: string): number {
   const f = foglio.trim();
+  // file Wind con PIN/PUK/ICCID ufficiali ("consistenza con pin puk iccid"): vince su tutto
+  if (/consistenza|pin_?puk/i.test(nomeFile)) return -1;
   if (/restituit|cessa|older|vecch/i.test(f)) return 4;
   if (/_GESTIONE_BYOD/i.test(nomeFile) && !/^GLS_/i.test(nomeFile)) return 0;
   if (/^(DER1|DER2|DLO2|DLO4|DLO5|DLZ2|DVN1|ARCHIVIO)$/i.test(f)) return 1;
