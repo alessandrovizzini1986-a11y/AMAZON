@@ -1091,6 +1091,20 @@ model Sim {
   @@index([station])
 }
 
+// Situazione corretta a mano dalla pagina Telefoni e SIM: tipo SIM (chiave = numero) o TEL (chiave = IMEI).
+// Vince su quella calcolata da stato e note; sta in una tabella a parte perché il ricaricamento dei file svuota Sim e Telefono.
+model SituazioneManuale {
+  id           String   @id @default(cuid())
+  tipo         String
+  chiave       String
+  situazione   String
+  motivo       String?
+  utenteId     String?
+  aggiornatoIl DateTime @default(now())
+
+  @@unique([tipo, chiave])
+}
+
 // Telefono: chiave = IMEI. inWind = nel foglio "terminali" del file Wind (noleggio a canone).
 model Telefono {
   id           String    @id @default(cuid())

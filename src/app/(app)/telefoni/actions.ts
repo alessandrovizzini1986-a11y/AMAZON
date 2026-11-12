@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
+import { SITUAZIONI, type Situazione } from "@/domain/telefoni/censimento";
 
 const s = (n: number) => z.string().max(n).nullable();
 const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable();
@@ -34,6 +35,19 @@ export async function salvaCensimento(input: { sim: z.infer<typeof sim>[]; telef
   await audit({ userId: user.id, action: "telefoni.censimento", entity: "Sim", meta: { file: v.file, sim: v.sim.length, simWind: v.sim.filter((x) => x.inWind).length, telefoni: v.telefoni.length, telefoniWind: v.telefoni.filter((x) => x.inWind).length } });
   revalidatePath("/telefoni");
   return { sim: v.sim.length, telefoni: v.telefoni.length };
+}
+
+/** Corregge a mano la situazione di una SIM o di un telefono (null = torna a quella calcolata dai file). */
+export async function impostaSituazione(input: { tipo: "SIM" | "TEL"; chiave: string; situazione: Situazione | null }) {
+  const user = await requireUser();
+  assertCan(user, "telefoni.manage");
+  const v = z.object({ tipo: z.enum(["SIM", "TEL"]), chiave: z.string().regex(/^\d{9,16}$/), situazione: z.enum(SITUAZIONI).nullable() }).parse(input);
+  const dove = { tipo_chiave: { tipo: v.tipo, chiave: v.chiave } };
+  if (v.situazione) await db.situazioneManuale.upsert({ where: dove, create: { tipo: v.tipo, chiave: v.chiave, situazione: v.situazione, utenteId: user.id }, update: { situazione: v.situazione, utenteId: user.id, aggiornatoIl: new Date() } });
+  else await db.situazioneManuale.deleteMany({ where: { tipo: v.tipo, chiave: v.chiave } });
+  await audit({ userId: user.id, action: "telefoni.situazione", entity: v.tipo === "SIM" ? "Sim" : "Telefono", meta: v });
+  revalidatePath("/telefoni");
+  return { ok: true };
 }
 
 /** PIN e PUK di una SIM: solo ADMIN, ogni lettura nel log di audit. */

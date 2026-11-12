@@ -7,11 +7,11 @@ import { Dropzone } from "@/components/Dropzone";
 import { Aiuto } from "@/components/Aiuto";
 import { fogliDelFile, matriceFoglio } from "@/lib/fatture/xlsxStream";
 import { scarica } from "@/lib/presenze/excelUtil";
-import { abbina, ETICHETTA_SITUAZIONE, leggiWind, rangoFoglio, righeLocali, situazione, type RigaLocale, type Sim, type Situazione, type Telefono } from "@/domain/telefoni/censimento";
-import { mostraCodici, salvaCensimento } from "./actions";
+import { abbina, ETICHETTA_SITUAZIONE, SITUAZIONI, leggiWind, rangoFoglio, righeLocali, situazioneConWind, type RigaLocale, type Sim, type Situazione, type Telefono } from "@/domain/telefoni/censimento";
+import { impostaSituazione, mostraCodici, salvaCensimento } from "./actions";
 
-export type SimVista = Omit<Sim, "pin" | "puk" | "fonti"> & { haPin: boolean; haPuk: boolean; fonti: string };
-export type TelVista = Omit<Telefono, "fonti"> & { fonti: string };
+export type SimVista = Omit<Sim, "pin" | "puk" | "fonti"> & { haPin: boolean; haPuk: boolean; fonti: string; manuale: Situazione | null };
+export type TelVista = Omit<Telefono, "fonti"> & { fonti: string; manuale: Situazione | null };
 
 const STATIONS = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1", "GLS"];
 const PROV = { tutte: "Tutte", abbinate: "Wind e censimento", soloWind: "Solo Wind: paghiamo, non censite", soloCens: "Solo censimento: non a canone Wind" } as const;
@@ -54,10 +54,28 @@ function Codici({ numero }: { numero: string }) {
   return <button type="button" className="btn-secondary px-2 py-1 text-xs" disabled={busy} onClick={async () => { setBusy(true); try { setC(await mostraCodici(numero)); } finally { setBusy(false); } }}>Mostra</button>;
 }
 
+/** Situazione: badge; chi può caricare i file la corregge a mano (resta anche dopo un nuovo caricamento). */
+function CellaSituazione({ tipo, chiave, sit, auto, manuale, puo }: { tipo: "SIM" | "TEL"; chiave: string; sit: Situazione; auto: Situazione; manuale: Situazione | null; puo: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const badge = <span className={BADGE[sit]} title={manuale ? `Corretta a mano (dai file sarebbe: ${ETICHETTA_SITUAZIONE[auto]})` : "Calcolata da stato e note dei file"}>{ETICHETTA_SITUAZIONE[sit]}{manuale ? " ✎" : ""}</span>;
+  if (!puo) return badge;
+  return (
+    <div className="flex flex-col gap-1">
+      {badge}
+      <select aria-label="Correggi situazione" className="input h-8 w-40 px-1 py-0 text-xs" disabled={busy} value={manuale ?? ""}
+        onChange={async (e) => { setBusy(true); try { await impostaSituazione({ tipo, chiave, situazione: (e.target.value || null) as Situazione | null }); router.refresh(); } finally { setBusy(false); } }}>
+        <option value="">Dai file ({ETICHETTA_SITUAZIONE[auto]})</option>
+        {SITUAZIONI.map((s) => <option key={s} value={s}>{ETICHETTA_SITUAZIONE[s]}</option>)}
+      </select>
+    </div>
+  );
+}
+
 export function TelefoniClient({ sim: simDb, telefoni: telDb, aggiornatoIl, puoCaricare, puoCodici }: { sim: SimVista[]; telefoni: TelVista[]; aggiornatoIl: string | null; puoCaricare: boolean; puoCodici: boolean }) {
   const router = useRouter();
-  const sim = useMemo(() => simDb.map((x) => ({ ...x, sit: situazione(x.stato, x.note, x.assegnatario) })), [simDb]);
-  const telefoni = useMemo(() => telDb.map((x) => ({ ...x, sit: situazione(x.stato, x.note, x.assegnatario) })), [telDb]);
+  const sim = useMemo(() => simDb.map((x) => { const auto = situazioneConWind(x); return { ...x, auto, sit: x.manuale ?? auto }; }), [simDb]);
+  const telefoni = useMemo(() => telDb.map((x) => { const auto = situazioneConWind(x); return { ...x, auto, sit: x.manuale ?? auto }; }), [telDb]);
   const [sitF, setSitF] = useState<keyof typeof SIT_FILTRO>("attivi");
   const okSit = (x: Situazione) => sitF === "tutti" || (sitF === "attivi" ? x !== "DISMESSO" : sitF === "dismessi" ? x === "DISMESSO" : x === sitF);
   const [scheda, setScheda] = useState<"sim" | "tel" | "carica">(sim.length ? "sim" : "carica");
@@ -150,7 +168,7 @@ export function TelefoniClient({ sim: simDb, telefoni: telDb, aggiornatoIl, puoC
             <thead><tr><th>Numero</th><th>Situazione</th><th>Wind</th><th>Station</th><th>TAG</th><th>Assegnatario</th><th>Stato</th><th>ICCID</th><th>Piano / attivazione</th><th>PIN / PUK</th><th>Note</th></tr></thead>
             <tbody>{simF.slice(0, n).map((x) => (
               <tr key={x.numero} className={x.inWind && !x.fonti ? "bg-warn-soft" : ""}>
-                <td className="font-mono">{x.numero}</td><td><span className={BADGE[x.sit]}>{ETICHETTA_SITUAZIONE[x.sit]}</span></td>
+                <td className="font-mono">{x.numero}</td><td><CellaSituazione tipo="SIM" chiave={x.numero} sit={x.sit} auto={x.auto} manuale={x.manuale} puo={puoCaricare} /></td>
                 <td>{x.inWind ? <span className={x.statoWind === "Attivo" ? "badge-ok" : "badge-warn"}>{x.statoWind}</span> : <span className="badge-neutral">no</span>}</td>
                 <td>{x.station ?? "—"}</td><td className="font-mono text-xs">{x.tag ?? ""}</td><td>{x.assegnatario ?? ""}</td><td className="text-xs">{x.stato ?? ""}</td>
                 <td className="font-mono text-xs">{x.iccid ?? ""}</td><td className="text-xs">{x.piano ?? ""}{x.attivazione ? ` · ${it(x.attivazione)}` : ""}</td>
@@ -171,7 +189,7 @@ export function TelefoniClient({ sim: simDb, telefoni: telDb, aggiornatoIl, puoC
             <thead><tr><th>IMEI</th><th>Situazione</th><th>Wind</th><th>Station</th><th>TAG</th><th>Modello</th><th>Assegnatario</th><th>Stato</th><th>SIM</th><th>Note</th></tr></thead>
             <tbody>{telF.slice(0, n).map((x) => (
               <tr key={x.imei} className={x.inWind && !x.fonti ? "bg-warn-soft" : ""}>
-                <td className="font-mono text-xs">{x.imei}</td><td><span className={BADGE[x.sit]}>{ETICHETTA_SITUAZIONE[x.sit]}</span></td>
+                <td className="font-mono text-xs">{x.imei}</td><td><CellaSituazione tipo="TEL" chiave={x.imei} sit={x.sit} auto={x.auto} manuale={x.manuale} puo={puoCaricare} /></td>
                 <td>{x.inWind ? <span className={x.statoWind === "Attivo" ? "badge-ok" : "badge-warn"}>{x.statoWind}</span> : <span className="badge-neutral">no</span>}</td>
                 <td>{x.station ?? "—"}</td><td className="font-mono text-xs">{x.tag ?? ""}</td><td>{x.modello ?? ""}</td><td>{x.assegnatario ?? ""}</td><td className="text-xs">{x.stato ?? ""}</td>
                 <td className="font-mono text-xs">{x.numero ?? ""}</td><td className="max-w-[260px] text-xs" title={x.fonti}>{x.note ?? ""}</td>
