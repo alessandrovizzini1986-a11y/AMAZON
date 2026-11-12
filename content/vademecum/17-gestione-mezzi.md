@@ -128,3 +128,5 @@ Il **file Wind ufficiale** del mese (fogli *Mobile Ricaricabile* = SIM, *termina
 - Quando più file dicono cose diverse sulla stessa SIM vale il file di gestione della station, poi i fogli per station di QUERY_BYOD, poi i riepiloghi; i fogli dei restituiti e da cessare contano per ultimi.
 
 - **Situazione** (tabellina in alto e filtro, di base *Solo attivi*): *assegnato* e *a rotazione* come scritto nei file; *scorta* per scorta, backup, scatole e uffici; *dismesso* quando stato o note dicono rotto, spedito, restituito, smarrito, furto, batteria, da cessare o da bloccare; dove lo stato manca (DER2, DLZ2) conta l'assegnatario. Il resto è *attivo, stato non indicato*: da completare nei file delle station.
+- **Comanda Wind**: se per Wind la SIM (o il noleggio del telefono) è *Attivo*, non è mai dismessa, anche se le note della station dicono il contrario.
+- **Correggere a mano**: sotto il badge della situazione c'è una tendina (chi carica i file). La scelta vince sul calcolo, il badge mostra ✎, resta anche dopo un nuovo caricamento e finisce nel registro attività; *Dai file* la riporta al calcolo automatico.

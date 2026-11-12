@@ -198,3 +198,14 @@ export function situazione(stato: string | null, note: string | null, assegnatar
 }
 
 export const attiva = (x: Situazione) => x !== "DISMESSO";
+
+/**
+ * Comanda il file Wind: se per Wind la linea (o il noleggio del telefono) è "Attivo", non è dismessa, qualunque cosa dicano
+ * stato e note delle station. Resta la situazione dello stato (assegnato / rotazione / scorta), altrimenti "attivo".
+ */
+export function situazioneConWind(x: { inWind: boolean; statoWind: string | null; stato: string | null; note: string | null; assegnatario: string | null }): Situazione {
+  const s = situazione(x.stato, x.note, x.assegnatario);
+  if (s !== "DISMESSO" || !x.inWind || (x.statoWind ?? "").trim().toLowerCase() !== "attivo") return s;
+  const senzaNote = situazione(x.stato, null, x.assegnatario);
+  return senzaNote === "DISMESSO" ? "ATTIVO" : senzaNote;
+}

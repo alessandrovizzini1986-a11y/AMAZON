@@ -49,7 +49,7 @@ describe("telefoni e SIM", () => {
   });
 });
 
-import { situazione } from "@/domain/telefoni/censimento";
+import { situazione, situazioneConWind } from "@/domain/telefoni/censimento";
 describe("situazione normalizzata", () => {
   it("stati e note particolari = dismesso; il resto attivo", () => {
     expect(situazione("ASSEGNATO", null)).toBe("ASSEGNATO");
@@ -69,5 +69,12 @@ describe("situazione normalizzata", () => {
     expect(situazione(null, null, "MARIO ROSSI")).toBe("ASSEGNATO");
     expect(situazione(null, null, "ROTAZIONE")).toBe("ROTAZIONE");
     expect(situazione(null, null, "UFFICIO DER1")).toBe("SCORTA");
+  });
+
+  it("comanda Wind: linea attiva per Wind non è mai dismessa", () => {
+    const base = { stato: "ROTAZIONE", note: "Dismesso non funziona, rottamato", assegnatario: "x" };
+    expect(situazioneConWind({ ...base, inWind: true, statoWind: "Attivo" })).toBe("ROTAZIONE");
+    expect(situazioneConWind({ ...base, inWind: false, statoWind: null })).toBe("DISMESSO");
+    expect(situazioneConWind({ inWind: true, statoWind: "Attivo", stato: "ROTTO", note: null, assegnatario: null })).toBe("ATTIVO");
   });
 });
