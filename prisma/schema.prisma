@@ -152,6 +152,7 @@ model User {
   finesAssigned      Fine[]            @relation("fineDriver")
   damagesReported    Damage[]          @relation("damageReporter")
   auditLogs          AuditLog[]
+  tourVisti          TourVisto[]
   importJobs         ImportJob[]
   transfersRequested StationTransfer[] @relation("transferRequestedBy")
   transfersApproved  StationTransfer[] @relation("transferApprovedBy")
@@ -424,6 +425,19 @@ model AppConfig {
   description String
   updatedAt   DateTime @updatedAt
   updatedById String?
+}
+
+// Tour di benvenuto già fatto (esito "completato") o rifiutato ("saltato"). chiave = versione + ruolo:
+// chi cambia ruolo rivede il tour del nuovo ruolo.
+model TourVisto {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chiave String
+  esito  String
+  il     DateTime @default(now())
+
+  @@unique([userId, chiave])
 }
 
 model AuditLog {

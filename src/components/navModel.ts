@@ -55,6 +55,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/training", label: "Il mio training", icon: "book", perm: "training.view", descr: "percorso della stagista" },
       { href: "/vademecum", label: "Vademecum", icon: "book", perm: "vademecum.view", descr: "come si fa, passo per passo" },
       { href: "/vademecum/18-glossario", label: "Glossario", icon: "book", perm: "vademecum.view", descr: "sigle e parole del lavoro" },
+      { href: "/home?tour=1", label: "Tour del sito", icon: "refresh", perm: "home.view", descr: "il giro guidato, da rifare quando vuoi" },
       { href: "/training/admin", label: "Training (tutor)", icon: "users", perm: "training.admin", descr: "avanzamento e validazioni" },
       { href: "/portali", label: "Portali", icon: "settings", perm: "users.manage", descr: "accessi ai portali dei fornitori" },
     ],

@@ -384,3 +384,10 @@ body {
   .tr-check svg path, .tr-acceso, .tr-confetti i { animation: none !important; stroke-dashoffset: 0; }
   .tr-confetti { display: none; }
 }
+
+/* Tour di benvenuto: il faro segue l'elemento, il riquadro entra piano */
+.tour-faro { transition: top 0.32s ease, left 0.32s ease, width 0.32s ease, height 0.32s ease; }
+.tour-barra { transition: width 0.3s ease; }
+.tour-scheda { animation: tour-entra 0.22s ease both; }
+@keyframes tour-entra { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tour-faro, .tour-barra { transition: none; } .tour-scheda { animation: none; } }

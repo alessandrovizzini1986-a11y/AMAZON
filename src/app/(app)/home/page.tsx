@@ -45,7 +45,7 @@ export default async function HomePage() {
       <PageHeader eyebrow={oggi.charAt(0).toUpperCase() + oggi.slice(1)} title={`Ciao ${nome}, ecco cosa c'è da fare`}
         subtitle="Le scadenze della settimana e del mese si aggiornano da sole con quello che carichi nel sito. Premi Vai per andare dritto al passo da fare." />
 
-      <section aria-labelledby="dafare">
+      <section aria-labelledby="dafare" data-tour="dafare">
         <h2 id="dafare" className="mb-3 text-[19px] font-semibold">Da fare {aperti.length > 0 && <span className="ml-1 rounded-full bg-brand px-2 py-0.5 align-middle text-xs font-semibold text-white">{aperti.length}</span>}</h2>
         {aperti.length === 0 ? (
           <p className="rounded-control bg-ok-soft px-4 py-3 text-sm text-ok">✓ Tutto fatto per questa settimana e questo mese.</p>
@@ -72,7 +72,7 @@ export default async function HomePage() {
       </section>
 
       {avvisi.length > 0 && (
-        <section aria-labelledby="avvisi">
+        <section aria-labelledby="avvisi" data-tour="avvisi">
           <h2 id="avvisi" className="mb-3 text-[19px] font-semibold">Avvisi</h2>
           <ul className="flex flex-col gap-2">
             {avvisi.map((a, i) => (
@@ -88,11 +88,11 @@ export default async function HomePage() {
         <h2 id="sezioni" className="mb-3 text-[19px] font-semibold">Tutte le sezioni</h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {gruppi.map((g) => (
-            <div key={g.id} className="card p-4 md:p-5">
+            <div key={g.id} data-tour={`gruppo-${g.id}`} className="card p-4 md:p-5">
               <h3 className="mb-2 flex items-center gap-2 font-semibold"><NavIcon name={g.icon} className="h-4 w-4 text-brand" />{g.label}</h3>
               <ul className="flex flex-col">
                 {g.items.map((v) => (
-                  <li key={v.href}><Link href={v.href} className="flex min-h-[44px] flex-col justify-center rounded-control px-2 py-1.5 hover:bg-surface">
+                  <li key={v.href}><Link href={v.href} className="flex min-h-[44px] flex-col justify-center rounded-control px-2 py-1.5 hover:bg-surface [@media(pointer:coarse)]:!flex [@media(pointer:coarse)]:!items-stretch">
                     <span className="font-medium text-brand">{v.label}</span>{v.descr && <span className="text-xs text-ink-muted">{v.descr}</span>}
                   </Link></li>
                 ))}
