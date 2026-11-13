@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PageHeader, StatusBadge, SourceNote } from "@/components/ui";
-import { createUserAction, toggleUserActiveAction, resetUserPasswordAction } from "./actions";
+import { createUserAction, toggleUserActiveAction, resetUserPasswordAction, changeUserRoleAction, setUserPasswordAction } from "./actions";
 import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", RESP_MEZZI: "Resp. 
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; created?: string }>;
+  searchParams: Promise<{ error?: string; created?: string; ok?: string }>;
 }) {
   await requireRole("ADMIN");
   const params = await searchParams;
@@ -23,9 +23,10 @@ export default async function UsersPage({
 
   return (
     <div>
-      <PageHeader title="Utenti e permessi" subtitle="Gestione account per i 5 ruoli — la password iniziale viene generata e mostrata una sola volta" />
+      <PageHeader title="Utenti e permessi" subtitle="Gestione account per i 5 ruoli: puoi cambiare ruolo e impostare una password a scelta. Le password sono salvate cifrate, quindi nessuno può rileggerle: se una persona la dimentica, gliene imposti una nuova." />
 
       {params.error && <p className="mb-4 text-sm text-danger bg-danger-soft rounded-control px-3 py-2">{params.error}</p>}
+      {params.ok && <p className="mb-4 text-sm bg-ok-soft text-ok rounded-control px-3 py-2">{params.ok}</p>}
       {params.created && (
         <p className="mb-4 text-sm bg-ok-soft text-ok rounded-control px-3 py-2 font-mono">{params.created} <span className="font-sans">(conservare e comunicare in modo sicuro)</span></p>
       )}
@@ -51,15 +52,25 @@ export default async function UsersPage({
       <div className="card overflow-x-auto">
         <table className="table-base">
           <thead>
-            <tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Stazione</th><th>Stato</th><th>Azioni</th></tr>
+            <tr><th>Nome</th><th>Email</th><th colSpan={2}>Ruolo e stazione</th><th>Stato</th><th>Azioni</th></tr>
           </thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
                 <td className="font-semibold">{u.lastName} {u.firstName}</td>
                 <td className="text-xs">{u.email}</td>
-                <td><StatusBadge tone={u.role === "ADMIN" ? "info" : "neutral"}>{ROLE_LABEL[u.role]}</StatusBadge></td>
-                <td>{u.station?.code ?? "—"}</td>
+                <td colSpan={2}>
+                  <form action={changeUserRoleAction.bind(null, u.id)} className="flex flex-wrap items-center gap-2">
+                    <select className="input h-9 w-44 py-0 text-xs" name="role" defaultValue={u.role} aria-label={`Ruolo di ${u.firstName} ${u.lastName}`}>
+                      {Object.entries(ROLE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                    <select className="input h-9 w-28 py-0 text-xs" name="stationId" defaultValue={u.stationId ?? ""} aria-label="Stazione">
+                      <option value="">—</option>
+                      {stations.map((s) => <option key={s.id} value={s.id}>{s.code}</option>)}
+                    </select>
+                    <button className="btn-secondary py-1 px-2 text-xs">Salva ruolo</button>
+                  </form>
+                </td>
                 <td><StatusBadge tone={u.active ? "ok" : "danger"}>{u.active ? "attivo" : "disattivato"}</StatusBadge></td>
                 <td>
                   <div className="flex gap-2">
@@ -67,9 +78,13 @@ export default async function UsersPage({
                       <button className="btn-secondary py-1 px-2 text-xs">{u.active ? "Disattiva" : "Riattiva"}</button>
                     </form>
                     <form action={resetUserPasswordAction.bind(null, u.id)}>
-                      <button className="btn-secondary py-1 px-2 text-xs">Reset password</button>
+                      <button className="btn-secondary py-1 px-2 text-xs whitespace-nowrap">Reset password</button>
                     </form>
                   </div>
+                  <form action={setUserPasswordAction.bind(null, u.id)} className="mt-2 flex gap-2">
+                    <input className="input h-9 w-44 py-0 text-xs" name="password" type="text" minLength={8} maxLength={100} required autoComplete="off" placeholder="Nuova password (min 8)" aria-label={`Nuova password per ${u.firstName} ${u.lastName}`} />
+                    <button className="btn-secondary py-1 px-2 text-xs whitespace-nowrap">Imposta password</button>
+                  </form>
                 </td>
               </tr>
             ))}
