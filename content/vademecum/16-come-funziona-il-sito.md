@@ -76,6 +76,15 @@ Il sito ti ferma solo quando c'è un errore vero:
 - Le **tabelle larghe** si scorrono di lato: la prima colonna resta ferma e il bordo destro sfumato indica che la tabella continua.
 - Per **caricare un file** da telefono tocca "Oppure scegli il file". Ricorda che "Solo su questo PC" vuol dire solo su quel telefono.
 
+### Il tour di benvenuto
+
+Al **primo accesso** (e ogni volta che un Admin ti cambia ruolo) il sito ti dà il benvenuto e ti propone un tour di circa 3 minuti: la Home con le cose da fare, il menu, una tappa per ogni sezione che puoi aprire, il **?** e il tuo account.
+
+- **Inizia il tour**: le tappe illuminano il pezzo di pagina di cui parlano. Ti muovi con **Avanti** e **Indietro** (o con le frecce della tastiera).
+- **Più tardi** (o la ✕, o Esc): lo chiude e te lo ripropone al prossimo accesso.
+- **Non mostrarlo più**: non torna da solo.
+- Per rifarlo quando vuoi: menu **Aiuto → Tour del sito**.
+
 ### Prima volta in un modulo
 
 La prima volta che apri un modulo compare un riquadro **"Prima volta qui?"** con i tre passi principali. Chiudilo con **Ho capito** e non torna più. Questa pagina resta sempre nel Vademecum.

@@ -44,16 +44,16 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
             <div className="text-[17px] font-bold tracking-tight md:text-lg">FleetDSP</div>
           </Link>
 
-          <nav className="hidden flex-1 items-center gap-1 xl:flex" aria-label="Menu principale">
+          <nav data-tour="menu" className="hidden flex-1 items-center gap-1 xl:flex" aria-label="Menu principale">
             {operativi.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} />)}
             {gestione.length > 0 && <><span aria-hidden className="mx-2 h-6 w-px bg-line" /><GruppoMenu gruppi={gestione} etichetta="Gestione" tutti={gruppi} allineaDestra /></>}
           </nav>
-          <nav className="hidden flex-1 items-center gap-1 md:flex xl:hidden" aria-label="Menu principale">
+          <nav data-tour="menu" className="hidden flex-1 items-center gap-1 md:flex xl:hidden" aria-label="Menu principale">
             {tabletVista.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} />)}
             {tabletAltro.length > 0 && <GruppoMenu gruppi={tabletAltro} etichetta="Altro" tutti={gruppi} allineaDestra />}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <div data-tour="account" className="ml-auto flex items-center gap-2 md:ml-0">
             <Link
               href="/account"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[#d5dbe3] text-xs font-semibold text-ink transition-colors hover:border-brand hover:text-brand md:h-10 md:w-10 md:text-sm"
@@ -79,7 +79,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
       <MarcaScroll />
       {/* bottom nav mobile: i primi 4 gruppi + Menu con tutte le voci per gruppo */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
+      <nav data-tour="menu" className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
         {gruppiBarra.map((g) => <BottomGruppoLink key={g.id} gruppo={g} tutti={gruppi} />)}
         {gruppi.flatMap((g) => g.items).length > gruppiBarra.length && <MenuAttivoBarra gruppi={gruppi} inBarra={gruppiBarra.map((g) => g.id)} utente={{ nome: user.name, ruolo: ROLE_LABEL[user.role] }} />}
       </nav>
