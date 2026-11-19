@@ -13,6 +13,7 @@ import type { RunRiga } from "../dati";
 import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
 import { Storico } from "../Storico";
+import { Spiega } from "@/components/Spiega";
 import { Aiuto } from "@/components/Aiuto";
 
 const eur = (x: number) => x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -71,10 +72,10 @@ export function TelepassClient({ mappa, runs, canRun }: { mappa: Record<string, 
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Kpi l="Mese" v={`${MESI[e.mese]} ${e.anno}`} />
-            <Kpi l="Transazioni" v={e.righe.length.toLocaleString("it-IT")} />
-            <Kpi l="Totale Importo €" v={eur(e.totale)} />
-            <Kpi l="Dispositivi non mappati" v={String(e.nonMappati.length)} rosso={e.nonMappati.length > 0} />
-            <Kpi l="Ricondotti a GLS - CASTEL MAGGIORE" v={String(e.ricondotti.length)} giallo={e.ricondotti.length > 0} />
+            <Kpi k="telepass.transazioni" l="Transazioni" v={e.righe.length.toLocaleString("it-IT")} />
+            <Kpi k="telepass.totale" l="Totale Importo €" v={eur(e.totale)} />
+            <Kpi k="telepass.nonMappati" l="Dispositivi non mappati" v={String(e.nonMappati.length)} rosso={e.nonMappati.length > 0} />
+            <Kpi k="telepass.ricondotti" l="Ricondotti a GLS - CASTEL MAGGIORE" v={String(e.ricondotti.length)} giallo={e.ricondotti.length > 0} />
           </section>
 
           {(e.nonMappati.length > 0 || e.ricondotti.length > 0 || e.fuoriMese > 0) && (
@@ -106,10 +107,10 @@ export function TelepassClient({ mappa, runs, canRun }: { mappa: Record<string, 
   );
 }
 
-function Kpi({ l, v, rosso, giallo }: { l: string; v: string; rosso?: boolean; giallo?: boolean }) {
+function Kpi({ l, v, rosso, giallo, k }: { l: string; v: string; rosso?: boolean; giallo?: boolean; k?: string }) {
   return (
     <div className={`card p-4 ${rosso ? "border-danger bg-danger-soft" : giallo ? "border-warn bg-warn-soft" : ""}`}>
-      <div className="text-xs font-medium text-ink-muted">{l}</div>
+      <div className="text-xs font-medium text-ink-muted">{l}{k && <Spiega k={k} />}</div>
       <div className={`text-2xl font-bold ${rosso ? "text-danger" : giallo ? "text-warn" : ""}`}>{v}</div>
     </div>
   );

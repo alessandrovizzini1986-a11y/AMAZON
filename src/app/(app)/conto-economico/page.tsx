@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui";
 import { SelettoreMese } from "@/components/SelettoreMese";
 import { SchedePagina } from "@/components/SchedePagina";
 import { contoEconomico } from "@/lib/conto/dati";
+import { Spiega } from "@/components/Spiega";
 import { VOCI_COSTO, type Fonte, type RigaConto } from "@/domain/conto/economico";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ function Margine({ r }: { r: RigaConto }) {
 function Kpi({ titolo, r, nota }: { titolo: string; r: RigaConto; nota: string }) {
   return (
     <div className="card flex flex-col gap-1 p-4">
-      <div className="text-sm font-semibold text-ink-muted">{titolo}</div>
+      <div className="text-sm font-semibold text-ink-muted">{titolo}<Spiega k="conto.margine" /></div>
       <div className="text-[26px] font-bold">{r.margine === null ? "—" : `${eur(r.margine)} €`}</div>
       <div className="text-sm">margine {r.marginePct === null ? "" : `(${r.marginePct.toLocaleString("it-IT")} %)`} · ricavi {eur(r.ricavi.valore)} € · costi {eur(r.totaleCosti)} €</div>
       {r.costi.personale.valore === null && <div className="text-xs font-semibold text-warn">Manca il costo del personale: il margine non è attendibile.</div>}

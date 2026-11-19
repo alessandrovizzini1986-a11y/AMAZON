@@ -8,6 +8,7 @@ import { Aiuto } from "@/components/Aiuto";
 import { fogliDelFile, matriceFoglio } from "@/lib/fatture/xlsxStream";
 import { scarica } from "@/lib/presenze/excelUtil";
 import { abbina, ETICHETTA_SITUAZIONE, SITUAZIONI, leggiWind, rangoFoglio, righeLocali, situazioneConWind, type RigaLocale, type Sim, type Situazione, type Telefono } from "@/domain/telefoni/censimento";
+import { Spiega } from "@/components/Spiega";
 import { impostaSituazione, mostraCodici, salvaCensimento } from "./actions";
 
 export type SimVista = Omit<Sim, "pin" | "puk" | "fonti"> & { haPin: boolean; haPuk: boolean; fonti: string; manuale: Situazione | null };
@@ -43,8 +44,8 @@ function TabellaStation({ telefoni, sim }: { telefoni: { station: string | null;
   );
 }
 
-function Kpi({ titolo, valore, nota, tono = "" }: { titolo: string; valore: number | string; nota: string; tono?: string }) {
-  return <div className="card flex flex-col gap-0.5 p-4"><span className="text-sm font-semibold text-ink-muted">{titolo}</span><span className={`text-[26px] font-bold ${tono}`}>{typeof valore === "number" ? valore.toLocaleString("it-IT") : valore}</span><span className="text-xs text-ink-muted">{nota}</span></div>;
+function Kpi({ titolo, valore, nota, tono = "", k }: { titolo: string; valore: number | string; nota: string; tono?: string; k: string }) {
+  return <div className="card flex flex-col gap-0.5 p-4"><span className="text-sm font-semibold text-ink-muted">{titolo}<Spiega k={k} /></span><span className={`text-[26px] font-bold ${tono}`}>{typeof valore === "number" ? valore.toLocaleString("it-IT") : valore}</span><span className="text-xs text-ink-muted">{nota}</span></div>;
 }
 
 function Codici({ numero }: { numero: string }) {
@@ -147,10 +148,10 @@ export function TelefoniClient({ sim: simDb, telefoni: telDb, aggiornatoIl, puoC
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-3 md:grid-cols-4">
-        <Kpi titolo="SIM Wind a canone" valore={simW.length} nota={`${simW.filter((x) => x.fonti).length} trovate nei file delle station`} />
-        <Kpi titolo="SIM Wind non censite" valore={simW.filter((x) => !x.fonti).length} nota="paghiamo ma non sappiamo dove sono: da cercare o cessare" tono={simW.some((x) => !x.fonti) ? "text-warn" : ""} />
-        <Kpi titolo="Telefoni attivi" valore={telefoni.filter((x) => x.sit !== "DISMESSO").length} nota={`${telW.length} a noleggio Wind (${telW.filter((x) => !x.fonti).length} non censiti); ${telefoni.filter((x) => x.sit === "DISMESSO").length} dismessi`} />
-        <Kpi titolo="PIN / PUK noti" valore={`${sim.filter((x) => x.haPin).length} / ${sim.filter((x) => x.haPuk).length}`} nota={`su ${sim.length} SIM; si leggono con "Mostra"`} />
+        <Kpi k="telefoni.simWind" titolo="SIM Wind a canone" valore={simW.length} nota={`${simW.filter((x) => x.fonti).length} trovate nei file delle station`} />
+        <Kpi k="telefoni.nonCensite" titolo="SIM Wind non censite" valore={simW.filter((x) => !x.fonti).length} nota="paghiamo ma non sappiamo dove sono: da cercare o cessare" tono={simW.some((x) => !x.fonti) ? "text-warn" : ""} />
+        <Kpi k="telefoni.attivi" titolo="Telefoni attivi" valore={telefoni.filter((x) => x.sit !== "DISMESSO").length} nota={`${telW.length} a noleggio Wind (${telW.filter((x) => !x.fonti).length} non censiti); ${telefoni.filter((x) => x.sit === "DISMESSO").length} dismessi`} />
+        <Kpi k="telefoni.codici" titolo="PIN / PUK noti" valore={`${sim.filter((x) => x.haPin).length} / ${sim.filter((x) => x.haPuk).length}`} nota={`su ${sim.length} SIM; si leggono con "Mostra"`} />
       </div>
       {sim.length > 0 && <TabellaStation telefoni={telefoni} sim={sim} />}
       <p className="text-xs text-ink-muted">Ultimo caricamento: {aggiornatoIl ? new Date(aggiornatoIl).toLocaleString("it-IT") : "mai"}.</p>
