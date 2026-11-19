@@ -112,6 +112,8 @@ export type Settimana = {
   /** picco next con furgone (senza cargo bike) + picco max(A, B, C) */
   furgoni: number; piccoND: number; piccoSD: number; piccoStessoGiorno: number;
   swaSimulate: number; parziale: boolean;
+  /** rotte per giorno, da domenica a sabato: next e same day (A + max(B, C)). Servono per la rotta massima della settimana. */
+  giorniND: number[]; giorniSD: number[];
 };
 
 /** Rotte e furgoni per station e settimana. Parziale = settimana senza next nel forecast (solo same day e/o SWA simulate). */
@@ -122,7 +124,9 @@ export function settimane(gs: Giorno[]): Settimana[] {
     const [station, settimana] = k.split("|");
     const piccoND = Math.max(0, ...xs.map((g) => g.ndFurgone)), piccoSD = Math.max(0, ...xs.map((g) => Math.max(g.sdA, g.sdB, g.sdC)));
     const sum = (f: (g: Giorno) => number) => xs.reduce((s, g) => s + f(g), 0);
+    const perGiorno = (f: (g: Giorno) => number) => { const a = Array<number>(7).fill(0); for (const g of xs) a[Math.round((Date.parse(g.data) - Date.parse(settimana)) / 864e5)] += f(g); return a; };
     return {
+      giorniND: perGiorno(rotteNdGiorno), giorniSD: perGiorno(rotteSdGiorno),
       station, settimana, week: numeroSettimana(settimana), rotte: sum(rotteGiorno), rotteND: sum(rotteNdGiorno), rotteSD: sum(rotteSdGiorno),
       furgoni: piccoND + piccoSD, piccoND, piccoSD, piccoStessoGiorno: Math.max(0, ...xs.map((g) => g.ndFurgone + Math.max(g.sdA, g.sdB, g.sdC))),
       swaSimulate: sum((g) => g.swaSimulate), parziale: sum((g) => g.nd - g.swaSimulate) === 0,
