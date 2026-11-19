@@ -76,6 +76,15 @@ Il sito ti ferma solo quando c'è un errore vero:
 - Le **tabelle larghe** si scorrono di lato: la prima colonna resta ferma e il bordo destro sfumato indica che la tabella continua.
 - Per **caricare un file** da telefono tocca "Oppure scegli il file". Ricorda che "Solo su questo PC" vuol dire solo su quel telefono.
 
+### Spedizioni GLS
+
+In **Home → Spedizioni GLS** (solo Admin) trovi due cose:
+
+1. **Il portale GLS**: il pulsante apre la pagina di accesso; nome utente e password si copiano da qui con **Copia** (la password resta nascosta e ogni copia finisce nel registro attività), la sede si sceglie nella tendina del portale. Il portale non accetta dati già compilati da un altro sito, per questo si copiano.
+2. **Il bollettino di spedizione**: scrivi mittente, destinatario, colli e servizio; l'anteprima a fianco mostra il modulo GLS originale compilato. **Scarica il PDF** lo salva, **Apri per stampare** lo apre in una scheda, **Invia…** lo passa alla condivisione del dispositivo o, dove non c'è, lo scarica e apre una mail a cui allegarlo. Firma e timbro si mettono a mano sulla stampa.
+
+Il mittente e i destinatari usati restano **solo su questo PC**, pronti per la volta dopo. Se cambia la password del portale: **Modifica accesso**.
+
 ### Il tour di benvenuto
 
 Al **primo accesso** (e ogni volta che un Admin ti cambia ruolo) il sito ti dà il benvenuto e ti propone un tour di circa 3 minuti: la Home con le cose da fare, il menu, una tappa per ogni sezione che puoi aprire, il **?** e il tuo account.

@@ -41,7 +41,8 @@ export type Action =
   | "home.view"
   | "telefoni.view"
   | "telefoni.manage"
-  | "telefoni.codici";
+  | "telefoni.codici"
+  | "spedizioni.view";
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -111,6 +112,7 @@ const MATRIX: Record<Role, Action[]> = {
     "telefoni.view",
     "telefoni.manage",
     "telefoni.codici",
+    "spedizioni.view",
   ],
 };
 
