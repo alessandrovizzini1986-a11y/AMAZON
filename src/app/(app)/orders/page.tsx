@@ -6,6 +6,7 @@ import { PageHeader, SourceNote, EmptyState } from "@/components/ui";
 import { fmtNum } from "@/lib/format";
 import { PHASE_LABEL, isoWeek, orderPhase, orderRefDate, todayRome, weekRecap, type OrderPhase } from "@/domain/orders";
 import { uploadAyvensOrdersAction } from "./actions";
+import { Spiega } from "@/components/Spiega";
 import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
@@ -33,11 +34,11 @@ const fmtDay = (d: Date | null) =>
   d ? d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }) : "—";
 const fmtShort = (d: Date | null) => (d ? d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", timeZone: "UTC" }) : "");
 
-function Kpi({ label, value, note, color }: { label: string; value: number; note: string; color?: string }) {
+function Kpi({ label, value, note, color, k }: { label: string; value: number; note: string; color?: string; k: string }) {
   return (
     <div className="card relative overflow-hidden p-4 md:p-[22px]">
       {color && <span aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: color }} />}
-      <div className="text-[13px] font-medium text-ink-muted md:text-sm">{label}</div>
+      <div className="text-[13px] font-medium text-ink-muted md:text-sm">{label}<Spiega k={k} /></div>
       <div className="mt-1.5 text-[24px] font-bold leading-tight tracking-[-0.02em] tabular-nums md:mt-2 md:text-[38px]">{fmtNum(value)}</div>
       <div className="mt-1 text-[13px] text-ink-muted">{note}</div>
     </div>
@@ -120,10 +121,10 @@ export default async function OrdersPage({
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-            <Kpi label="Furgoni ordinati" value={orders.length} note="totale ordini Ayvens GLS" />
-            <Kpi label="Da arrivare" value={count("IN_ARRIVO")} note="senza data di ritiro" color={PHASE_COLOR.IN_ARRIVO} />
-            <Kpi label="Con data ritiro" value={count("RITIRO_FISSATO")} note="ritiro fissato da oggi in poi" color={PHASE_COLOR.RITIRO_FISSATO} />
-            <Kpi label="Ritirati" value={count("RITIRATO")} note="data ritiro già passata" color={PHASE_COLOR.RITIRATO} />
+            <Kpi k="ordini.ordinati" label="Furgoni ordinati" value={orders.length} note="totale ordini Ayvens GLS" />
+            <Kpi k="ordini.daArrivare" label="Da arrivare" value={count("IN_ARRIVO")} note="senza data di ritiro" color={PHASE_COLOR.IN_ARRIVO} />
+            <Kpi k="ordini.conData" label="Con data ritiro" value={count("RITIRO_FISSATO")} note="ritiro fissato da oggi in poi" color={PHASE_COLOR.RITIRO_FISSATO} />
+            <Kpi k="ordini.ritirati" label="Ritirati" value={count("RITIRATO")} note="data ritiro già passata" color={PHASE_COLOR.RITIRATO} />
           </div>
 
           {/* riepilogo per settimana */}

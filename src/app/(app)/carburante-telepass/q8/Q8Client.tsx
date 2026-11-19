@@ -14,6 +14,7 @@ import type { RunRiga } from "../dati";
 import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
 import { Storico } from "../Storico";
+import { Spiega } from "@/components/Spiega";
 import { Aiuto } from "@/components/Aiuto";
 
 const eur = (x: number) => x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -72,10 +73,10 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <Kpi l="Mese" v={`${MESI[e.mese]} ${e.anno}`} />
-            <Kpi l="Rifornimenti tenuti (AMZ/GLS)" v={`${e.tenute.toLocaleString("it-IT")} su ${e.righeExport.toLocaleString("it-IT")}`} />
-            <Kpi l="Imp. Scontato no IVA €" v={eur(e.totale)} />
-            <Kpi l="Carte non censite" v={String(e.nonCensite.length)} rosso={e.nonCensite.length > 0} />
-            <Kpi l="Abbinate per Identificativo" v={String(e.perIdentificativo.length)} giallo={e.perIdentificativo.length > 0} />
+            <Kpi k="q8.tenute" l="Rifornimenti tenuti (AMZ/GLS)" v={`${e.tenute.toLocaleString("it-IT")} su ${e.righeExport.toLocaleString("it-IT")}`} />
+            <Kpi k="q8.totale" l="Imp. Scontato no IVA €" v={eur(e.totale)} />
+            <Kpi k="q8.nonCensite" l="Carte non censite" v={String(e.nonCensite.length)} rosso={e.nonCensite.length > 0} />
+            <Kpi k="q8.identificativo" l="Abbinate per Identificativo" v={String(e.perIdentificativo.length)} giallo={e.perIdentificativo.length > 0} />
           </section>
 
           {(e.nonCensite.length > 0 || e.perIdentificativo.length > 0) && (
@@ -118,10 +119,10 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
   );
 }
 
-function Kpi({ l, v, rosso, giallo }: { l: string; v: string; rosso?: boolean; giallo?: boolean }) {
+function Kpi({ l, v, rosso, giallo, k }: { l: string; v: string; rosso?: boolean; giallo?: boolean; k?: string }) {
   return (
     <div className={`card p-4 ${rosso ? "border-danger bg-danger-soft" : giallo ? "border-warn bg-warn-soft" : ""}`}>
-      <div className="text-xs font-medium text-ink-muted">{l}</div>
+      <div className="text-xs font-medium text-ink-muted">{l}{k && <Spiega k={k} />}</div>
       <div className={`text-2xl font-bold ${rosso ? "text-danger" : giallo ? "text-warn" : ""}`}>{v}</div>
     </div>
   );

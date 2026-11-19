@@ -6,6 +6,7 @@ import { scarica, tabella } from "@/lib/presenze/excelUtil";
 import { addGiorni, numeroSettimana } from "@/domain/forecast/settimane";
 import type { PuntoVersione, Precisione } from "@/domain/forecast/storico";
 import type { DatiStorico } from "./dati";
+import { Spiega } from "@/components/Spiega";
 import { Aiuto } from "@/components/Aiuto";
 
 type Props = Omit<DatiStorico, "oggi"> & { oggi: string };
@@ -35,15 +36,18 @@ export function StoricoClient(p: Props) {
 
   const valore = (x: PuntoVersione) => (misura === "eur" ? (linea === "ND" ? x.eurND : linea === "SD" ? x.eurSD : x.eur) : linea === "ND" ? x.rotteND : linea === "SD" ? x.rotteSD : x.rotte);
   const agg: Agg[] = useMemo(() => {
-    const m = new Map<string, Agg>();
+    const m = new Map<string, Agg>(), rotteLinea = new Map<string, number>();
     for (const x of p.punti) {
       if (ds !== "TUTTE" && x.station !== ds) continue;
       const k = `${x.settimana}|${x.versione}`;
       const a = m.get(k) ?? { settimana: x.settimana, versione: x.versione, anticipo: x.anticipo, v: 0, parziale: false, swa: 0 };
       a.v += valore(x); a.parziale ||= x.parziale; a.swa += x.swaSimulate;
+      rotteLinea.set(k, (rotteLinea.get(k) ?? 0) + (linea === "ND" ? x.rotteND : linea === "SD" ? x.rotteSD : x.rotte));
       m.set(k, a);
     }
-    return [...m.values()];
+    // con una sola linea scelta: se in quella versione la linea non ha forecast per la settimana (nessun file la copre)
+    // il punto manca, non vale zero
+    return [...m.entries()].filter(([k]) => linea === "TUTTE" || (rotteLinea.get(k) ?? 0) > 0).map(([, a]) => a);
   }, [p.punti, ds, linea, misura]); // eslint-disable-line react-hooks/exhaustive-deps
   const perSett = (w: string) => agg.filter((a) => a.settimana === w).sort((a, b) => a.versione.localeCompare(b.versione));
   const ultimo = (w: string) => perSett(w).at(-1) ?? null;
@@ -113,7 +117,7 @@ export function StoricoClient(p: Props) {
       </div>
     </div>
   );
-  const kpi = (l: string, v: string, s: string) => <div className="card flex flex-col gap-1 p-4"><div className="text-sm font-medium text-ink-muted">{l}</div><div className="font-mono text-2xl font-bold">{v}</div><div className="text-sm text-ink-muted">{s}</div></div>;
+  const kpi = (l: string, v: string, s: string, k: string) => <div className="card flex flex-col gap-1 p-4"><div className="text-sm font-medium text-ink-muted">{l}<Spiega k={k} /></div><div className="font-mono text-2xl font-bold">{v}</div><div className="text-sm text-ink-muted">{s}</div></div>;
   const d = totPrima ? ((totUltimo - totPrima) / totPrima) * 100 : null;
 
   return (
@@ -129,10 +133,10 @@ export function StoricoClient(p: Props) {
       </section>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-4" aria-label="Sintesi">
-        {kpi("Versione in uso", p.versioneInUso.nd?.split(" · ")[0] ?? "—", `ND ${p.versioneInUso.nd?.split(" · ")[1] ?? "—"} · SD ${p.versioneInUso.sd?.split(" · ")[1] ?? "—"}`)}
-        {kpi(`Previsto ${wk(S)}–${wk(addGiorni(S, 14))}`, fmtM(totUltimo, misura), d === null ? "—" : `${d >= 0 ? "+" : ""}${it(d, 1)} % sulla versione precedente`)}
-        {kpi("Errore medio, forecast della settimana", prec(0) ? `${it(prec(0)!.errore, 1)} %` : "—", prec(0) ? `${prec(0)!.settimane} settimane chiuse · ${ds === "TUTTE" ? "tutte le DS" : ds}` : "servono settimane chiuse con forecast")}
-        {kpi("Errore medio, forecast 2 settimane prima", prec(2) ? `${it(prec(2)!.errore, 1)} %` : "—", prec(2) ? `${prec(2)!.settimane} settimane chiuse` : "servono più versioni")}
+        {kpi("Versione in uso", p.versioneInUso.nd?.split(" · ")[0] ?? "—", `ND ${p.versioneInUso.nd?.split(" · ")[1] ?? "—"} · SD ${p.versioneInUso.sd?.split(" · ")[1] ?? "—"}`, "forecast.versione")}
+        {kpi(`Previsto ${wk(S)}–${wk(addGiorni(S, 14))}`, fmtM(totUltimo, misura), d === null ? "—" : `${d >= 0 ? "+" : ""}${it(d, 1)} % sulla versione precedente`, "forecast.previsto")}
+        {kpi("Errore medio, forecast della settimana", prec(0) ? `${it(prec(0)!.errore, 1)} %` : "—", prec(0) ? `${prec(0)!.settimane} settimane chiuse · ${ds === "TUTTE" ? "tutte le DS" : ds}` : "servono settimane chiuse con forecast", "forecast.errore0")}
+        {kpi("Errore medio, forecast 2 settimane prima", prec(2) ? `${it(prec(2)!.errore, 1)} %` : "—", prec(2) ? `${prec(2)!.settimane} settimane chiuse` : "servono più versioni", "forecast.errore2")}
       </section>
 
       <section className="card flex flex-col gap-3 p-4 md:p-5">
@@ -142,6 +146,7 @@ export function StoricoClient(p: Props) {
         </div>
         <div className="flex flex-wrap gap-4 text-xs text-ink-muted">
           <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: BLU }} />Ultima versione</span>
+          <span className="flex items-center gap-1"><span className="rounded-full bg-ok-soft px-1.5 text-xs font-semibold text-ok">± %</span>fatto rispetto al previsto<Spiega k="forecast.scarto" /></span>
           <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5" style={{ background: ARANCIO }} />Fatturato{linea === "ND" ? " next" : linea === "SD" ? " same day" : ""} (settimane fatturate)</span>
           {["1 sett. prima", "2 sett. prima", "3+ sett. prima"].map((l, i) => <span key={l} className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-full border" style={{ background: SEQ[i + 1], borderColor: BLU }} />{l}</span>)}
         </div>

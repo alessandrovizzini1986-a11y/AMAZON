@@ -6,6 +6,7 @@ import { getConfigStringArray } from "@/lib/config";
 import { PageHeader, SourceNote } from "@/components/ui";
 import { fmtEurInt, fmtNum } from "@/lib/format";
 import { StationFilter } from "./StationFilter";
+import { Spiega } from "@/components/Spiega";
 import { ExportExcelButton } from "./ExportExcelButton";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,10 @@ const COLOR_ALTRI = "#c2650a";
 
 type StationRow = { stationId: string; code: string; name: string; veicoli: number; canone: number; amazon: boolean };
 
-function Kpi({ label, value, note, href }: { label: string; value: string; note: string; href: string }) {
+function Kpi({ label, value, note, href, k }: { label: string; value: string; note: string; href: string; k: string }) {
   return (
     <Link href={href} className="card block p-4 transition-colors hover:border-brand md:p-[22px]">
-      <div className="text-[13px] font-medium text-ink-muted md:text-sm">{label}</div>
+      <div className="text-[13px] font-medium text-ink-muted md:text-sm">{label}<Spiega k={k} /></div>
       <div className="mt-1.5 text-[24px] font-bold leading-tight tracking-[-0.02em] tabular-nums md:mt-2 md:text-[38px]">{value}</div>
       <div className="mt-1 text-[13px] text-ink-muted">{note}</div>
     </Link>
@@ -110,10 +111,10 @@ export default async function DashboardPage({
 
       {/* KPI */}
       <div className={`mb-6 grid grid-cols-2 gap-3 md:gap-4 ${kpiCount === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
-        <Kpi label="Veicoli in flotta" value={fmtNum(totVeicoli)} note="esclusi sostitutivi e dismessi" href={fleetHref(stationFilter)} />
-        <Kpi label="Canone mensile totale" value={fmtEurInt(totCanone)} note="impegno fisso al mese" href={fleetHref(stationFilter)} />
+        <Kpi k="flotta.veicoli" label="Veicoli in flotta" value={fmtNum(totVeicoli)} note="esclusi sostitutivi e dismessi" href={fleetHref(stationFilter)} />
+        <Kpi k="flotta.canone" label="Canone mensile totale" value={fmtEurInt(totCanone)} note="impegno fisso al mese" href={fleetHref(stationFilter)} />
         {scope ? (
-          <Kpi
+          <Kpi k="flotta.canoneMedio"
             label="Canone medio per veicolo"
             value={totVeicoli ? fmtEurInt(totCanone / totVeicoli) : "—"}
             note="al mese"
@@ -121,14 +122,14 @@ export default async function DashboardPage({
           />
         ) : (
           <>
-            <Kpi
+            <Kpi k="flotta.appalto"
               label="Appalto Amazon"
               value={fmtNum(sum(amazonRows, "veicoli"))}
               note={`${stazioni(amazonRows.length)} · ${fmtEurInt(sum(amazonRows, "canone"))}/mese`}
               href="/vehicles"
             />
             {altriRows.length > 0 && (
-              <Kpi
+              <Kpi k="flotta.appalto"
                 label={`Appalto ${altriLabel}`}
                 value={fmtNum(sum(altriRows, "veicoli"))}
                 note={`${stazioni(altriRows.length)} · ${fmtEurInt(sum(altriRows, "canone"))}/mese`}
