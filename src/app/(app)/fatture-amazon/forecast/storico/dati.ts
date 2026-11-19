@@ -2,14 +2,14 @@ import "server-only";
 import { dsAmazon } from "@/domain/fatture/fatturato";
 import { db } from "@/lib/db";
 import { calibra, finestra, type Calibrazione, type RigaCalibrazione } from "@/domain/forecast/tariffe";
-import { reale } from "@/domain/forecast/previsione";
+import { reale, realeGiorni } from "@/domain/forecast/previsione";
 import { addGiorni, chiusa, fatturataTutta, inizioSettimana, numeroSettimana } from "@/domain/forecast/settimane";
 import { precisione, storico, ultimaVersione, type PuntoVersione, type Precisione } from "@/domain/forecast/storico";
 import { versioniForecast } from "@/lib/forecastVersioni";
 
 export type DatiStorico = {
   oggi: string; settimanaCorrente: string; versioneInUso: { nd: string | null; sd: string | null };
-  punti: PuntoVersione[]; reale: Record<string, { eur: number; rotte: number; eurND: number; rotteND: number; eurSD: number; rotteSD: number }>; precisione: Precisione[];
+  punti: PuntoVersione[]; reale: Record<string, { eur: number; rotte: number; eurND: number; rotteND: number; eurSD: number; rotteSD: number; giorniND: number[]; giorniSD: number[] }>; precisione: Precisione[];
   flotta: Record<string, { attivi: number; sostitutivi: number; officina: number }>; stations: string[];
 };
 
@@ -41,7 +41,7 @@ export async function calcolaStorico(n: number, oggi: string): Promise<DatiStori
   for (const p of ultimaVersione(punti)) {
     if (!conFatturato(p.station, p.settimana)) continue;
     const r = reale(righe, p.station, p.settimana);
-    if (r) realeMap[`${p.station}|${p.settimana}`] = { eur: r.avere, rotte: r.rotte, eurND: r.avereND, rotteND: r.rotteND, eurSD: r.avereSD, rotteSD: r.rotteSD };
+    if (r) { const g = realeGiorni(righe, p.station, p.settimana); realeMap[`${p.station}|${p.settimana}`] = { eur: r.avere, rotte: r.rotte, eurND: r.avereND, rotteND: r.rotteND, eurSD: r.avereSD, rotteSD: r.rotteSD, giorniND: g.nd, giorniSD: g.sd }; }
   }
   const prec = precisione(punti, (s, w) => realeMap[`${s}|${w}`]?.eur ?? null, (w) => chiusa(w, oggi) || Object.keys(realeMap).some((k) => k.endsWith(`|${w}`)));
   const stationsDb = await db.station.findMany({ select: { id: true, code: true } });
