@@ -14,7 +14,7 @@ type Voce = NavItem & { perm: Action };
 type Gruppo = { id: string; label: string; icon: IconName; voci: Voce[] };
 
 export const GRUPPI: Gruppo[] = [
-  { id: "home", label: "Home", icon: "home", voci: [{ href: "/home", label: "Da fare", icon: "home", perm: "home.view", descr: "scadenze della settimana e del mese" }, { href: "/conto-economico", label: "Conto economico", icon: "euro", perm: "costi.view", descr: "ricavi, costi e margine per cliente" }, { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" }] },
+  { id: "home", label: "Home", icon: "home", voci: [{ href: "/home", label: "Da fare", icon: "home", perm: "home.view", descr: "scadenze della settimana e del mese" }, { href: "/conto-economico", label: "Conto economico", icon: "euro", perm: "costi.view", descr: "ricavi, costi e margine per cliente" }, { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" }, { href: "/spedizioni-gls", label: "Spedizioni GLS", icon: "orders", perm: "spedizioni.view", descr: "portale GLS e bollettino in PDF" }] },
   {
     id: "flotta", label: "Flotta", icon: "fleet", voci: [
       { href: "/dashboard", label: "Situazione per stazione", icon: "dashboard", perm: "dashboard.station", descr: "furgoni e canoni per stazione" },
