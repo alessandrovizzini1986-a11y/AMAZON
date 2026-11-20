@@ -13,13 +13,14 @@ Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e u
 
 | Gruppo | Pagine |
 |---|---|
-| **Home** | [Da fare](/home): le scadenze della settimana e del mese · [Conto economico](/conto-economico): ricavi, costi e margine per cliente · [Archivio file](/archivio): i file trascinati su questo PC |
-| **Flotta** | Situazione per stazione · Mezzi · Furgoni in arrivo · Officine · Listini noleggiatori · Aggiorna da Lista Targhe |
+| **Home** | [Da fare](/home): le scadenze della settimana e del mese · [Conto economico](/conto-economico): ricavi, costi e margine per cliente |
+| **Flotta** | Situazione per stazione · Mezzi · Aggiorna da Lista Targhe · Furgoni in arrivo · Listini noleggiatori · Officine |
 | **Personale** | Presenze · Costi del personale · Costi GLS |
-| **Amazon** | Fatture · Fatturato · Rimborsi · Forecast |
-| **Spese mezzi** | Telepass e carburante · Telepass · Carburante Q8 · File già elaborati · Carte e dispositivi |
-| **Aiuto** | Vademecum · [Glossario](/vademecum/18-glossario) · Training · Portali |
-| **Gestione** (solo admin) | Import · Utenti · Configurazione · Audit |
+| **Amazon** | Fatture · Fatturato · Rimborsi · Forecast · Storico forecast |
+| **Spese mezzi** | Stato del mese · Telepass · Carburante Q8 · File già elaborati |
+| **Strumenti** | Telefoni e SIM · Fuel card e Telepass · Spedizioni GLS · Portali fornitori · [Archivio file](/archivio): i file trascinati su questo PC |
+| **Aiuto** | Vademecum · [Glossario](/vademecum/18-glossario) · Tour del sito · Training |
+| **Gestione** (solo admin) | Utenti · Registro attività · Configurazione · Import iniziale |
 
 Ognuno vede solo le pagine che può usare. Il **mese** si sceglie sempre allo stesso modo (‹ Ottobre 2026 ›) e resta quello scelto anche cambiando sezione, finché non chiudi il browser. Le pagine lunghe (Parametri, Listini, Rimborsi, Training) sono divise in **schede** sotto il titolo; i link con #sezione aprono la scheda giusta. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
 
@@ -78,7 +79,7 @@ Il sito ti ferma solo quando c'è un errore vero:
 
 ### Spedizioni GLS
 
-In **Home → Spedizioni GLS** (solo Admin) trovi due cose:
+In **Strumenti → Spedizioni GLS** (solo Admin) trovi due cose:
 
 1. **Il portale GLS**: il pulsante apre la pagina di accesso; nome utente e password si copiano da qui con **Copia** (la password resta nascosta e ogni copia finisce nel registro attività), la sede si sceglie nella tendina del portale. Il portale non accetta dati già compilati da un altro sito, per questo si copiano.
 2. **Il bollettino di spedizione**: scrivi mittente, destinatario, colli e servizio; l'anteprima a fianco mostra il modulo GLS originale compilato. **Scarica il PDF** lo salva, **Apri per stampare** lo apre in una scheda, **Invia…** lo passa alla condivisione del dispositivo o, dove non c'è, lo scarica e apre una mail a cui allegarlo. Firma e timbro si mettono a mano sulla stampa.

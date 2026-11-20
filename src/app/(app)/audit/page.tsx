@@ -32,7 +32,7 @@ export default async function AuditPage({
   return (
     <div>
       <PageHeader
-        title="Audit trail"
+        title="Registro attività"
         subtitle="Chi ha fatto cosa, quando — ogni azione applicativa è registrata. Solo Admin."
       />
 

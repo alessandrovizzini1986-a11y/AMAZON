@@ -14,15 +14,20 @@ type Voce = NavItem & { perm: Action };
 type Gruppo = { id: string; label: string; icon: IconName; voci: Voce[] };
 
 export const GRUPPI: Gruppo[] = [
-  { id: "home", label: "Home", icon: "home", voci: [{ href: "/home", label: "Da fare", icon: "home", perm: "home.view", descr: "scadenze della settimana e del mese" }, { href: "/conto-economico", label: "Conto economico", icon: "euro", perm: "costi.view", descr: "ricavi, costi e margine per cliente" }, { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" }, { href: "/spedizioni-gls", label: "Spedizioni GLS", icon: "orders", perm: "spedizioni.view", descr: "portale GLS e bollettino in PDF" }] },
+  {
+    id: "home", label: "Home", icon: "home", voci: [
+      { href: "/home", label: "Da fare", icon: "home", perm: "home.view", descr: "scadenze della settimana e del mese" },
+      { href: "/conto-economico", label: "Conto economico", icon: "euro", perm: "costi.view", descr: "ricavi, costi e margine per cliente" },
+    ],
+  },
   {
     id: "flotta", label: "Flotta", icon: "fleet", voci: [
       { href: "/dashboard", label: "Situazione per stazione", icon: "dashboard", perm: "dashboard.station", descr: "furgoni e canoni per stazione" },
       { href: "/vehicles", label: "Mezzi", icon: "fleet", perm: "vehicle.view", descr: "dove si trova ogni targa" },
+      { href: "/vehicles/aggiorna", label: "Aggiorna da Lista Targhe", icon: "import", perm: "import.run", descr: "attivi, cessati e canoni dal file" },
       { href: "/orders", label: "Furgoni in arrivo", icon: "orders", perm: "orders.view", descr: "ordini ai noleggiatori" },
-      { href: "/officine", label: "Officine", icon: "wrench", perm: "officine.view", descr: "officine e carrozzerie autorizzate" },
       { href: "/vehicles/listini", label: "Listini noleggiatori", icon: "receipt", perm: "vehicle.manage", descr: "tariffe e confronto per classe" },
-      { href: "/vehicles/aggiorna", label: "Aggiorna da Lista Targhe", icon: "import", perm: "import.run", descr: "targhe, contratti e canoni dal file" },
+      { href: "/officine", label: "Officine", icon: "wrench", perm: "officine.view", descr: "officine e carrozzerie autorizzate" },
     ],
   },
   {
@@ -30,7 +35,6 @@ export const GRUPPI: Gruppo[] = [
       { href: "/presenze", label: "Presenze", icon: "presenze", perm: "presenze.view", descr: "tracking, controllo settimanale e fine mese" },
       { href: "/costi", label: "Costi del personale", icon: "euro", perm: "costi.view", descr: "stima a fine mese e consuntivo Amazon" },
       { href: "/costi/gls", label: "Costi GLS", icon: "euro", perm: "costi.view", descr: "appalto Castel Maggiore e Badgebox" },
-      { href: "/telefoni", label: "Telefoni e SIM", icon: "settings", perm: "telefoni.view", descr: "dotazioni: SIM e telefoni Wind, PIN e PUK" },
     ],
   },
   {
@@ -38,16 +42,26 @@ export const GRUPPI: Gruppo[] = [
       { href: "/fatture-amazon", label: "Fatture", icon: "receipt", perm: "fatture.registro", descr: "importa i PDF e allinea fatt_2026" },
       { href: "/fatture-amazon/fatturato", label: "Fatturato", icon: "dashboard", perm: "fatturato.view", descr: "per mese, DS e classe" },
       { href: "/fatture-amazon/rimborsi", label: "Rimborsi", icon: "euro", perm: "fatturato.view", descr: "parcheggi, pedaggi, carburante, training" },
-      { href: "/fatture-amazon/forecast", label: "Forecast", icon: "refresh", perm: "forecast.view", descr: "rotte previste e stima del mese" },
+      { href: "/fatture-amazon/forecast", label: "Forecast", icon: "refresh", perm: "forecast.view", descr: "carica i file, rotte previste e stima del mese" },
+      { href: "/fatture-amazon/forecast/storico", label: "Storico forecast", icon: "dashboard", perm: "forecast.view", descr: "come cambia, rotta massima, furgoni che servono" },
     ],
   },
   {
     id: "spese", label: "Spese mezzi", icon: "fuel", voci: [
-      { href: "/carburante-telepass", label: "Telepass e carburante", icon: "fuel", perm: "telepass.view", descr: "stato del mese" },
+      { href: "/carburante-telepass", label: "Stato del mese", icon: "fuel", perm: "telepass.view", descr: "cosa manca per Telepass e carburante" },
       { href: "/carburante-telepass/telepass", label: "Telepass", icon: "fuel", perm: "telepass.run", descr: "elabora il file del mese" },
       { href: "/carburante-telepass/q8", label: "Carburante Q8", icon: "fuel", perm: "telepass.run", descr: "elabora l'export Q8" },
       { href: "/carburante-telepass/storico", label: "File già elaborati", icon: "import", perm: "telepass.run", descr: "mesi lavorati fuori dal sito" },
-      { href: "/carburante-telepass/anagrafiche", label: "Carte e dispositivi", icon: "settings", perm: "telepass.view", descr: "anagrafiche Telepass e fuel card" },
+    ],
+  },
+  {
+    // cose che si consultano o si usano al bisogno, non lavori del mese
+    id: "strumenti", label: "Strumenti", icon: "wrench", voci: [
+      { href: "/telefoni", label: "Telefoni e SIM", icon: "settings", perm: "telefoni.view", descr: "a chi sono assegnati, PIN e PUK" },
+      { href: "/carburante-telepass/anagrafiche", label: "Fuel card e Telepass", icon: "fuel", perm: "telepass.view", descr: "station, targa e PIN di ogni carta" },
+      { href: "/spedizioni-gls", label: "Spedizioni GLS", icon: "orders", perm: "spedizioni.view", descr: "portale GLS e bollettino in PDF" },
+      { href: "/portali", label: "Portali fornitori", icon: "settings", perm: "users.manage", descr: "indirizzi e accessi di noleggiatori, Telepass, Q8" },
+      { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" },
     ],
   },
   {
@@ -57,15 +71,14 @@ export const GRUPPI: Gruppo[] = [
       { href: "/vademecum/18-glossario", label: "Glossario", icon: "book", perm: "vademecum.view", descr: "sigle e parole del lavoro" },
       { href: "/home?tour=1", label: "Tour del sito", icon: "refresh", perm: "home.view", descr: "il giro guidato, da rifare quando vuoi" },
       { href: "/training/admin", label: "Training (tutor)", icon: "users", perm: "training.admin", descr: "avanzamento e validazioni" },
-      { href: "/portali", label: "Portali", icon: "settings", perm: "users.manage", descr: "accessi ai portali dei fornitori" },
     ],
   },
   {
     id: "gestione", label: "Gestione", icon: "settings", voci: [
-      { href: "/import", label: "Import", icon: "import", perm: "import.run" },
-      { href: "/users", label: "Utenti", icon: "users", perm: "users.manage" },
-      { href: "/config", label: "Configurazione", icon: "settings", perm: "config.manage" },
-      { href: "/audit", label: "Audit", icon: "audit", perm: "audit.viewFull" },
+      { href: "/users", label: "Utenti", icon: "users", perm: "users.manage", descr: "chi entra, con che ruolo e password" },
+      { href: "/audit", label: "Registro attività", icon: "audit", perm: "audit.viewFull", descr: "chi ha fatto cosa, e quando" },
+      { href: "/config", label: "Configurazione", icon: "settings", perm: "config.manage", descr: "impostazioni del sito" },
+      { href: "/import", label: "Import iniziale", icon: "import", perm: "import.run", descr: "caricamenti massivi da Excel, di rado" },
     ],
   },
 ];

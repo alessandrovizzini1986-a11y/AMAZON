@@ -18,8 +18,8 @@ export default async function AnagrafichePage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Spese mezzi · Carte e dispositivi"
-        title="Dispositivi Telepass e fuel card"
+        eyebrow="Strumenti"
+        title="Fuel card e Telepass"
         subtitle="Da qui dipende la STATION di ogni transazione. Aggiornale ogni volta che arriva una mail di nuovo dispositivo, nuova carta o cambio station: trascina il file aggiornato, controlla il riepilogo e conferma."
       />
       <AnagraficheClient
