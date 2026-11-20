@@ -27,6 +27,9 @@ describe("tour di benvenuto", () => {
     for (const p of passi) { expect(p.titolo.length, p.id).toBeLessThan(45); for (const t of p.testo) expect(t.length, p.id).toBeLessThan(190); expect(p.testo.length, p.id).toBeLessThanOrEqual(3); }
     expect(passi[0].testo.join(" ")).toContain("Da oggi hai il ruolo Admin");
     expect(passiTour({ role: "ADMIN", nome: "Prova" })[0].testo.join(" ")).toContain("Hai il ruolo Admin");
+    // Spedizioni GLS: tappa solo per chi ha la voce nel menu
+    expect(passi.some((p) => p.id === "spedizioni")).toBe(true);
+    expect(passiTour({ role: "CONTROLLO", nome: "X" }).some((p) => p.id === "spedizioni")).toBe(false);
     // il testo non promette voci che il ruolo non vede
     expect(passiTour({ role: "CONTROLLO", nome: "X" }).find((p) => p.id === "gruppo-personale")!.testo.join(" ")).not.toContain("Telefoni");
   });
