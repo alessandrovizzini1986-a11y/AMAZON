@@ -25,7 +25,9 @@ export default async function AnagrafichePage() {
       <AnagraficheClient
         canEdit={can(user, "telepass.anagrafiche")}
         dispositivi={dispositivi.map((d) => ({ ...d, aggiornatoIl: d.aggiornatoIl.toISOString() }))}
-        carte={carte.map((c) => ({ ...c, dataBlocco: c.dataBlocco ? c.dataBlocco.toISOString().slice(0, 10) : null, aggiornatoIl: c.aggiornatoIl.toISOString() }))}
+        puoPin={can(user, "carte.pin")}
+        // il PIN non esce mai dalla pagina: si legge uno alla volta con "Mostra" (ADMIN, audit)
+        carte={carte.map(({ pin, ...c }) => ({ ...c, haPin: !!pin, dataBlocco: c.dataBlocco ? c.dataBlocco.toISOString().slice(0, 10) : null, aggiornatoIl: c.aggiornatoIl.toISOString() }))}
         imports={imports}
       />
     </div>

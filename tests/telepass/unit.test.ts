@@ -97,3 +97,13 @@ describe("regola d'oro DLO4", () => {
     expect(off.righe.map((r) => r[off.iStation])).toEqual(["DER1", "NON MAPPATO", "DER1"]);
   });
 });
+
+describe("PIN delle fuel card", () => {
+  it("testo di 4 cifre anche se Excel l'ha salvato come numero; colonna esatta PIN, non Tipo PIN", async () => {
+    const { leggiCensimento, pinCarta } = await import("@/domain/telepass/anagrafiche");
+    expect(pinCarta(123)).toBe("0123"); expect(pinCarta("0456")).toBe("0456"); expect(pinCarta(null)).toBeNull(); expect(pinCarta("Fisico")).toBeNull();
+    const rows = [["PAN", "Nominativo driver", "Bloccata", "Tipo PIN", "PIN", "AMZ/GLS", "DS"], ["7028", "AMZ001", "NO", "Fisico", 77, "AMZ", "DER1"], ["7029", "AMZ002", "NO", "Virtuale", null, "AMZ", "DER1"]];
+    const c = leggiCensimento([{ name: "Carte Q8 Flotte", rows }] as never);
+    expect(c.map((x) => x.pin)).toEqual(["0077", null]);
+  });
+});

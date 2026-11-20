@@ -19,7 +19,15 @@ export type Carta = {
   appalto: string | null;
   ds: string | null;
   ordine: number; // riga nel file: serve per l'abbinamento per Identificativo (vince la prima carta)
+  /** PIN della carta, se il file lo riporta (colonna "PIN"). Non va mai mostrato in chiaro in tabella. */
+  pin?: string | null;
 };
+
+/** PIN come testo di 4-6 cifre: Excel può averlo salvato come numero perdendo gli zeri davanti. */
+export function pinCarta(v: Cell): string | null {
+  const t = pyStr(v).split(".")[0].replace(/\s/g, "");
+  return /^\d{1,6}$/.test(t) ? t.padStart(4, "0") : null;
+}
 
 const vuoto = (s: string) => (s === "" ? null : s);
 
@@ -79,6 +87,7 @@ export function leggiCensimento(sheets: SheetGrid[]): Carta[] {
     pan: colonna(hdr, "PAN"), num: colonna(hdr, "N. Carta"), nom: colonna(hdr, "Nominativo driver"), targa: colonna(hdr, "Targa"),
     bl: colonna(hdr, "Bloccata"), dbl: colonna(hdr, "Data blocco"), cdc: colonna(hdr, "Centro di costo"), app: colonna(hdr, "AMZ/GLS"), ds: colonna(hdr, "DS"),
   };
+  const iPin = hdr.findIndex((h) => h.trim().toUpperCase() === "PIN"); // esatta: c'è anche "Tipo PIN"
   const mancanti = Object.entries({ PAN: col.pan, "Nominativo driver": col.nom, DS: col.ds, "AMZ/GLS": col.app, Bloccata: col.bl }).filter(([, i]) => i === -1).map(([n]) => n);
   if (mancanti.length) throw new Error(`nel censimento mancano le colonne ${mancanti.join(", ")}`);
   const get = (r: number, c: number) => (c >= 0 ? vuoto(pyStr(at(ws, r, c))) : null);
@@ -90,6 +99,7 @@ export function leggiCensimento(sheets: SheetGrid[]): Carta[] {
       pan, numeroCarta: get(r, col.num), identificativo: get(r, col.nom)?.toUpperCase() ?? null, targa: get(r, col.targa),
       bloccata: get(r, col.bl), dataBlocco: col.dbl >= 0 ? isoData(at(ws, r, col.dbl)) : null, centroCosto: get(r, col.cdc),
       appalto: get(r, col.app), ds: get(r, col.ds), ordine: r,
+      ...(iPin >= 0 ? { pin: pinCarta(at(ws, r, iPin)) } : {}),
     });
   }
   return [...per.values()];

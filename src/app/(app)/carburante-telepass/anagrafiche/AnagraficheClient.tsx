@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import { cartaNonAttribuita, confrontaImport, leggiCensimento, leggiMappaTelepass, type Carta, type Dispositivo } from "@/domain/telepass/anagrafiche";
 import { DS_CARTA, STATION_TELEPASS } from "@/domain/telepass/comune";
 import { leggiFile, PAGINA } from "@/lib/telepass/riconosci";
-import { aggiornaCarta, aggiornaDispositivo, importaCarte, importaDispositivi, type RisultatoImport } from "../actions";
+import { aggiornaCarta, aggiornaDispositivo, importaCarte, importaDispositivi, mostraPinCarta, type RisultatoImport } from "../actions";
 import { Dropzone } from "@/components/Dropzone";
 import { Aiuto } from "@/components/Aiuto";
 import { useAvvisoUscita } from "@/components/Percorso";
 
 type DispRiga = Dispositivo & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
-type CartaRiga = Carta & { note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
+type CartaRiga = Omit<Carta, "pin"> & { haPin: boolean; note: string | null; nonPiuInFile: boolean; aggiornatoIl: string; aggiornatoDa: string | null };
 type ImportRiga = { id: string; tipo: string; nomeFile: string; righe: number; nuovi: number; aggiornati: number; invariati: number; spariti: number; eseguitoDa: string; eseguitoIl: string };
 
 type Anteprima =
@@ -21,7 +21,7 @@ type Anteprima =
 
 const data = (iso: string) => new Date(iso).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
 
-export function AnagraficheClient({ canEdit, dispositivi, carte, imports }: { canEdit: boolean; dispositivi: DispRiga[]; carte: CartaRiga[]; imports: ImportRiga[] }) {
+export function AnagraficheClient({ canEdit, puoPin, dispositivi, carte, imports }: { canEdit: boolean; puoPin: boolean; dispositivi: DispRiga[]; carte: CartaRiga[]; imports: ImportRiga[] }) {
   const router = useRouter();
   const [lavoro, setLavoro] = useState(false);
   const [errori, setErrori] = useState<React.ReactNode[]>([]);
@@ -114,7 +114,7 @@ export function AnagraficheClient({ canEdit, dispositivi, carte, imports }: { ca
         <button type="button" onClick={() => setVista("CARTE")} className={vista === "CARTE" ? "btn-primary" : "btn-secondary"}>Fuel card ({carte.length})</button>
       </div>
 
-      {vista === "TELEPASS" ? <TabellaDispositivi righe={dispositivi} canEdit={canEdit} /> : <TabellaCarte righe={carte} canEdit={canEdit} />}
+      {vista === "TELEPASS" ? <TabellaDispositivi righe={dispositivi} canEdit={canEdit} /> : <TabellaCarte righe={carte} canEdit={canEdit} puoPin={puoPin} />}
 
       <section className="card overflow-x-auto p-4 md:p-5">
         <h2 className="mb-3 text-[19px] font-semibold">Storico import</h2>
@@ -182,7 +182,22 @@ function TabellaDispositivi({ righe, canEdit }: { righe: DispRiga[]; canEdit: bo
   );
 }
 
-function TabellaCarte({ righe, canEdit }: { righe: CartaRiga[]; canEdit: boolean }) {
+/** PIN sempre con asterischi; "Mostra" lo fa vedere per 20 secondi (solo Admin, lettura registrata). */
+function PinCarta({ pan, ha, puo }: { pan: string; ha: boolean; puo: boolean }) {
+  const [pin, setPin] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!ha) return <span className="text-ink-faint">—</span>;
+  return (
+    <span className="flex items-center gap-2 whitespace-nowrap font-mono">
+      <span aria-label={pin ? `PIN ${pin}` : "PIN nascosto"}>{pin ?? "****"}</span>
+      {puo && (pin
+        ? <button type="button" className="btn-secondary px-2 py-1 font-sans text-xs" onClick={() => setPin(null)}>Nascondi</button>
+        : <button type="button" className="btn-secondary px-2 py-1 font-sans text-xs" disabled={busy} onClick={async () => { setBusy(true); try { const x = await mostraPinCarta(pan); setPin(x); if (x) setTimeout(() => setPin(null), 20_000); } finally { setBusy(false); } }}>Mostra</button>)}
+    </span>
+  );
+}
+
+function TabellaCarte({ righe, canEdit, puoPin }: { righe: CartaRiga[]; canEdit: boolean; puoPin: boolean }) {
   const [q, setQ] = useState("");
   const [ds, setDs] = useState("TUTTE");
   const [filtro, setFiltro] = useState("TUTTI");
@@ -205,7 +220,7 @@ function TabellaCarte({ righe, canEdit }: { righe: CartaRiga[]; canEdit: boolean
       </div>
       <div className="max-h-[70vh] overflow-auto">
         <table className="table-base text-sm">
-          <thead className="sticky top-0 bg-surface-raised"><tr><th>PAN</th><th>Identificativo</th><th>DS</th><th>Appalto</th><th>Targa</th><th>Bloccata</th><th>Centro di costo</th><th>Note</th>{canEdit && <th></th>}</tr></thead>
+          <thead className="sticky top-0 bg-surface-raised"><tr><th>PAN</th><th>Identificativo</th><th>DS</th><th>Appalto</th><th>Targa</th><th>PIN</th><th>Bloccata</th><th>Centro di costo</th><th>Note</th>{canEdit && <th></th>}</tr></thead>
           <tbody>
             {vis.map((r) => edit === r.pan
               ? <RigaCartaEdit key={r.pan} r={r} onDone={() => setEdit(null)} />
@@ -214,7 +229,7 @@ function TabellaCarte({ righe, canEdit }: { righe: CartaRiga[]; canEdit: boolean
                   <td className="font-mono text-xs">{r.pan}{r.nonPiuInFile && <span className="ml-2 badge-warn">non più nel file</span>}</td>
                   <td className="font-semibold">{r.identificativo ?? "—"}</td>
                   <td className={cartaNonAttribuita(r.ds) ? "font-bold text-warn" : "font-semibold"}>{r.ds || "—"}</td>
-                  <td>{r.appalto ?? ""}</td><td>{r.targa ?? ""}</td><td>{r.bloccata ?? ""}{r.dataBlocco ? ` (${r.dataBlocco.split("-").reverse().join("/")})` : ""}</td><td>{r.centroCosto ?? ""}</td><td className="text-ink-muted">{r.note ?? ""}</td>
+                  <td>{r.appalto ?? ""}</td><td>{r.targa ?? ""}</td><td><PinCarta pan={r.pan} ha={r.haPin} puo={puoPin} /></td><td>{r.bloccata ?? ""}{r.dataBlocco ? ` (${r.dataBlocco.split("-").reverse().join("/")})` : ""}</td><td>{r.centroCosto ?? ""}</td><td className="text-ink-muted">{r.note ?? ""}</td>
                   {canEdit && <td><button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => setEdit(r.pan)}>Modifica</button></td>}
                 </tr>
               ))}
@@ -257,7 +272,7 @@ function RigaCartaEdit({ r, onDone }: { r: CartaRiga; onDone: () => void }) {
       <td className="font-mono text-xs">{r.pan}</td><td className="font-semibold">{r.identificativo ?? "—"}</td>
       <td><select className="input h-9 w-36" value={ds} onChange={(e) => setDs(e.target.value)}>{(opz.includes(ds) ? opz : [ds, ...opz]).map((o) => <option key={o} value={o}>{o || "(vuoto)"}</option>)}</select></td>
       <td><select className="input h-9 w-24" value={app} onChange={(e) => setApp(e.target.value)}><option value=""></option><option>AMZ</option><option>GLS</option></select></td>
-      <td>{r.targa ?? ""}</td><td>{r.bloccata ?? ""}</td><td>{r.centroCosto ?? ""}</td>
+      <td>{r.targa ?? ""}</td><td className="font-mono">{r.haPin ? "****" : "—"}</td><td>{r.bloccata ?? ""}</td><td>{r.centroCosto ?? ""}</td>
       <td><input className="input h-9 w-48" value={n} onChange={(e) => setN(e.target.value)} placeholder="Note" maxLength={500} /></td>
       <td><div className="flex gap-2">
         <button type="button" className="btn-primary px-3 py-1 text-xs" disabled={busy} onClick={async () => { setBusy(true); try { await aggiornaCarta(r.pan, { ds, appalto: app, note: n }); onDone(); } finally { setBusy(false); } }}>Salva</button>
