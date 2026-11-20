@@ -20,3 +20,11 @@ describe("§8.3 numero", () => {
     expect(normalizzaNumero("INV-IT3JDBF-0002032")).toBe("INV-IT3JDBF-0002032");
   });
 });
+
+describe("PDR", () => {
+  it("il Premio di Risultato è una categoria a sé, non un incentivo", async () => {
+    const { classifica } = await import("@/domain/fatture/classifica");
+    expect(classifica("Incentives - Premio di Risultato")).toBe("EXTRA_PDR");
+    expect(classifica("Incentivo stagionale")).toBe("EXTRA_INCENTIVI");
+  });
+});
