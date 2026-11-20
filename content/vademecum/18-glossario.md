@@ -2,7 +2,7 @@
 title: "Glossario"
 order: 18
 category: "Base"
-updated: "2026-11-07"
+updated: "2026-11-20"
 ---
 
 Le sigle e le parole che si incontrano nel sito e nei file. Nel sito, le sigle sottolineate a puntini mostrano la spiegazione al passaggio del mouse e portano qui.
@@ -11,6 +11,7 @@ Le sigle e le parole che si incontrano nel sito e nei file. Nel sito, le sigle s
 
 | Sigla | Significato | In pratica |
 |---|---|---|
+| **PDR** | Premio di Risultato | Premio che Amazon paga a parte, con una fattura per station ("Incentives - Premio di Risultato"). Nel fatturato è una categoria a sé: non è un incentivo e non entra nel forecast. |
 | **DSP** | Delivery Service Partner | L'azienda che fa le consegne per Amazon: noi (Professional Solutions) su 7 station. |
 | **DS** | Delivery Station | Il magazzino Amazon da cui partono i furgoni, con un codice: DER1, DER2, DLO2, DLO4, DLO5, DLZ2, DVN1. GLS è la sede di Castel Maggiore. |
 | **fatt_2026** | Foglio delle righe di fattura Amazon | Nel file AGGREGATO: una riga per ogni riga delle fatture Amazon, con DS, data, descrizione, imponibile (AVERE) e macroarea. |
