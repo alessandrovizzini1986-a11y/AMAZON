@@ -110,7 +110,7 @@ export function reale(righe: RigaCalibrazione[], ds: string, settimana: string):
   return { avere: r2(avereND + avereSD), rotte: rotteND + rotteSD, avereND: r2(avereND), rotteND, avereSD: r2(avereSD), rotteSD };
 }
 
-/** Rotte fatturate per giorno della settimana (domenica–sabato), contate come in `reale`: next tutte, same day A + max(B, C). */
+/** Rotte fatturate per giorno della settimana (domenica–sabato) per la rotta massima: next tutte, same day il giro più grande (max tra A, B e C). */
 export function realeGiorni(righe: RigaCalibrazione[], ds: string, settimana: string): { nd: number[]; sd: number[] } {
   const nd = Array<number>(7).fill(0), sd = Array.from({ length: 7 }, () => ({ a: 0, b: 0, c: 0 }));
   for (const r of righe) {
@@ -119,7 +119,7 @@ export function realeGiorni(righe: RigaCalibrazione[], ds: string, settimana: st
     if (r.classe.startsWith("ND_")) nd[i] += r.quantita;
     else if (r.classe === "SD_B") sd[i].b += r.quantita; else if (r.classe === "SD_C") sd[i].c += r.quantita; else if (r.classe.startsWith("SD_")) sd[i].a += r.quantita;
   }
-  return { nd, sd: sd.map((g) => g.a + Math.max(g.b, g.c)) };
+  return { nd, sd: sd.map((g) => Math.max(g.a, g.b, g.c)) };
 }
 
 export type Backtest = { ds: string; settimana: string; week: number; previsto: number; reale: number; erroreTot: number; rottePreviste: number; rotteFatturate: number; erroreRotte: number };
