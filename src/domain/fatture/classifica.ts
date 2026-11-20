@@ -4,7 +4,7 @@
  */
 export const CLASSI = [
   "SD_A", "SD_B", "SD_C", "SD_ALTRO", "ND_ORDT", "ND_SWA", "ND_CARGOBIKE", "ND_MICRO", "ND_STANDARD",
-  "EXTRA_CARBURANTE", "EXTRA_BONUS", "EXTRA_ABORT", "EXTRA_TRAINING", "EXTRA_INCENTIVI", "EXTRA_ALTRO",
+  "EXTRA_CARBURANTE", "EXTRA_BONUS", "EXTRA_ABORT", "EXTRA_TRAINING", "EXTRA_PDR", "EXTRA_INCENTIVI", "EXTRA_ALTRO",
 ] as const;
 export type Classe = (typeof CLASSI)[number];
 
@@ -22,6 +22,8 @@ const REGOLE: [Classe, string[]][] = [
   ["EXTRA_BONUS", ["DSP Bonus Coverage"]],
   ["EXTRA_ABORT", ["AMZL Late Cancel"]],
   ["EXTRA_TRAINING", ["Training"]],
+  // PDR = Premio di Risultato: categoria a sé, va prima di "Incentiv" (la descrizione è "Incentives - Premio di Risultato")
+  ["EXTRA_PDR", ["Incentives - Premio di Risultato", "Premio di Risultato", "PDR"]],
   ["EXTRA_INCENTIVI", ["OTR", "Incentiv", "Pedaggi", "Parcheggi", "Modifiche - Pedaggi"]],
 ];
 

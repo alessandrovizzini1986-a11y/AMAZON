@@ -33,7 +33,7 @@ export type Calibrazione = {
   tariffe: Tariffa[];
   extra: ExtraClasse[];
   extraPerRotta: Record<string, number>; // DS → somma delle 4 classi extra previste
-  nonPreviste: { ds: string; classe: string; avere: number }[]; // EXTRA_INCENTIVI, EXTRA_ALTRO
+  nonPreviste: { ds: string; classe: string; avere: number }[]; // EXTRA_INCENTIVI, EXTRA_PDR, EXTRA_ALTRO
   sdMedia: Record<string, { rotte: number; avere: number; perClasse: Record<string, number> }>; // media settimanale SD
   mediaClasse: Record<string, number>; // tariffa media della classe su tutte le DS (per le tariffe stimate)
 };

@@ -6,6 +6,7 @@
 export type VoceGlossario = { sigla: string; nome: string; spiega: string; tema: "Persone e costi" | "Amazon" | "Mezzi e spese" | "Sito" };
 
 export const GLOSSARIO: VoceGlossario[] = [
+  { sigla: "PDR", nome: "Premio di Risultato", spiega: "Premio che Amazon paga a parte, con una fattura per station (\"Incentives - Premio di Risultato\"). Nel fatturato è una categoria a sé: non è un incentivo e non entra nel forecast.", tema: "Amazon" },
   { sigla: "DSP", nome: "Delivery Service Partner", spiega: "L'azienda che fa le consegne per Amazon: noi (Professional Solutions) su 7 station.", tema: "Amazon" },
   { sigla: "DS", nome: "Delivery Station", spiega: "Il magazzino Amazon da cui partono i furgoni, con un codice: DER1, DER2, DLO2, DLO4, DLO5, DLZ2, DVN1. GLS è la sede di Castel Maggiore.", tema: "Amazon" },
   { sigla: "CDC", nome: "Centro di costo", spiega: "Il codice contabile a cui va ogni costo e ricavo: 5569 per Amazon, 5565 per GLS. Gli altri CDC sono di altri progetti.", tema: "Persone e costi" },
