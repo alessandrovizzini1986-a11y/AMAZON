@@ -8,7 +8,7 @@ import { menuPer } from "@/components/navModel";
 import { can } from "@/lib/rbac";
 
 /** Cambia la versione per riproporre il tour a tutti (es. dopo un cambio grosso del sito). */
-export const TOUR_VERSIONE = "v1";
+export const TOUR_VERSIONE = "v2"; // v2: Spedizioni GLS, la "i" sugli indicatori, storico forecast, PDR, PIN fuel card, ruoli e password
 /** La chiave contiene il ruolo: chi cambia ruolo (es. da Stagista ad Admin) rivede il tour del nuovo ruolo. */
 export const chiaveTour = (role: Role) => `benvenuto-${TOUR_VERSIONE}:${role}`;
 /** Il tour parte dalla Home: lo hanno i ruoli che la vedono. */
@@ -46,12 +46,13 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   amazon: (v) => ({
     titolo: "Amazon: fatture e rotte",
-    testo: ["Le fatture che Amazon ci paga: si importano i PDF e si allineano al file ufficiale.", ...(v.has("/fatture-amazon/fatturato") ? ["Da lì nascono il fatturato per station, i rimborsi e il confronto con il forecast delle rotte."] : [])],
+    testo: ["Le fatture che Amazon ci paga: si importano i PDF e si allineano al file ufficiale.", ...(v.has("/fatture-amazon/fatturato") ? ["Da lì nascono il fatturato per station (con il PDR, il premio di risultato, in una colonna sua), i rimborsi e il confronto con il forecast."] : []),
+      ...(v.has("/fatture-amazon/forecast") ? ["Nello Storico forecast scegli station e periodo, anche da inizio anno, e vedi la rotta massima: il giorno più carico della settimana."] : [])],
     quando: "Ogni lunedì.",
   }),
-  spese: () => ({
+  spese: (v) => ({
     titolo: "Spese mezzi: Telepass e carburante",
-    testo: ["Trascini il file Telepass e l'export Q8: il sito divide pedaggi e carburante per station e ti dà l'Excel pronto."],
+    testo: ["Trascini il file Telepass e l'export Q8: il sito divide pedaggi e carburante per station e ti dà l'Excel pronto.", ...(v.has("/carburante-telepass/anagrafiche") ? ["In Carte e dispositivi ci sono le fuel card. Il PIN è sempre nascosto: lo legge solo un Admin, con Mostra."] : [])],
     quando: "A inizio mese.",
   }),
   aiuto: (v) => ({
@@ -61,14 +62,14 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   gestione: () => ({
     titolo: "Gestione: solo per Admin",
-    testo: ["Crei gli utenti e scegli il loro ruolo, cioè cosa vedono. In Audit c'è il registro di chi ha fatto cosa, e quando."],
+    testo: ["Crei gli utenti e scegli il loro ruolo, cioè cosa vedono. In Audit c'è il registro di chi ha fatto cosa, e quando.", "Da Utenti cambi anche il ruolo di una persona e le dai una nuova password."],
     quando: "Di rado: quando entra una persona nuova o cambia un'impostazione.",
   }),
 };
 
 /**
  * Tappe del tour per un ruolo. `promosso` = il ruolo è stato appena cambiato da un Admin.
- * Ordine: benvenuto → Home (da fare, avvisi) → menu → una tappa per sezione → il "?" → account → fine.
+ * Ordine: benvenuto → Home (da fare, avvisi) → menu → una tappa per sezione → Spedizioni GLS → il "?" e la "i" → account → fine.
  */
 export function passiTour({ role, nome, promosso = false }: { role: Role; nome: string; promosso?: boolean }): PassoTour[] {
   if (!haTour(role)) return [];
@@ -84,7 +85,8 @@ export function passiTour({ role, nome, promosso = false }: { role: Role; nome: 
     { id: "avvisi", bersaglio: "avvisi", facoltativo: true, titolo: "Avvisi: cose da non dimenticare", testo: ["Qui compare quello che sta per scadere o che manca: una tariffa che cambia, un file troppo vecchio.", "In rosso le cose urgenti. Apri ti porta dove si sistema."] },
     { id: "menu", bersaglio: "menu", titolo: "Il menu", testo: ["Il sito è diviso in sezioni per tema. Da computer sono in alto; da telefono le prime sono nella barra in basso e il resto è in Menu.", ...(altreHome.length ? [`Sotto Home trovi anche: ${altreHome.length > 1 ? `${altreHome.slice(0, -1).join(", ")} e ${altreHome.at(-1)}` : altreHome[0]}.`] : []), "Ora le guardiamo una per una."] },
     ...sezioni,
-    { id: "dato", bersaglio: null, tipo: "dato", titolo: "Il ? e dove finisce il dato", testo: ["Accanto ai pulsanti importanti c'è un ?: dice cosa fa il pulsante, cosa controllare prima e dove finisce il dato.", "Due sicurezze: se esci con un risultato non salvato il sito ti avvisa, e un file già caricato viene riconosciuto senza creare doppioni."] },
+    ...(voci.has("/spedizioni-gls") ? [{ id: "spedizioni", bersaglio: "menu", titolo: "Spedizioni GLS: bollettino pronto", testo: ["Nel menu, sotto Home, c'è Spedizioni GLS: apri il portale GLS con utente e sede già pronti. La password resta nascosta.", "Compili il bollettino a video, con mittente e destinatari salvati, e ottieni il PDF da stampare o inviare."], quando: "Ogni volta che spedisci un pacco con GLS." } as PassoTour] : []),
+    { id: "dato", bersaglio: null, tipo: "dato", titolo: "Il ?, la i e dove finisce il dato", testo: ["Accanto ai pulsanti importanti c'è un ?: dice cosa fa il pulsante, cosa controllare prima e dove finisce il dato.", "Accanto ai numeri c'è una i: spiega in parole semplici cosa vuol dire quell'indicatore e come si calcola.", "Due sicurezze: se esci con un risultato non salvato il sito ti avvisa, e un file già caricato viene riconosciuto senza creare doppioni."] },
     { id: "account", bersaglio: "account", titolo: "Il tuo account", testo: ["Da qui cambi la password che ti è stata data: fallo al primo accesso.", "Il pulsante a fianco serve per uscire."] },
   ];
 
