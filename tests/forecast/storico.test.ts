@@ -127,11 +127,11 @@ describe("forecast del kit: PROF_40 next, PROF_43 same, PROF_44 next", async () 
 const addG = (iso: string, n: number) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 describe("rotta massima della settimana", () => {
-  it("rotte per giorno da domenica a sabato: next e same day (A + max(B, C))", () => {
+  it("per giorno da domenica a sabato: next + il giro same day più grande (max tra A, B e C)", () => {
     const r = (data: string, cycle: string, classe: string, routes: number) => ({ fileId: "f", data, station: "DER1", cycle, classe, routes });
     const [s] = settimane(giorni([r("2026-11-22", "CYCLE_1", "ND_STANDARD", 10), r("2026-11-25", "CYCLE_1", "ND_STANDARD", 30), r("2026-11-25", "CYCLE_SD_A", "SD_A", 4), r("2026-11-25", "CYCLE_SD_B", "SD_B", 2), r("2026-11-25", "CYCLE_SD_C", "SD_C", 5), r("2026-11-28", "CYCLE_1", "ND_STANDARD", 20)]));
     expect(s.giorniND).toEqual([10, 0, 0, 30, 0, 0, 20]);
-    expect(s.giorniSD).toEqual([0, 0, 0, 9, 0, 0, 0]);
-    expect(Math.max(...s.giorniND.map((x, i) => x + s.giorniSD[i]))).toBe(39);
+    expect(s.giorniSD).toEqual([0, 0, 0, 5, 0, 0, 0]);
+    expect(Math.max(...s.giorniND.map((x, i) => x + s.giorniSD[i]))).toBe(35);
   });
 });
