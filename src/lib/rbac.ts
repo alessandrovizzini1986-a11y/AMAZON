@@ -42,6 +42,7 @@ export type Action =
   | "telefoni.view"
   | "telefoni.manage"
   | "telefoni.codici"
+  | "carte.pin"
   | "spedizioni.view";
 
 const MATRIX: Record<Role, Action[]> = {
@@ -112,6 +113,7 @@ const MATRIX: Record<Role, Action[]> = {
     "telefoni.view",
     "telefoni.manage",
     "telefoni.codici",
+    "carte.pin",
     "spedizioni.view",
   ],
 };

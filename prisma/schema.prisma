@@ -634,6 +634,7 @@ model CartaCarburante {
   appalto        String? // AMZ | GLS
   ds             String? // vuoto o "Da verificare" = carta non attribuita
   note           String?
+  pin            String? // si legge solo con "Mostra" (ADMIN), ogni lettura va nell'audit; un file senza PIN non lo cancella
   ordine         Int       @default(0) // riga nel file: per l'abbinamento per Identificativo vince la prima carta
   nonPiuInFile   Boolean   @default(false)
   aggiornatoIl   DateTime  @updatedAt

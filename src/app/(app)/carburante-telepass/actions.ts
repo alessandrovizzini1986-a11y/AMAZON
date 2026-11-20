@@ -16,6 +16,7 @@ const dispositivo = z.object({ codice: z.string().min(1).max(40), station: z.str
 const carta = z.object({
   pan: z.string().min(1).max(40), numeroCarta: s(40), identificativo: s(40), targa: s(40), bloccata: s(20),
   dataBlocco: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), centroCosto: s(40), appalto: s(20), ds: s(40), ordine: z.number().int(),
+  pin: z.string().regex(/^\d{4,6}$/).nullable().optional(),
 });
 
 export type RisultatoImport = EsitoImport & { esempi: { chiave: string; esito: string; cambi: string[] }[] };
@@ -57,7 +58,10 @@ export async function importaCarte(input: { nomeFile: string; hash: string; righ
   const campi = ["numeroCarta", "identificativo", "targa", "bloccata", "dataBlocco", "centroCosto", "appalto", "ds"] as const;
   const esito = confrontaImport(attuali, righe, "pan", [...campi]);
   const per = new Map(righe.map((r) => [r.pan, r]));
-  const aDb = (r: z.infer<typeof carta>) => ({ ...r, dataBlocco: r.dataBlocco ? new Date(r.dataBlocco + "T00:00:00Z") : null });
+  // il PIN si scrive solo se il file lo riporta: un censimento senza PIN non cancella quelli già salvati
+  const aDb = ({ pin, ...r }: z.infer<typeof carta>) => ({ ...r, ...(pin ? { pin } : {}), dataBlocco: r.dataBlocco ? new Date(r.dataBlocco + "T00:00:00Z") : null });
+  const pinPrima = new Map(attuali.map((a) => [a.pan, a.pin]));
+  const pinCambiati = righe.filter((r) => r.pin && pinPrima.has(r.pan) && pinPrima.get(r.pan) !== r.pin);
   await db.$transaction(async (tx) => {
     const nuovi = esito.dettaglio.filter((d) => d.esito === "nuovo").map((d) => ({ ...aDb(per.get(d.chiave)!), aggiornatoDa: user.name }));
     if (nuovi.length) await tx.cartaCarburante.createMany({ data: nuovi });
@@ -71,9 +75,10 @@ export async function importaCarte(input: { nomeFile: string; hash: string; righ
     for (const r of ordini) if (att.get(r.pan) !== r.ordine) await tx.cartaCarburante.update({ where: { pan: r.pan }, data: { ordine: r.ordine } });
     const spariti = esito.dettaglio.filter((x) => x.esito === "sparito").map((x) => x.chiave);
     if (spariti.length) await tx.cartaCarburante.updateMany({ where: { pan: { in: spariti } }, data: { nonPiuInFile: true } });
+    for (const r of pinCambiati) await tx.cartaCarburante.update({ where: { pan: r.pan }, data: { pin: r.pin } });
     await tx.anagraficaImport.create({ data: { tipo: "FUELCARD", nomeFile: f.nomeFile, hashSha256: f.hash, righe: righe.length, nuovi: esito.nuovi, aggiornati: esito.aggiornati, invariati: esito.invariati, spariti: esito.spariti, eseguitoDa: user.name } });
   }, { timeout: 60_000 });
-  await audit({ userId: user.id, action: "telepass.import", entity: "CartaCarburante", meta: { file: f.nomeFile, righe: righe.length, nuovi: esito.nuovi, aggiornati: esito.aggiornati, spariti: esito.spariti } });
+  await audit({ userId: user.id, action: "telepass.import", entity: "CartaCarburante", meta: { file: f.nomeFile, righe: righe.length, nuovi: esito.nuovi, aggiornati: esito.aggiornati, spariti: esito.spariti, pinNelFile: righe.filter((r) => r.pin).length, pinCambiati: pinCambiati.length } });
   revalidatePath(BASE, "layout");
   const { dettaglio, ...conteggi } = esito;
   return { ...conteggi, esempi: dettaglio.filter((d) => d.esito !== "invariato").slice(0, 200) };
@@ -88,6 +93,16 @@ export async function aggiornaDispositivo(codice: string, dati: { station: strin
   await db.telepassDispositivo.update({ where: { codice }, data: { station: d.station, note: d.note || null, aggiornatoDa: user.name } });
   await audit({ userId: user.id, action: "telepass.dispositivo.update", entity: "TelepassDispositivo", entityId: codice, meta: { before: { station: prima.station, note: prima.note }, after: d } });
   revalidatePath(BASE, "layout");
+}
+
+/** PIN di una fuel card: solo ADMIN, ogni lettura nel log di audit (senza il PIN). */
+export async function mostraPinCarta(pan: string) {
+  const user = await requireUser();
+  assertCan(user, "carte.pin");
+  const p = z.string().min(1).max(40).parse(pan);
+  const x = await db.cartaCarburante.findUnique({ where: { pan: p }, select: { pin: true } });
+  await audit({ userId: user.id, action: "carte.pin", entity: "CartaCarburante", entityId: p });
+  return x?.pin ?? null;
 }
 
 /** Modifica a mano di DS, appalto e note di una carta. */
