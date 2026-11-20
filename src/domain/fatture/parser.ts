@@ -36,6 +36,8 @@ export type Fattura = {
   periodoDa: Date | null;
   periodoA: Date | null;
   importoDovuto: number | null;
+  /** "Opzione IVA a carico del committente" (L. 207/2024): Amazon paga solo il netto, quindi l'importo dovuto è senza IVA. */
+  ivaCommittente: boolean;
   righe: RigaFattura[];
   sommaTotale: number;
   sommaAvere: number;
@@ -154,9 +156,11 @@ export function parseInvoice(pages: ItemPdf[][], filename: string): Fattura {
   const sommaTot = r2(complete.reduce((a, r) => a + r.Totale, 0));
   const sommaAvere = r2(complete.reduce((a, r) => a + r.AVERE, 0));
   const dovuto = tot ? toNum(tot[1]) : null;
+  // con l'IVA a carico del committente l'importo dovuto è il netto: il controllo si fa sulla somma senza IVA
+  const ivaCommittente = /Importo netto da pagare|IVA a carico del committente/i.test(text);
   return {
     file: filename, numero, template, tipoDoc, rifNotaCredito: rnc ? rnc[1] : null, ds,
     dataFattura: df ? parseDate(df[1], fmt) : null, periodoDa: per ? parseDate(per[1], fmt) : null, periodoA: per ? parseDate(per[2], fmt) : null,
-    importoDovuto: dovuto, righe: complete, sommaTotale: sommaTot, sommaAvere, delta: dovuto == null ? null : r2(dovuto - sommaTot),
+    importoDovuto: dovuto, righe: complete, sommaTotale: sommaTot, sommaAvere, ivaCommittente, delta: dovuto == null ? null : r2(dovuto - (ivaCommittente ? sommaAvere : sommaTot)),
   };
 }
