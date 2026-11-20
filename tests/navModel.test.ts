@@ -8,8 +8,8 @@ const RUOLI: Role[] = ["ADMIN", "RESP_MEZZI", "CONTROLLO", "STAGISTA", "DRIVER"]
 
 describe("menu a gruppi", () => {
   it("ogni ruolo vede solo le voci permesse, nei gruppi per tema", () => {
-    expect(menuPer("ADMIN").map((g) => g.label)).toEqual(["Home", "Flotta", "Personale", "Amazon", "Spese mezzi", "Aiuto", "Gestione"]);
-    expect(menuPer("CONTROLLO").map((g) => g.label)).toEqual(["Home", "Personale", "Amazon", "Spese mezzi", "Aiuto"]);
+    expect(menuPer("ADMIN").map((g) => g.label)).toEqual(["Home", "Flotta", "Personale", "Amazon", "Spese mezzi", "Strumenti", "Aiuto", "Gestione"]);
+    expect(menuPer("CONTROLLO").map((g) => g.label)).toEqual(["Home", "Personale", "Amazon", "Spese mezzi", "Strumenti", "Aiuto"]);
     expect(menuPer("RESP_MEZZI").map((g) => g.label)).toEqual(["Flotta", "Amazon", "Aiuto"]);
     expect(menuPer("DRIVER").flatMap((g) => g.items.map((v) => v.href))).toEqual(["/vehicles"]);
     expect(menuPer("STAGISTA").flatMap((g) => g.items.map((v) => v.href))).toEqual(["/training", "/vademecum", "/vademecum/18-glossario"]);

@@ -41,7 +41,7 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   personale: (v) => ({
     titolo: "Personale: presenze e costi",
-    testo: ["Presenze è il controllo delle giornate dei driver. Costi del personale è la stima di fine mese e il confronto con il consuntivo.", ...(v.has("/telefoni") ? ["Qui trovi anche i Costi GLS e le dotazioni: Telefoni e SIM."] : [])],
+    testo: ["Presenze è il controllo delle giornate dei driver. Costi del personale è la stima di fine mese e il confronto con il consuntivo.", ...(v.has("/costi/gls") ? ["Costi GLS è lo stesso lavoro per l'appalto di Castel Maggiore."] : [])],
     quando: "Ogni settimana per le presenze, a chiusura del mese per i costi.",
   }),
   amazon: (v) => ({
@@ -52,8 +52,17 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   spese: (v) => ({
     titolo: "Spese mezzi: Telepass e carburante",
-    testo: ["Trascini il file Telepass e l'export Q8: il sito divide pedaggi e carburante per station e ti dà l'Excel pronto.", ...(v.has("/carburante-telepass/anagrafiche") ? ["In Carte e dispositivi ci sono le fuel card. Il PIN è sempre nascosto: lo legge solo un Admin, con Mostra."] : [])],
+    testo: ["Trascini il file Telepass e l'export Q8: il sito divide pedaggi e carburante per station e ti dà l'Excel pronto."],
     quando: "A inizio mese.",
+  }),
+  strumenti: (v) => ({
+    titolo: "Strumenti: quello che usi al bisogno",
+    testo: [
+      ...(v.has("/telefoni") ? ["Telefoni e SIM, Fuel card e Telepass: a chi sono assegnati e i PIN. I PIN sono sempre nascosti, li legge solo un Admin con Mostra."] : ["Fuel card e Telepass: station e targa di ogni carta e dispositivo."]),
+      ...(v.has("/spedizioni-gls") ? ["Spedizioni GLS: il portale con utente e sede pronti e il bollettino compilato a video, in PDF. Portali fornitori: gli accessi a noleggiatori e simili."] : []),
+      "Archivio file: i file che hai trascinato nel sito, tenuti su questo PC.",
+    ],
+    quando: "Quando ti serve un dato o devi spedire, non a scadenza.",
   }),
   aiuto: (v) => ({
     titolo: "Aiuto: quando hai un dubbio",
@@ -62,14 +71,14 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   gestione: () => ({
     titolo: "Gestione: solo per Admin",
-    testo: ["Crei gli utenti e scegli il loro ruolo, cioè cosa vedono. In Audit c'è il registro di chi ha fatto cosa, e quando.", "Da Utenti cambi anche il ruolo di una persona e le dai una nuova password."],
+    testo: ["Crei gli utenti e scegli il loro ruolo, cioè cosa vedono. Nel Registro attività c'è chi ha fatto cosa, e quando.", "Da Utenti cambi anche il ruolo di una persona e le dai una nuova password."],
     quando: "Di rado: quando entra una persona nuova o cambia un'impostazione.",
   }),
 };
 
 /**
  * Tappe del tour per un ruolo. `promosso` = il ruolo è stato appena cambiato da un Admin.
- * Ordine: benvenuto → Home (da fare, avvisi) → menu → una tappa per sezione → Spedizioni GLS → il "?" e la "i" → account → fine.
+ * Ordine: benvenuto → Home (da fare, avvisi) → menu → una tappa per sezione → il "?" e la "i" → account → fine.
  */
 export function passiTour({ role, nome, promosso = false }: { role: Role; nome: string; promosso?: boolean }): PassoTour[] {
   if (!haTour(role)) return [];
@@ -85,7 +94,6 @@ export function passiTour({ role, nome, promosso = false }: { role: Role; nome: 
     { id: "avvisi", bersaglio: "avvisi", facoltativo: true, titolo: "Avvisi: cose da non dimenticare", testo: ["Qui compare quello che sta per scadere o che manca: una tariffa che cambia, un file troppo vecchio.", "In rosso le cose urgenti. Apri ti porta dove si sistema."] },
     { id: "menu", bersaglio: "menu", titolo: "Il menu", testo: ["Il sito è diviso in sezioni per tema. Da computer sono in alto; da telefono le prime sono nella barra in basso e il resto è in Menu.", ...(altreHome.length ? [`Sotto Home trovi anche: ${altreHome.length > 1 ? `${altreHome.slice(0, -1).join(", ")} e ${altreHome.at(-1)}` : altreHome[0]}.`] : []), "Ora le guardiamo una per una."] },
     ...sezioni,
-    ...(voci.has("/spedizioni-gls") ? [{ id: "spedizioni", bersaglio: "menu", titolo: "Spedizioni GLS: bollettino pronto", testo: ["Nel menu, sotto Home, c'è Spedizioni GLS: apri il portale GLS con utente e sede già pronti. La password resta nascosta.", "Compili il bollettino a video, con mittente e destinatari salvati, e ottieni il PDF da stampare o inviare."], quando: "Ogni volta che spedisci un pacco con GLS." } as PassoTour] : []),
     { id: "dato", bersaglio: null, tipo: "dato", titolo: "Il ?, la i e dove finisce il dato", testo: ["Accanto ai pulsanti importanti c'è un ?: dice cosa fa il pulsante, cosa controllare prima e dove finisce il dato.", "Accanto ai numeri c'è una i: spiega in parole semplici cosa vuol dire quell'indicatore e come si calcola.", "Due sicurezze: se esci con un risultato non salvato il sito ti avvisa, e un file già caricato viene riconosciuto senza creare doppioni."] },
     { id: "account", bersaglio: "account", titolo: "Il tuo account", testo: ["Da qui cambi la password che ti è stata data: fallo al primo accesso.", "Il pulsante a fianco serve per uscire."] },
   ];
