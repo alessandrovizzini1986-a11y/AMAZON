@@ -11,6 +11,7 @@ import { Avvisi } from "@/components/Avvisi";
 
 const SCHEDE: (Scheda & { perm: Action })[] = [
   { href: "/costi", label: "Riepilogo mesi", exact: true, perm: "costi.view" },
+  { href: "/costi/meta-mese", label: "Stima di metà mese", perm: "costi.view" },
   { href: "/costi/fine-mese", label: "Fine mese", perm: "costi.view" },
   { href: "/costi/consuntivo", label: "Consuntivo", perm: "costi.view" },
   { href: "/costi/gls", label: "GLS", perm: "costi.view" },
