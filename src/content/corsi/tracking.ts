@@ -205,7 +205,7 @@ Per calcolare le ore di un part time in percentuale: 39 × percentuale. Esempio:
 
 Il numero 42 è il **tetto dell'Accordo di secondo livello**, l'accordo sindacale di chi lavora per Amazon. Dove l'Accordo dice una cosa diversa dal contratto nazionale (CCNL), vale l'Accordo. Il tetto è cambiato nel tempo: 43 ore fino al 31/05/2026, **42 dal 01/06/2026**, 41 dal 01/07/2027.
 
-**Perché quelle ore sono assorbite.** Il driver prende la **diaria**: l'indennità di trasferta, 22,50 € per ogni giorno lavorato. L'Accordo (art. 4 sull'orario e art. 5 sulla trasferta; CCNL art. 11 quinquies) dice che, proprio perché c'è la diaria, le ore da 39 a 42 non si pagano come straordinario: sono già compensate da quella. Non è un'ora regalata, è un'ora pagata in un altro modo.
+**Perché quelle ore sono assorbite.** Il driver prende la **diaria**: l'indennità di trasferta, 22,50 € per ogni giorno lavorato. L'Accordo (art. 4 sull'orario e art. 5 sulla trasferta; CCNL art. 11 quinquies) dice che, proprio perché c'è la diaria, le ore da 39 a 42 non si pagano come straordinario: sono già compensate da quella. Non è un'ora regalata, è un'ora pagata in un altro modo. Per i part time e i MOG che fanno il same day la diaria è riproporzionata (lo vedi nella lezione sulla trasferta).
 
 **Esempio.** Un full time lavora 6 giorni da 8 ore: 48 ore.
 
@@ -309,6 +309,8 @@ Una cosa che invece **è giusta**: se un part time lavora un giorno in più, que
       obiettivo: "Capire quando spetta la trasferta e leggere i simboli del confronto con Amazon.",
       testo: `**La trasferta.** Ogni giorno in cui un driver lavora **più di 4 ore** gli spetta l'indennità di trasferta: **22,50 €** (di domenica 7 € in più, quindi 29,50 €). Dal 01/01/2027 diventa 23,50 €. I dispatcher non la prendono.
 
+**Part time e MOG che fanno il same day.** Per loro la diaria non è intera: è **riproporzionata**, cioè ridotta in proporzione all'orario (Accordo art. 5). Il same day è un turno corto: chi lo fa con un contratto part time o MOG prende una diaria più bassa di chi fa la giornata piena.
+
 **Il confronto con Amazon.** Amazon ci dice, per ogni giorno, quanti pacchi ha consegnato ogni driver: sono i **CSV** che scarichi dal portale. Un driver è «in rotta» se ha consegnato **più di 10 pacchi**.
 
 Il sito confronta le due cose: quello che dice il tracking e quello che ha visto Amazon. Se non tornano compare un simbolo:
@@ -334,6 +336,8 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
           scelta("Un driver lavora 4 ore e mezza. Gli spetta la trasferta?", ["No", "Solo di domenica", "Sì: ha lavorato più di 4 ore"], 2, "La trasferta spetta quando le ore lavorate sono più di 4.")),
         g("b", { tipo: "numeri", domanda: "Quanto vale la trasferta di un giorno lavorato di domenica, nel 2026? (in euro)", campi: [{ nome: "Euro", valore: 29.5 }], perche: "22,50 € + 7,00 € della domenica = 29,50 €." },
           { tipo: "numeri", domanda: "Un driver lavora 3 giorni feriali da 8 ore nel 2026. Quanto prende di trasferta in tutto? (in euro)", campi: [{ nome: "Euro", valore: 67.5 }], perche: "22,50 € × 3 giorni = 67,50 €." }),
+        g("g", scelta("Un part time che fa il same day ha diritto alla diaria. Quanto prende?", ["La diaria intera, come un full time", "Una diaria riproporzionata, cioè ridotta in proporzione all'orario", "Niente: il same day non dà diritto alla diaria"], 1, "Per i part time e i MOG che fanno il same day la diaria è riproporzionata: più bassa di quella intera."),
+          scelta("Un MOG che fa il same day ha diritto alla diaria. Quanto prende?", ["Niente: i MOG non hanno la diaria", "La diaria intera", "Una diaria riproporzionata, cioè ridotta in proporzione all'orario"], 2, "Per i part time e i MOG che fanno il same day la diaria è riproporzionata: più bassa di quella intera.")),
         g("c", scelta("Nel tracking un driver ha 8 ore e la trasferta, ma su Amazon quel giorno non compare. Che simbolo è?", ["−1", "+1", "A"], 1, "+1: trasferta pagata, ma Amazon non lo vede in rotta. Si chiede all'OS cosa ha fatto."),
           scelta("Amazon vede un driver con 140 pacchi consegnati, ma nel tracking quel giorno ha 0 ore. Che simbolo è?", ["−1", "+1", "H"], 0, "−1: Amazon lo vede in rotta ma nel tracking manca la giornata. L'OS la deve inserire.")),
         g("d", scelta("Un driver ha un +1, ma nella riga RIPOSO di quel giorno c'è scritto MEZZI. Cosa succede?", ["Va chiesto comunque all'OS", "Niente: MEZZI spiega cosa ha fatto e il sito non lo segnala", "Va tolta la trasferta"], 1, "MEZZI (spostamento mezzi) è una delle sigle che spiegano la giornata: il caso è chiuso.")),
