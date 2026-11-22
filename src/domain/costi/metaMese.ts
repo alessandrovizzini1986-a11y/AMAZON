@@ -12,6 +12,10 @@ import { domenicaOFestivo, type Festivo } from "./festivi";
 import { oreStation } from "./std";
 import { valoreAlla, type ValorePerData } from "./tariffe";
 
+/** dove sta il file storico in cui va copiato il foglio del mese (cartella condivisa di Teams / OneDrive) */
+export const PERCORSO_FILE_STIMA = ["Adecco", "IT_Amazon Last Mile - General", "01. Costi", "Costi", "04_Costo personale", "Stima costi Annalisa"];
+export const NOME_FILE_STIMA = "Stima Costi_.xlsx";
+
 export const VOCI_META = ["standard", "magg50", "supp18", "supp65", "str30", "str65", "trasfOrd", "trasfDom", "assenzeGg", "malattiaGg", "infortuni", "eventi"] as const;
 export type VoceMeta = (typeof VOCI_META)[number];
 export type OreMeta = Record<VoceMeta, number>;
