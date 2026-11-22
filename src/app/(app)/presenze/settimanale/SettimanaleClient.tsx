@@ -156,7 +156,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
               <div className="text-xs text-brand">{nConsec ? "Mostra elenco ↓" : "Nessuna violazione"}</div>
             </button>
             <button type="button" onClick={() => setVistaDom(vistaDom === "6dom" ? "" : "6dom")} className="card p-4 text-left">
-              <div className="text-sm font-medium text-ink-muted">Casi 6 giorni + domenica nel periodo</div>
+              <div className="text-sm font-medium text-ink-muted">6° giorno di domenica nel periodo (5 giorni + la domenica)</div>
               <div className="text-3xl font-bold">{nSeiDom}</div>
               <div className="text-xs text-brand">{nSeiDom ? "Mostra elenco ↓" : "Nessun caso"}</div>
             </button>
@@ -256,7 +256,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
               <p className="text-sm text-ink-muted">Nessun caso.</p>
             ) : (
               <table className="table-base text-sm">
-                <thead><tr><th>Station</th><th>Tipo</th><th>Lavoratore</th><th>gg lavorati (periodo)</th><th>6+dom</th><th>Max consecutivi (mese)</th><th>Dal–al</th><th>&gt;6</th></tr></thead>
+                <thead><tr><th>Station</th><th>Tipo</th><th>Lavoratore</th><th>gg lavorati (periodo)</th><th>6° giorno di domenica</th><th>Max consecutivi (mese)</th><th>Dal–al</th><th>&gt;6</th></tr></thead>
                 <tbody>
                   {domVisibili.map((d, i) => (
                     <tr key={i}>

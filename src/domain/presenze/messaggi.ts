@@ -28,7 +28,7 @@ export const TESTI = {
   acc: "ACCORDO DI DOMENICA (SOMMINISTRATI) (ACC)",
   delta: "ORE DIVERSE TRA TRACKING E ZUCCHETTI",
   nonAbbinati: "LAVORATORI NON ABBINATI",
-  seiDom: "6 GIORNI + DOMENICA",
+  seiDom: "6° GIORNO DI DOMENICA (5 GIORNI + LA DOMENICA)",
   consecutivi: "PIÙ DI 6 GIORNI CONSECUTIVI",
   chiedi: {
     piu1: "cosa ha fatto? se mezzi/altra station/corso scrivetelo nella riga RIPOSO",
