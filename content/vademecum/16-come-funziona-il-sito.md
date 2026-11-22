@@ -19,7 +19,7 @@ Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e u
 | **Amazon** | Fatture · Fatturato · Rimborsi · Forecast · Storico forecast |
 | **Spese mezzi** | Stato del mese · Telepass · Carburante Q8 · File già elaborati |
 | **Strumenti** | Telefoni e SIM · Fuel card e Telepass · Spedizioni GLS · Portali fornitori · [Archivio file](/archivio): i file trascinati su questo PC |
-| **Aiuto** | Vademecum · [Glossario](/vademecum/18-glossario) · Tour del sito · Training |
+| **Aiuto** | [Corsi](/corsi): lezioni ed esercizi · Vademecum · [Glossario](/vademecum/18-glossario) · Tour del sito · Training |
 | **Gestione** (solo admin) | Utenti · Registro attività · Configurazione · Import iniziale |
 
 Ognuno vede solo le pagine che può usare. Il **mese** si sceglie sempre allo stesso modo (‹ Ottobre 2026 ›) e resta quello scelto anche cambiando sezione, finché non chiudi il browser. Le pagine lunghe (Parametri, Listini, Rimborsi, Training) sono divise in **schede** sotto il titolo; i link con #sezione aprono la scheda giusta. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
