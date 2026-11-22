@@ -10,7 +10,7 @@ import { chiaveLezione, correggi, statoLezioni, type Esito, type Risposta } from
 
 const input = z.object({
   corso: z.string().min(1).max(40), slug: z.string().min(1).max(60),
-  risposte: z.record(z.string().max(20), z.union([z.number(), z.array(z.number().nullable()).max(10), z.null()])),
+  risposte: z.record(z.string().max(20), z.union([z.number(), z.array(z.number().nullable()).max(10), z.string().max(40), z.null()])),
   /** solo per gli esercizi di ripasso (lezione già superata o tutor): quale variante è a video */
   variante: z.number().int().min(0).max(1000).optional(),
 });

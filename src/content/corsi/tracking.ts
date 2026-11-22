@@ -2,7 +2,7 @@
  * Corso "Tracking, contratti e Accordo": testi ed esercizi.
  * I numeri degli esercizi sulle ore si calcolano con le funzioni della Verifica tracking, così restano allineati alle regole del sito.
  */
-import type { Corso, Esercizio, Gruppo } from "@/domain/corsi/corsi";
+import { NESSUN_ERRORE, type Cella, type Corso, type Esercizio, type Gruppo, type TrackingDemo } from "@/domain/corsi/corsi";
 import { leggiContratto, ripartoAtteso } from "@/domain/presenze/verifica";
 
 const TETTO = 42; // tetto dell'Accordo dal 01/06/2026 (le lezioni lo dicono a parole)
@@ -20,6 +20,22 @@ function riparto(contratto: string, descrizione: string, ore: number, conSupplem
     perche: `Si riempie in ordine: Standard fino alle ore di contratto${conSupplementare ? ", Supplementare fino a 39" : ""}, Accordo da 39 a ${TETTO}, Straordinario oltre ${TETTO}. Qui: ${campi.map((c) => `${c.nome} ${it(c.valore)}`).join(", ")}.`,
   };
 }
+
+// ── tracking di esempio (nomi inventati) ──
+const _ = null;
+type Righe = TrackingDemo["righe"];
+const trk = (nome: string, contratto: string, righe: Righe, extra: Partial<TrackingDemo> = {}): TrackingDemo => ({ nome, contratto, righe, ...extra });
+/** "Clicca la cella sbagliata" su un tracking. */
+const cella = (domanda: string, tracking: TrackingDemo, giuste: string[], perche: string): Esercizio => ({ tipo: "cella", domanda, tracking, giuste, perche });
+const TROVA = "Guarda la settimana di questo driver. Clicca la cella sbagliata, oppure spunta «Non c'è nessun errore».";
+const TROVA_GIORNO = "Guarda il tracking e i pacchi di Amazon. Clicca una cella del giorno da chiedere all'OS, oppure spunta «Non c'è nessun errore».";
+const riga = (...v: Cella[]): Cella[] => v;
+
+const FT_GIUSTO = trk("Bianchi Luca", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, 0.5, _, 0.5, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { titolo: "Giusto: 40 ore = Standard 39 + Accordo 1" });
+const FT_48_GIUSTO = trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, 2, _), Straordinario: riga(_, _, _, _, _, 6, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }, { titolo: "Giusto: 48 ore = Standard 39 + Accordo 3 + Straordinario 6" });
+const FT_48_SBAGLIATO = trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), Straordinario: riga(_, _, _, _, _, 8, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }, { titolo: "Sbagliato: Accordo 1 e Straordinario 8 (2 ore pagate come straordinario senza doverlo)" });
+const PT_GIUSTO = trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Supplementare: riga(_, _, _, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { titolo: "Giusto: part time 24 ore che ne lavora 40 = Standard 24 + Supplementare 15 + Accordo 1" });
+const TUTTE_LE_RIGHE = trk("Rossi Mario", "CTI FT", { Standard: riga(8, 8, _, 8, 7, _, _), Accordo: riga(_, 0.5, _, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), FERIE: riga(_, _, 8, _, _, _, _), Trasferta: riga(1, 1, 0, 1, 1, 0, 0) }, { tutte: true, titolo: "Un driver in una settimana: le 17 righe, come nel file" });
 
 export const CORSO_TRACKING: Corso = {
   id: "tracking",
@@ -82,6 +98,7 @@ Sotto c'è la riga **Totali**: è la somma di queste quattro.
 In fondo al blocco c'è **Indennità Trasferta**: vale 1 nei giorni in cui al driver spetta la trasferta.
 
 **Regola da ricordare:** Standard, Supplementare, Accordo e Straordinario vogliono dire «ha lavorato». Tutto il resto vuol dire «non ha lavorato».`,
+      figure: [{ tracking: TUTTE_LE_RIGHE, didascalia: "Mercoledì è in ferie: 8 ore nella riga FERIE, niente nelle righe del lavoro, trasferta 0. Sabato e domenica riposo." }],
       esercizi: [
         g("a", scelta("Quale di queste righe vuol dire che il driver ha lavorato?", ["ROL", "Accordo", "RIPOSO"], 1, "Le righe del lavoro sono quattro: Standard, Supplementare, Accordo, Straordinario. ROL e RIPOSO sono assenze."),
           scelta("Quale di queste righe vuol dire che il driver NON ha lavorato?", ["Supplementare", "Straordinario", "ExF"], 2, "ExF (ex festività) è un permesso retribuito: quel giorno non ha lavorato.")),
@@ -145,6 +162,11 @@ Controllo: 39 + 3 + 6 = 48.
 Due limiti in più: lo **Standard non supera mai 8 ore e 24 minuti in un giorno**, e lo **Straordinario non supera mai 12 ore in una settimana**.
 
 **Regola da ricordare:** fino a 39 Standard, da 39 a 42 Accordo, oltre 42 Straordinario.`,
+      figure: [
+        { tracking: FT_GIUSTO, didascalia: "L'Accordo sono le mezz'ore in più di martedì e giovedì: la settimana arriva a 40 ore." },
+        { tracking: FT_48_GIUSTO, didascalia: "Sei giorni: il sabato porta la settimana a 48 ore. Fino a 42 è Accordo, il resto Straordinario." },
+        { tracking: FT_48_SBAGLIATO, didascalia: "Stessa settimana compilata male: il totale è sempre 48, ma il sabato è tutto in Straordinario." },
+      ],
       esercizi: [
         g("a", riparto("CTI FT", "Un full time", 40, false), riparto("CTI FT", "Un full time", 41, false), riparto("CTI FT", "Un full time", 41.5, false)),
         g("b", riparto("CTI FT", "Un full time", 48, false), riparto("CTI FT", "Un full time", 46, false), riparto("CTI FT", "Un full time", 45, false)),
@@ -185,6 +207,7 @@ Controllo: 24 + 15 + 1 = 40.
 Una cosa che invece **è giusta**: se un part time lavora un giorno in più, quelle ore sono Supplementare anche se nella settimana non arriva alle sue ore di contratto.
 
 **Regola da ricordare:** part time = Standard fino al contratto, Supplementare fino a 39, poi come il full time.`,
+      figure: [{ tracking: PT_GIUSTO, didascalia: "Lunedì, martedì e mercoledì sono i suoi giorni di contratto (24 ore). Giovedì e venerdì sono in più: Supplementare fino a 39, poi Accordo." }],
       esercizi: [
         g("a", riparto("CTI PT 24H", "Un part time da 24 ore", 40, true), riparto("CTI PT 24H", "Un part time da 24 ore", 32, true), riparto("CTI PT 32H", "Un part time da 32 ore", 41, true)),
         g("b", riparto("CTI PT 32H", "Un part time da 32 ore", 45, true), riparto("CTI PT 24H", "Un part time da 24 ore", 44, true), riparto("CTI PT 20H", "Un part time da 20 ore", 46, true)),
@@ -262,6 +285,112 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
       approfondisci: [{ href: "/vademecum/13-presenze", label: "Vademecum: i simboli e le regole fisse" }],
     },
     {
+      slug: "trova-errore-ore", titolo: "Trova l'errore: le ore", minuti: 10,
+      obiettivo: "Riconoscere a colpo d'occhio un tracking compilato male, e uno compilato bene.",
+      testo: `Finora hai fatto i conti partendo dalle ore. Nel lavoro vero succede il contrario: hai davanti un tracking **già compilato** e devi capire se c'è qualcosa che non va.
+
+**Come si guarda una settimana, sempre nello stesso ordine:**
+
+1. **Leggi il contratto.** Full time (39) o part time (quante ore)?
+2. **Guarda i Totali** e somma la settimana.
+3. **Chiediti dove dovrebbero stare le ore:** Standard fino al contratto, Supplementare fino a 39 (solo part time), Accordo fino a 42, Straordinario oltre.
+4. **Confronta** con quello che ha scritto l'OS.
+
+**Gli errori che trovi più spesso**
+
+| Cosa vedi | Perché è sbagliato |
+|---|---|
+| Straordinario con meno di 42 ore nella settimana, o più alto del dovuto | Fino a 42 le ore sono assorbite: vanno nell'Accordo |
+| Standard più alto delle ore di contratto | Le ore in più sono Supplementare (part time) o Accordo |
+| Supplementare su un full time | Il Supplementare è solo per i part time |
+| Accordo in una settimana sotto le 39 ore | La riga Accordo vale solo da 39 a 42 |
+| Standard oltre 8 ore e 24 minuti in un giorno | È il massimo giornaliero |
+| Un'assenza e ore di lavoro nello stesso giorno | O era assente, o ha lavorato: una delle due è sbagliata |
+
+**Attenzione al contrario.** Molte settimane sono compilate bene. Segnalare un errore che non c'è fa perdere tempo a te e all'OS: se i conti tornano, non si chiede niente.
+
+Negli esercizi clicchi **la cella sbagliata** direttamente nel tracking. Se è tutto giusto, spunti «Non c'è nessun errore».`,
+      esercizi: [
+        g("a",
+          cella(TROVA, trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), Straordinario: riga(_, _, _, _, _, 8, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }), ["Straordinario|5"], "48 ore: Standard 39, Accordo 3, Straordinario 6. Il sabato ha 8 ore di Straordinario: 2 dovevano stare nell'Accordo."),
+          cella(TROVA, trk("Gallo Piero", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Straordinario: riga(_, _, _, _, _, 5, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }), ["Straordinario|5"], "44 ore: Standard 39, Accordo 3, Straordinario 2. Il sabato ha 5 ore di Straordinario e niente in Accordo: 3 vanno spostate."),
+          cella(TROVA, trk("Costa Elena", "CTD FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Straordinario: riga(_, _, 2, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Straordinario|2"], "41 ore: Standard 39, Accordo 2, Straordinario 0. Sotto le 42 ore lo Straordinario non c'è: le 2 ore di mercoledì vanno nell'Accordo.")),
+        g("b",
+          cella(TROVA, trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 8, 8, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }), ["Standard|0", "Standard|1", "Standard|2", "Standard|3"], "Part time da 24 ore con 32 ore di Standard: le 8 ore oltre il contratto vanno nel Supplementare."),
+          cella(TROVA, trk("Fabbri Ugo", "CTI PT 32H", { Standard: riga(8, 8, 8, 8, 8, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Standard|0", "Standard|1", "Standard|2", "Standard|3", "Standard|4"], "Part time da 32 ore con 40 ore di Standard: 7 vanno nel Supplementare (fino a 39) e 1 nell'Accordo.")),
+        g("c",
+          cella(TROVA, trk("Bianchi Luca", "CTI FT", { Standard: riga(8, 8, 8, 8, _, _, _), Supplementare: riga(_, _, _, _, 7, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Supplementare|4"], "È un full time: il Supplementare non esiste per lui. Le 7 ore di venerdì sono Standard (in tutto 39)."),
+          cella(TROVA, trk("Greco Marta", "CTD FT", { Standard: riga(8, 8, 8, _, 8, _, _), Supplementare: riga(_, _, _, 7, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Supplementare|3"], "È un full time: il Supplementare non esiste per lei. Le 7 ore di giovedì sono Standard (in tutto 39).")),
+        g("d",
+          cella(TROVA, trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Accordo: riga(1, _, _, _, _, _, _), RIPOSO: riga(_, _, _, "R", "R", "R", "R"), Trasferta: riga(1, 1, 1, 0, 0, 0, 0) }), ["Accordo|0"], "25 ore in tutto: la riga Accordo vale solo da 39 a 42. L'ora in più di lunedì è Supplementare."),
+          cella(TROVA, trk("Riva Dino", "CTI PT 20H", { Standard: riga(5, 5, 5, 5, _, _, _), Accordo: riga(_, _, 1.5, _, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }), ["Accordo|2"], "21,5 ore in tutto: la riga Accordo vale solo da 39 a 42. L'ora e mezza di mercoledì è Supplementare.")),
+        g("e",
+          cella(TROVA, FT_GIUSTO, [NESSUN_ERRORE], "40 ore: Standard 39 e Accordo 1. È compilato bene: non si chiede niente."),
+          cella(TROVA, PT_GIUSTO, [NESSUN_ERRORE], "Part time da 24 ore con 40 ore: Standard 24, Supplementare 15, Accordo 1. È compilato bene."),
+          cella(TROVA, FT_48_GIUSTO, [NESSUN_ERRORE], "48 ore: Standard 39, Accordo 3, Straordinario 6. È compilato bene.")),
+        g("f",
+          cella(TROVA, trk("Moretti Ivo", "CTI FT", { Standard: riga(9.5, 8, 8, 8, 5.5, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Standard|0"], "Il totale della settimana è 39 e va bene, ma lunedì ha 9,5 ore di Standard: in un giorno lo Standard non supera 8 ore e 24 minuti."),
+          cella(TROVA, trk("Serra Gaia", "CTI FT", { Standard: riga(8, 8, 10, 8, 5, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Standard|2"], "Il totale della settimana è 39 e va bene, ma mercoledì ha 10 ore di Standard: in un giorno lo Standard non supera 8 ore e 24 minuti.")),
+        g("g",
+          cella(TROVA, trk("Rossi Mario", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), FERIE: riga(_, _, 8, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["FERIE|2", "Standard|2", "Trasferta|2"], "Mercoledì ha 8 ore di Standard e anche 8 ore di FERIE: o ha lavorato o era in ferie. Va chiesto all'OS quale delle due è giusta."),
+          cella(TROVA, trk("Longo Rita", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), MALATTIA: riga(_, 8, _, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["MALATTIA|1", "Standard|1", "Trasferta|1"], "Martedì ha 8 ore di Standard e anche 8 ore di MALATTIA: o ha lavorato o era malata. Va chiesto all'OS quale delle due è giusta.")),
+      ],
+    },
+    {
+      slug: "trova-errore-giorni-amazon", titolo: "Trova l'errore: giorni, trasferta e Amazon", minuti: 10,
+      obiettivo: "Trovare nel tracking i giorni da chiedere all'OS confrontandolo con i pacchi di Amazon.",
+      testo: `Adesso aggiungiamo al tracking la riga gialla in fondo: i **pacchi consegnati secondo Amazon**. Non è una riga del file Excel, arriva dai CSV: il sito la mette accanto al tracking per fare il confronto.
+
+**Come si guarda un giorno:**
+
+1. **Ha lavorato secondo il tracking?** C'è almeno un'ora nelle righe del lavoro?
+2. **Ha lavorato secondo Amazon?** Ha consegnato più di 10 pacchi?
+3. **Le due cose tornano?** Se no, guarda la riga RIPOSO: c'è una sigla che spiega?
+4. **La trasferta è giusta?** Vale 1 solo se ha lavorato più di 4 ore.
+
+**Le casistiche principali**
+
+| Cosa vedi | Che cos'è | Cosa fai |
+|---|---|---|
+| Ore e trasferta nel tracking, 0 pacchi, RIPOSO vuoto | **+1** | Chiedi cosa ha fatto |
+| Ore e trasferta, 0 pacchi, ma in RIPOSO c'è MEZZI, UFF, CORSO o un'altra station | spiegato | Niente |
+| Più di 10 pacchi, 0 ore nel tracking | **−1** | Chiedi di inserire la giornata |
+| Più di 10 pacchi, ma nel tracking è in MALATTIA | malattia batte lavorato | Niente |
+| Trasferta 1 con 4 ore o meno | trasferta non dovuta | Chiedi di toglierla |
+| Un numero impossibile (78) o più di 10 ore in un giorno | **ORE** | Chiedi di controllare |
+| Sette giorni lavorati di fila | violazione | Avvisi Alessandro e chiedi all'OS |
+
+Ricorda: **SB, L1, R** non spiegano niente. Sono turni e riposi.
+
+Negli esercizi clicchi **una cella del giorno** che chiederesti all'OS. Va bene qualsiasi cella di quel giorno.`,
+      esercizi: [
+        g("a",
+          cella(TROVA_GIORNO, trk("Bianchi Luca", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(142, 0, 138, 151, 129, _, _) }), ["*|1"], "Martedì ha 8 ore e la trasferta, ma Amazon vede 0 pacchi e nella riga RIPOSO non c'è nessuna sigla: è un +1, si chiede cosa ha fatto."),
+          cella(TROVA_GIORNO, trk("Costa Elena", "CTD FT", { Standard: riga(8, 8, 8, 8, 7, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(120, 133, 141, 0, 127, _, _) }), ["*|3"], "Giovedì ha 8 ore e la trasferta, ma Amazon vede 0 pacchi e nella riga RIPOSO non c'è nessuna sigla: è un +1, si chiede cosa ha fatto.")),
+        g("b",
+          cella(TROVA_GIORNO, trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, _, 8, 8, _, _), RIPOSO: riga(_, _, "R", _, _, "R", "R"), Trasferta: riga(1, 1, 0, 1, 1, 0, 0) }, { amazon: riga(133, 140, 135, 128, 144, _, _) }), ["*|2"], "Mercoledì Amazon vede 135 pacchi, ma nel tracking ha 0 ore: è un −1, manca la giornata e l'OS la deve inserire."),
+          cella(TROVA_GIORNO, trk("Gallo Piero", "CTI FT", { Standard: riga(8, 8, 8, 8, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }, { amazon: riga(150, 139, 146, 132, 141, _, _) }), ["*|4"], "Venerdì Amazon vede 141 pacchi, ma nel tracking ha 0 ore: è un −1, manca la giornata e l'OS la deve inserire.")),
+        g("c",
+          cella(TROVA_GIORNO, trk("Moretti Ivo", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), RIPOSO: riga(_, _, "MEZZI", _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(131, 127, 0, 140, 135, _, _) }), [NESSUN_ERRORE], "Mercoledì Amazon vede 0 pacchi, ma nella riga RIPOSO c'è scritto MEZZI: quel giorno ha spostato i mezzi. È spiegato, non si chiede niente."),
+          cella(TROVA_GIORNO, trk("Serra Gaia", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), RIPOSO: riga(_, "CORSO", _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(138, 0, 142, 129, 133, _, _) }), [NESSUN_ERRORE], "Martedì Amazon vede 0 pacchi, ma nella riga RIPOSO c'è scritto CORSO: era in formazione. È spiegato, non si chiede niente.")),
+        g("d",
+          cella(TROVA_GIORNO, trk("Fabbri Ugo", "CTI FT", { Standard: riga(8, 8, 8, 6, 7, _, _), RIPOSO: riga(_, _, _, "SB", _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(125, 141, 137, 0, 130, _, _) }), ["*|3"], "Giovedì ha 6 ore e la trasferta, Amazon vede 0 pacchi e in RIPOSO c'è SB. Ma SB è il nome di un turno, non spiega cosa ha fatto: resta un +1 da chiedere."),
+          cella(TROVA_GIORNO, trk("Longo Rita", "CTI FT", { Standard: riga(8, 6, 8, 8, 7, _, _), RIPOSO: riga(_, "L1", _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(133, 0, 139, 142, 128, _, _) }), ["*|1"], "Martedì ha 6 ore e la trasferta, Amazon vede 0 pacchi e in RIPOSO c'è L1. Ma L1 è il nome di una rotta, non spiega cosa ha fatto: resta un +1 da chiedere.")),
+        g("e",
+          cella(TROVA_GIORNO, trk("Riva Dino", "CTI FT", { Standard: riga(_, 8, 8, 8, 8, _, _), MALATTIA: riga(8, _, _, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(0, 1, 1, 1, 1, 0, 0) }, { amazon: riga(118, 134, 140, 129, 137, _, _) }), [NESSUN_ERRORE], "Lunedì Amazon vede 118 pacchi ma nel tracking è in malattia: malattia batte lavorato. Non è un errore di compilazione e in questo controllo non si segnala."),
+          cella(TROVA_GIORNO, trk("Greco Marta", "CTI FT", { Standard: riga(8, 8, 8, _, 8, _, _), MALATTIA: riga(_, _, _, 8, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 0, 1, 0, 0) }, { amazon: riga(129, 135, 141, 122, 138, _, _) }), [NESSUN_ERRORE], "Giovedì Amazon vede 122 pacchi ma nel tracking è in malattia: malattia batte lavorato. Non è un errore di compilazione e in questo controllo non si segnala.")),
+        g("f",
+          cella(TROVA_GIORNO, trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 4, 4, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 0, 1, 0, 0, 0) }, { amazon: riga(120, 131, 64, 58, _, _, _) }), ["Trasferta|3", "*|3"], "Giovedì ha lavorato 4 ore esatte ma ha la trasferta a 1: la trasferta spetta solo sopra le 4 ore. Mercoledì, con le stesse 4 ore, è giustamente a 0."),
+          cella(TROVA_GIORNO, trk("Costa Elena", "CTI PT 20H", { Standard: riga(4, 8, 8, _, _, _, _), RIPOSO: riga(_, _, _, "R", "R", "R", "R"), Trasferta: riga(1, 1, 1, 0, 0, 0, 0) }, { amazon: riga(61, 128, 133, _, _, _, _) }), ["Trasferta|0", "*|0"], "Lunedì ha lavorato 4 ore esatte ma ha la trasferta a 1: la trasferta spetta solo sopra le 4 ore.")),
+        g("g",
+          cella(TROVA_GIORNO, trk("Bianchi Luca", "CTI FT", { Standard: riga(8, 8, 8, 78, 7, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(135, 140, 129, 137, 131, _, _) }), ["*|3"], "Giovedì nella riga Standard c'è 78: in un giorno non è possibile, è un errore di battitura (forse 7,8). Si chiede all'OS di correggere."),
+          cella(TROVA_GIORNO, trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Straordinario: riga(_, 4, _, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(132, 160, 128, 141, 136, _, _) }), ["*|1"], "Martedì ha 8 ore di Standard più 4 di Straordinario: 12 ore in un giorno. Oltre le 10 ore al giorno si chiede sempre all'OS di controllare.")),
+        g("h",
+          { ...scelta("Guarda la settimana: ha lavorato tutti e sette i giorni. Cosa fai?", ["Niente: 42 ore sono dentro il tetto dell'Accordo", "È il 6° giorno di domenica: è al limite ma va bene", "È una violazione: 7 giorni di fila. Avviso Alessandro e chiedo all'OS"], 2, "Le ore tornano (42), ma i giorni no: sette giorni di fila superano il massimo di 6. Si avvisa subito Alessandro e si chiede all'OS."), tracking: trk("Moretti Ivo", "CTI FT", { Standard: riga(6, 6, 6, 6, 6, 6, 3), Accordo: riga(_, _, _, _, _, _, 3), Trasferta: riga(1, 1, 1, 1, 1, 1, 1) }, { amazon: riga(110, 118, 121, 109, 115, 120, 112) }) },
+          { ...scelta("Guarda la settimana: 5 giorni più la domenica, riposo il sabato. Cosa fai?", ["È una violazione: avviso Alessandro", "È il 6° giorno di domenica: 6 giorni in tutto, è al limite ma va bene. Non chiedo niente", "Chiedo all'OS di togliere la domenica"], 1, "Ha lavorato 6 giorni su 7 con un riposo in mezzo: è il 6° giorno di domenica, dentro la regola. Lo trovi nell'elenco, non è una richiesta."), tracking: trk("Serra Gaia", "CTI FT", { Standard: riga(7, 7, 7, 7, 7, _, 4), Accordo: riga(_, _, _, _, _, _, 3), RIPOSO: riga(_, _, _, _, _, "R", _), Trasferta: riga(1, 1, 1, 1, 1, 0, 1) }, { amazon: riga(125, 131, 128, 119, 133, _, 121) }) }),
+      ],
+    },
+    {
       slug: "la-verifica", titolo: "Fare la verifica sul sito", minuti: 8,
       obiettivo: "Usare la pagina Verifica tracking: dai file alle richieste per gli Operation Supervisor.",
       testo: `Adesso sai cosa controllare. Il sito fa i conti al posto tuo: la pagina è **Personale → Presenze → Verifica tracking**.
@@ -296,12 +425,13 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
         g("d", scelta("È il primo del mese e devi chiudere il mese appena finito. Cosa carichi?", ["Di nuovo tutti i file del mese, e ricomincio", "Solo i CSV e i tracking degli ultimi giorni: il sito ricorda il resto", "Niente, è già tutto fatto"], 1, "Il sito ricorda lo stato delle richieste: aggiungi i file che mancano e rifai la verifica.")),
         g("e", scelta("Nel riquadro «Cosa ho letto» la colonna «Mese prima» dice «manca». Cosa vuol dire?", ["Che il controllo è sbagliato", "Che la prima settimana, a cavallo dei due mesi, può non essere controllata", "Che devo rifare tutto"], 1, "Senza il tracking del mese prima la settimana a cavallo non si può controllare per intero: il sito la salta e lo scrive.")),
       ],
+      trackingVero: true,
       approfondisci: [{ href: "/presenze/verifica", label: "Apri la Verifica tracking" }, { href: "/vademecum/13-presenze", label: "Vademecum: Controlli presenze" }],
     },
     {
       slug: "prova-finale", titolo: "Prova finale", minuti: 12,
       obiettivo: "Mettere insieme tutte le regole su casi come quelli che troverai davvero.",
-      testo: `Questa è la prova finale: **otto casi** presi dal lavoro vero. Non c'è niente di nuovo da leggere.
+      testo: `Questa è la prova finale: **dieci casi** presi dal lavoro vero. Non c'è niente di nuovo da leggere.
 
 Se un esercizio non torna, rileggi la lezione che ne parla: restano tutte aperte.
 
@@ -322,6 +452,12 @@ Ripasso veloce delle regole:
         g("e", scelta("Amazon vede un driver con 120 pacchi il 12 del mese. Nel tracking il 12 ha 8 ore di MALATTIA e nessuna ora di lavoro. Cosa succede?", ["È un −1 da chiedere all'OS", "Non si segnala: malattia batte lavorato", "Si toglie la malattia"], 1, "Se il tracking dice malattia e Amazon lo vede in rotta, non è un errore di compilazione: non si segnala in questo controllo.")),
         g("f", scelta("Un somministrato (STD) ha 3 ore nella riga Accordo di domenica. Che simbolo compare e perché?", ["+1, perché manca la rotta", "ACC, perché la domenica è già pagata con maggiorazione e quella cella va tolta", "ORE, perché ha lavorato troppo"], 1, "ACC: per i somministrati la domenica non va nella riga Accordo.")),
         g("g", scelta("Un driver ha 6 ore nel tracking, la trasferta a 1, e su Amazon 0 pacchi. Nella riga RIPOSO c'è scritto «SB». Cosa fai?", ["Niente: SB spiega la giornata", "Chiedo all'OS cosa ha fatto: SB è un turno, non una spiegazione", "Tolgo io la trasferta"], 1, "SB non è una spiegazione valida: resta un +1 da chiedere. E il tracking non lo correggi tu.")),
+        g("i",
+          cella(TROVA, trk("Gallo Piero", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), Straordinario: riga(_, _, _, _, _, 6, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }), ["Straordinario|5"], "46 ore: Standard 39, Accordo 3, Straordinario 4. Il sabato ha 6 ore di Straordinario: 2 vanno nell'Accordo."),
+          cella(TROVA, trk("Longo Rita", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Supplementare: riga(_, _, _, 8, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }), [NESSUN_ERRORE], "Part time da 24 ore con 32 ore: Standard 24 e Supplementare 8. È compilato bene.")),
+        g("l",
+          cella(TROVA_GIORNO, trk("Riva Dino", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), RIPOSO: riga(_, _, _, "UFF", _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(130, 0, 141, 0, 136, _, _) }), ["*|1"], "Martedì e giovedì Amazon vede 0 pacchi. Giovedì c'è UFF, che spiega la giornata. Martedì non c'è niente: è quello il +1 da chiedere."),
+          cella(TROVA_GIORNO, trk("Fabbri Ugo", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), RIPOSO: riga("MEZZI", _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(0, 129, 0, 140, 133, _, _) }), ["*|2"], "Lunedì e mercoledì Amazon vede 0 pacchi. Lunedì c'è MEZZI, che spiega la giornata. Mercoledì non c'è niente: è quello il +1 da chiedere.")),
         g("h", scelta("Hai mandato le richieste all'OS di DLO4 lunedì. Giovedì rifai la verifica e ne trovi 3 nuove per DLO4. Cosa mandi?", ["Di nuovo tutte, vecchie e nuove", "Solo le 3 nuove: le altre sono già «Chieste»", "Niente fino a lunedì"], 1, "Il messaggio contiene solo le righe «Da chiedere»: quelle già chieste non si rimandano.")),
       ],
     },

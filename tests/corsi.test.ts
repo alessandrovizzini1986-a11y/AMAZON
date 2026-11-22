@@ -3,7 +3,7 @@ import { CORSI } from "@/content/corsi";
 import { alternativa, correggi, numero, problemiCorso, statoLezioni, vista, type Risposta } from "@/domain/corsi/corsi";
 
 const giuste = (l: (typeof CORSI)[number]["lezioni"][number], t: number): Record<string, Risposta> =>
-  Object.fromEntries(l.esercizi.map((g) => { const e = alternativa(g, t); return [g.id, e.tipo === "scelta" ? e.giusta : e.campi.map((c) => c.valore)]; }));
+  Object.fromEntries(l.esercizi.map((g) => { const e = alternativa(g, t); return [g.id, e.tipo === "scelta" ? e.giusta : e.tipo === "cella" ? e.giuste[0].replace("*", "Standard") : e.campi.map((c) => c.valore)]; }));
 
 describe("corsi: contenuti", () => {
   it("ogni corso è ben fatto: esercizi in ogni lezione, risposte giuste esistenti, spiegazioni presenti", () => {
@@ -12,6 +12,7 @@ describe("corsi: contenuti", () => {
   it("lezioni brevi e leggibili", () => {
     for (const c of CORSI) for (const l of c.lezioni) {
       expect(l.testo.length, `${c.id}/${l.slug}`).toBeLessThan(3500);
+      for (const f of l.figure ?? []) for (const v of Object.values(f.tracking.righe)) expect(v.length, l.slug).toBe(7);
       expect(l.minuti, l.slug).toBeLessThanOrEqual(12);
       expect(l.esercizi.length, l.slug).toBeGreaterThanOrEqual(3);
       for (const g of l.esercizi) for (const e of g.alternative) expect(e.domanda.length, `${l.slug}/${g.id}`).toBeLessThan(260);
@@ -57,5 +58,31 @@ describe("corsi: correzione e sblocco", () => {
   it("il primo esempio della lezione sulle ore: 48 ore = 39 + 3 + 6", () => {
     const e = alternativa(l.esercizi.find((g) => g.id === "b")!, 0);
     expect(e.tipo === "numeri" && e.campi.map((x) => x.valore)).toEqual([39, 3, 6]);
+  });
+});
+
+describe("corsi: tracking sbagliati da trovare", () => {
+  const c = CORSI[0];
+  it("le ore dei tracking di esempio rispettano la regola del sito, quando la lezione dice che sono giusti", async () => {
+    const { leggiContratto, ripartoAtteso } = await import("@/domain/presenze/verifica");
+    const somma = (v?: (number | string | null)[]) => (v ?? []).reduce<number>((s, x) => s + (typeof x === "number" ? x : 0), 0);
+    let giusti = 0;
+    for (const l of c.lezioni) for (const g of l.esercizi) for (const e of g.alternative) {
+      if (e.tipo !== "cella" || e.giuste[0] !== "OK" || e.tracking.amazon) continue;
+      const r = e.tracking.righe, tot = somma(r.Standard) + somma(r.Supplementare) + somma(r.Accordo) + somma(r.Straordinario);
+      const a = ripartoAtteso(tot, 0, leggiContratto(e.tracking.contratto), 42);
+      expect([somma(r.Standard) + somma(r.Supplementare), somma(r.Accordo), somma(r.Straordinario)], `${l.slug}/${g.id}`).toEqual([a.std + a.sup, a.acc, a.str]);
+      giusti++;
+    }
+    expect(giusti).toBeGreaterThanOrEqual(3);
+  });
+  it("una cella qualsiasi del giorno giusto vale; un altro giorno no; «nessun errore» solo quando è vero", async () => {
+    const { cellaGiusta } = await import("@/domain/corsi/corsi");
+    expect(cellaGiusta(["*|1"], "Standard|1")).toBe(true);
+    expect(cellaGiusta(["*|1"], "Amazon|1")).toBe(true);
+    expect(cellaGiusta(["*|1"], "Standard|2")).toBe(false);
+    expect(cellaGiusta(["*|1"], "OK")).toBe(false);
+    expect(cellaGiusta(["OK"], "OK")).toBe(true);
+    expect(cellaGiusta(["Straordinario|5"], "Accordo|5")).toBe(false);
   });
 });

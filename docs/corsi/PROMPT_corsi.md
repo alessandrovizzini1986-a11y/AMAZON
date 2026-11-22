@@ -17,6 +17,16 @@ Alessandro deve poter ripassare in modo ordinato. Il primo corso è "Tracking, c
 - I numeri degli esercizi sulle ore si calcolano con le stesse funzioni della Verifica tracking
   (`ripartoAtteso`, `leggiContratto`): se cambia la regola nel sito, cambiano anche le soluzioni.
 
+## Tracking riprodotto, errori da trovare e file veri (aggiunto il 22/11/2026)
+- Le lezioni mostrano un **tracking disegnato come il file Excel** (stesse 17 righe, stesso ordine), con nomi inventati:
+  niente screenshot, così nel sito non entrano dati personali e il disegno resta aggiornato.
+- Esercizio **"clicca la cella sbagliata"**: si risponde dentro il tracking; c'è sempre la risposta "non c'è nessun errore",
+  perché bisogna imparare anche a non segnalare ciò che è giusto.
+- Due lezioni di soli tracking sbagliati, con le casistiche principali: ore nella riga sbagliata; giorni, trasferta e Amazon.
+- I tracking che la lezione dichiara "giusti" sono controllati dai test con la regola del sito (`ripartoAtteso`).
+- **"Ritrovalo in un tracking vero"**: in fondo alla lezione sulla Verifica, un driver preso dall'archivio del PC di chi studia,
+  con lo stesso disegno. I file non lasciano il computer.
+
 ## Come si aggiunge o cambia una lezione
 Si modifica il file del corso in `src/content/corsi/` (testo in Markdown, esercizi a scelta o con numeri) e si aggiunge
 il corso a `src/content/corsi/index.ts`. I test (`tests/corsi.test.ts`) controllano che ogni lezione abbia esercizi,
