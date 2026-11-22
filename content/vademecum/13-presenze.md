@@ -35,14 +35,13 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 | Straordinario prima del tetto dell'Accordo | Le ore da 39 al tetto (42 dal 01/06/2026) sono assorbite e vanno nella riga Accordo: lo Straordinario parte solo dopo |
 | Standard oltre le ore di contratto | Full time oltre 39 ore, o part time oltre le sue ore, nella riga Standard |
 | Supplementare su un non part time | Il Supplementare è solo per i part time |
-| Accordo sotto le 39 ore | Ore nella riga Accordo in una settimana che non arriva a 39 |
 | Ore e assenze: troppe nella settimana | Ore lavorate più assenze ben oltre una settimana piena: una delle due è sbagliata |
 | Straordinario oltre 12 h in settimana · Standard oltre 8h24 nel giorno | Limiti del CCNL e dell'Accordo |
 | +1, −1, H, A, ORE, ACC | Gli stessi del controllo con Amazon (tabella dei simboli più sotto) |
 
 **6° giorno di domenica**: chi ha lavorato 5 giorni più la domenica, quindi 6 in tutto nella settimana (non 7). È dentro la regola ma al limite: l'elenco è sempre in fondo alla pagina e nel foglio dell'Excel, già pronto per la chiusura del mese.
 
-Per i part time un giorno in più è Supplementare anche se la settimana resta sotto le ore di contratto. Le assenze retribuite possono contare o no verso le 39 ore: il sito segnala solo se le ore non tornano in nessuno dei due modi. I dispatcher sono esclusi dal controllo delle ore.
+Per i part time un giorno in più è Supplementare anche se la settimana resta sotto le ore di contratto. La mezz'ora o l'ora in più del giorno scritta nella riga Accordo va bene anche sotto le 39 ore, per tutti (part time e MOG compresi), fino a 3 ore a settimana. Le assenze retribuite possono contare o no verso le 39 ore: il sito segnala solo se le ore non tornano in nessuno dei due modi. I dispatcher sono esclusi dal controllo delle ore.
 
 ### Controllo solo con Amazon, in dettaglio ([/presenze/settimanale](/presenze/settimanale))
 

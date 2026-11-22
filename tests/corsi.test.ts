@@ -63,18 +63,26 @@ describe("corsi: correzione e sblocco", () => {
 
 describe("corsi: tracking sbagliati da trovare", () => {
   const c = CORSI[0];
-  it("le ore dei tracking di esempio rispettano la regola del sito, quando la lezione dice che sono giusti", async () => {
-    const { leggiContratto, ripartoAtteso } = await import("@/domain/presenze/verifica");
-    const somma = (v?: (number | string | null)[]) => (v ?? []).reduce<number>((s, x) => s + (typeof x === "number" ? x : 0), 0);
-    let giusti = 0;
-    for (const l of c.lezioni) for (const g of l.esercizi) for (const e of g.alternative) {
-      if (e.tipo !== "cella" || e.giuste[0] !== "OK" || e.tracking.amazon) continue;
-      const r = e.tracking.righe, tot = somma(r.Standard) + somma(r.Supplementare) + somma(r.Accordo) + somma(r.Straordinario);
-      const a = ripartoAtteso(tot, 0, leggiContratto(e.tracking.contratto), 42);
-      expect([somma(r.Standard) + somma(r.Supplementare), somma(r.Accordo), somma(r.Straordinario)], `${l.slug}/${g.id}`).toEqual([a.std + a.sup, a.acc, a.str]);
-      giusti++;
+  it("i tracking di esempio sono coerenti con la Verifica tracking: quelli giusti non danno richieste, quelli sbagliati sì", async () => {
+    const { verificaOre } = await import("@/domain/presenze/verifica");
+    const { addDays } = await import("@/domain/presenze/grid");
+    const LUN = "2026-11-02", cop = new Map([["DER1|SIC", new Set(Array.from({ length: 7 }, (_, i) => addDays(LUN, i)))]]);
+    const n = (v: number | string | null | undefined) => (typeof v === "number" ? v : 0);
+    const richieste = (t: (typeof c.lezioni)[number]["esercizi"][number]["alternative"][number]["tracking"]) => {
+      const r = t!.righe;
+      const giorni = new Map(Array.from({ length: 7 }, (_, i) => [addDays(LUN, i), { std: n(r.Standard?.[i]), sup: n(r.Supplementare?.[i]), acc: n(r.Accordo?.[i]), str: n(r.Straordinario?.[i]), ass: n(r.FERIE?.[i]) + n(r.MALATTIA?.[i]) }] as const).filter(([, o]) => o.std + o.sup + o.acc + o.str + o.ass > 0));
+      return verificaOre([{ station: "DER1", pop: "SIC", nome: t!.nome, cf: "X", driverId: "", contratto: t!.contratto, giorni }], cop, { mese: "2026-11", finoA: "2026-11-08" }).richieste;
+    };
+    let giusti = 0, sbagliati = 0;
+    const l = c.lezioni.find((x) => x.slug === "trova-errore-ore")!;
+    for (const g of l.esercizi) for (const e of g.alternative) {
+      if (e.tipo !== "cella" || g.id === "g") continue; // "g": assenza e lavoro nello stesso giorno, non è un controllo delle ore
+      const r = richieste(e.tracking);
+      if (e.giuste[0] === "OK") { expect(r.map((x) => x.tipo), `${g.id} ${e.tracking.nome}: dichiarato giusto`).toEqual([]); giusti++; }
+      else { expect(r.length, `${g.id} ${e.tracking.nome}: dichiarato sbagliato`).toBeGreaterThan(0); sbagliati++; }
     }
-    expect(giusti).toBeGreaterThanOrEqual(3);
+    expect(giusti).toBeGreaterThanOrEqual(5); expect(sbagliati).toBeGreaterThanOrEqual(8);
+    for (const lez of c.lezioni) for (const f of lez.figure ?? []) expect(richieste(f.tracking).length > 0, `${lez.slug}: ${f.tracking.titolo}`).toBe(/^Sbagliato/.test(f.tracking.titolo ?? ""));
   });
   it("una cella qualsiasi del giorno giusto vale; un altro giorno no; «nessun errore» solo quando è vero", async () => {
     const { cellaGiusta } = await import("@/domain/corsi/corsi");

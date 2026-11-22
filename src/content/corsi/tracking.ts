@@ -257,13 +257,14 @@ Due limiti in più: lo **Standard non supera mai 8 ore e 24 minuti in un giorno*
 
 Controllo: 24 + 15 + 1 = 40.
 
-**Tre errori da riconoscere:**
+**Due errori da riconoscere:**
 
 1. **Standard più alto del contratto.** Un part time da 24 ore con 32 ore di Standard: 8 ore dovevano stare nel Supplementare.
 2. **Supplementare su un full time.** Il Supplementare esiste solo per i part time.
-3. **Accordo sotto le 39 ore.** La riga Accordo vale solo da 39 a 42: se la settimana si ferma a 30 ore, lì non ci va niente.
+Due cose che invece **sono giuste**:
 
-Una cosa che invece **è giusta**: se un part time lavora un giorno in più, quelle ore sono Supplementare anche se nella settimana non arriva alle sue ore di contratto.
+- Se un part time lavora un **giorno in più**, quelle ore sono Supplementare anche se nella settimana non arriva alle sue ore di contratto.
+- La **mezz'ora o l'ora in più fatta nel giorno** può stare nella riga Accordo anche se la settimana resta sotto le 39 ore: è assorbita anche per i part time e i MOG. In tutto, nella riga Accordo, al massimo 3 ore a settimana.
 
 **Regola da ricordare:** part time = Standard fino al contratto, Supplementare fino a 39, poi come il full time.`,
       figure: [{ tracking: PT_GIUSTO, didascalia: "Lunedì, martedì e mercoledì sono i suoi giorni di contratto (24 ore). Giovedì e venerdì sono in più: Supplementare fino a 39, poi Accordo." }],
@@ -271,8 +272,8 @@ Una cosa che invece **è giusta**: se un part time lavora un giorno in più, que
         g("a", riparto("CTI PT 24H", "Un part time da 24 ore", 40, true), riparto("CTI PT 24H", "Un part time da 24 ore", 32, true), riparto("CTI PT 32H", "Un part time da 32 ore", 41, true)),
         g("b", riparto("CTI PT 32H", "Un part time da 32 ore", 45, true), riparto("CTI PT 24H", "Un part time da 24 ore", 44, true), riparto("CTI PT 20H", "Un part time da 20 ore", 46, true)),
         g("c", scelta("Un full time ha 8 ore nella riga Supplementare. È giusto?", ["Sì, se ha lavorato di sabato", "No: il Supplementare è solo per i part time", "Sì, se ha superato le 39 ore"], 1, "Il Supplementare esiste solo per i part time. Per un full time le ore in più vanno in Accordo e poi in Straordinario.")),
-        g("d", scelta("Un part time da 24 ore ha lavorato 25 ore: Standard 24, Accordo 1. Cosa non va?", ["Niente", "L'ora in più doveva stare nel Supplementare: l'Accordo vale solo da 39 a 42", "Lo Standard doveva essere 25"], 1, "Sotto le 39 ore la riga Accordo resta vuota. L'ora oltre il contratto di un part time è Supplementare."),
-          scelta("Un part time da 32 ore ha lavorato 34 ore: Standard 32, Accordo 2. Cosa non va?", ["Le 2 ore in più dovevano stare nel Supplementare: l'Accordo vale solo da 39 a 42", "Niente", "Lo Standard doveva essere 34"], 0, "Sotto le 39 ore la riga Accordo resta vuota. Le ore oltre il contratto di un part time sono Supplementare.")),
+        g("d", scelta("Un part time da 24 ore ha lavorato 25 ore: Standard 24, Accordo 1 (un'ora in più fatta lunedì). Cosa fai?", ["Chiedo di spostare l'ora nel Supplementare", "Niente: l'ora in più del giorno può stare nella riga Accordo anche sotto le 39 ore", "Chiedo di metterla nello Straordinario"], 1, "La mezz'ora o l'ora in più fatta nel giorno è assorbita anche per part time e MOG: nella riga Accordo va bene."),
+          scelta("Un MOG ha lavorato 28,5 ore: Standard 28, Accordo 0,5 (mezz'ora in più fatta giovedì). Cosa fai?", ["Niente: la mezz'ora in più del giorno può stare nella riga Accordo anche sotto le 39 ore", "Chiedo di spostarla nello Standard", "Chiedo di metterla nello Straordinario"], 0, "La mezz'ora o l'ora in più fatta nel giorno è assorbita anche per part time e MOG: nella riga Accordo va bene.")),
       ],
     },
     {
@@ -366,9 +367,11 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
 | Straordinario con meno di 42 ore nella settimana, o più alto del dovuto | Fino a 42 le ore sono assorbite: vanno nell'Accordo |
 | Standard più alto delle ore di contratto | Le ore in più sono Supplementare (part time) o Accordo |
 | Supplementare su un full time | Il Supplementare è solo per i part time |
-| Accordo in una settimana sotto le 39 ore | La riga Accordo vale solo da 39 a 42 |
+| Più di 3 ore nella riga Accordo in una settimana | Le ore assorbite sono al massimo 3 (da 39 a 42) |
 | Standard oltre 8 ore e 24 minuti in un giorno | È il massimo giornaliero |
 | Un'assenza e ore di lavoro nello stesso giorno | O era assente, o ha lavorato: una delle due è sbagliata |
+
+**Non è un errore** la mezz'ora o l'ora in più del giorno scritta nella riga Accordo, anche se la settimana resta sotto le 39 ore: vale per tutti, part time e MOG compresi.
 
 **Attenzione al contrario.** Molte settimane sono compilate bene. Segnalare un errore che non c'è fa perdere tempo a te e all'OS: se i conti tornano, non si chiede niente.
 
@@ -385,8 +388,9 @@ Negli esercizi clicchi **la cella sbagliata** direttamente nel tracking. Se è t
           cella(TROVA, trk("Bianchi Luca", "CTI FT", { Standard: riga(8, 8, 8, 8, _, _, _), Supplementare: riga(_, _, _, _, 7, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Supplementare|4"], "È un full time: il Supplementare non esiste per lui. Le 7 ore di venerdì sono Standard (in tutto 39)."),
           cella(TROVA, trk("Greco Marta", "CTD FT", { Standard: riga(8, 8, 8, _, 8, _, _), Supplementare: riga(_, _, _, 7, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Supplementare|3"], "È un full time: il Supplementare non esiste per lei. Le 7 ore di giovedì sono Standard (in tutto 39).")),
         g("d",
-          cella(TROVA, trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Accordo: riga(1, _, _, _, _, _, _), RIPOSO: riga(_, _, _, "R", "R", "R", "R"), Trasferta: riga(1, 1, 1, 0, 0, 0, 0) }), ["Accordo|0"], "25 ore in tutto: la riga Accordo vale solo da 39 a 42. L'ora in più di lunedì è Supplementare."),
-          cella(TROVA, trk("Riva Dino", "CTI PT 20H", { Standard: riga(5, 5, 5, 5, _, _, _), Accordo: riga(_, _, 1.5, _, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }), ["Accordo|2"], "21,5 ore in tutto: la riga Accordo vale solo da 39 a 42. L'ora e mezza di mercoledì è Supplementare.")),
+          cella(TROVA, trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Accordo: riga(1, _, _, _, _, _, _), RIPOSO: riga(_, _, _, "R", "R", "R", "R"), Trasferta: riga(1, 1, 1, 0, 0, 0, 0) }), [NESSUN_ERRORE], "25 ore in tutto, con un'ora in più lunedì nella riga Accordo: va bene. L'ora in più del giorno è assorbita anche per i part time, anche sotto le 39 ore."),
+          cella(TROVA, trk("Riva Dino", "MOG 35%", { Standard: riga(7, 7, 7, 7, _, _, _), Accordo: riga(_, 0.5, _, 0.5, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }), [NESSUN_ERRORE], "29 ore in tutto, con due mezz'ore in più nella riga Accordo: va bene. La mezz'ora in più del giorno è assorbita anche per i MOG, anche sotto le 39 ore."),
+          cella(TROVA, trk("Fabbri Ugo", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Accordo: riga(2, 2, 1, _, _, _, _), RIPOSO: riga(_, _, _, "R", "R", "R", "R"), Trasferta: riga(1, 1, 1, 0, 0, 0, 0) }), ["Accordo|0", "Accordo|1", "Accordo|2"], "Nella riga Accordo ci sono 5 ore in una settimana: il massimo assorbibile è 3 (da 39 a 42). Va chiesto all'OS.")),
         g("e",
           cella(TROVA, FT_GIUSTO, [NESSUN_ERRORE], "40 ore: Standard 39 e Accordo 1. È compilato bene: non si chiede niente."),
           cella(TROVA, PT_GIUSTO, [NESSUN_ERRORE], "Part time da 24 ore con 40 ore: Standard 24, Supplementare 15, Accordo 1. È compilato bene."),
