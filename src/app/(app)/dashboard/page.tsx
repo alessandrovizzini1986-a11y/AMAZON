@@ -8,6 +8,9 @@ import { fmtEurInt, fmtNum } from "@/lib/format";
 import { StationFilter } from "./StationFilter";
 import { Spiega } from "@/components/Spiega";
 import { ExportExcelButton } from "./ExportExcelButton";
+import { CostiNoleggio } from "./CostiNoleggio";
+import { annoPrima, confronto, mesePrima, nomeMese } from "@/domain/flotta/costiMese";
+import { costiDiAdesso, costiSalvati, fotografaMese, meseDiOggi } from "@/lib/flotta/costiMese";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +47,7 @@ function Legend({ color, label }: { color: string; label: string }) {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ station?: string }>;
+  searchParams: Promise<{ station?: string; mese?: string }>;
 }) {
   const user = await requireUser();
   assertCan(user, "dashboard.station");
@@ -88,6 +91,24 @@ export default async function DashboardPage({
   const stazioni = (n: number) => `${n} ${n === 1 ? "stazione" : "stazioni"}`;
 
   const scope = stationList.length === 1 && stationFilter ? stationList[0] : null;
+
+  // Costo per compagnia di noleggio (tabella della mail "Stima costi"): solo vista di tutte le stazioni, per l'admin
+  let costi: React.ReactNode = null;
+  if (isAdmin && !stationFilter) {
+    const oggi = meseDiOggi();
+    const mese = params.mese && /^\d{4}-\d{2}$/.test(params.mese) && params.mese <= oggi ? params.mese : oggi;
+    const corrente = mese === oggi;
+    const adesso = corrente ? await costiDiAdesso() : null;
+    if (adesso) await fotografaMese(oggi, adesso);
+    const [salvate, prec, anno, fonti] = await Promise.all([
+      corrente ? Promise.resolve([]) : costiSalvati(mese), costiSalvati(mesePrima(mese)), costiSalvati(annoPrima(mese)),
+      db.flottaCostoMese.findMany({ where: { mese }, select: { fonte: true }, take: 1 }).catch(() => []),
+    ]);
+    const righe = adesso ?? salvate;
+    const blocchi = (["AMAZON", "GLS"] as const).map((ap) => ({ titolo: ap === "AMAZON" ? "Appalto Amazon" : "Appalto GLS", etichetta: ap, dati: confronto(ap, righe, prec.length ? prec : null, anno.length ? anno : null) })).filter((b) => b.dati.righe.length > 0);
+    costi = <CostiNoleggio mese={mese} nome={nomeMese(mese)} corrente={corrente} blocchi={blocchi} precNome={nomeMese(mesePrima(mese)).split(" ")[0]} annoNome={nomeMese(annoPrima(mese))} haStorico={prec.length > 0}
+      fonte={corrente ? "ADESSO" : !righe.length ? "NESSUNO" : fonti[0]?.fonte === "MAIL" ? "MAIL" : "SITO"} />;
+  }
   const kpiCount = scope ? 3 : altriRows.length > 0 ? 4 : 3;
   const fleetHref = (stationId?: string | null) => (stationId ? `/vehicles?station=${stationId}` : "/vehicles");
 
@@ -202,6 +223,7 @@ export default async function DashboardPage({
           </table>
         </section>
       </div>
+      {costi}
     </div>
   );
 }
