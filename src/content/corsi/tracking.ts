@@ -21,6 +21,14 @@ function riparto(contratto: string, descrizione: string, ore: number, conSupplem
   };
 }
 
+/** Da numero con la virgola a ore e minuti: si tengono le ore, la parte dopo la virgola × 60 dà i minuti. */
+const inOreMinuti = (dec: number): Esercizio => {
+  const h = Math.floor(dec), m = Math.round((dec - h) * 60);
+  return { tipo: "numeri", domanda: `Nel tracking leggi ${it(dec)}. Quante ore e quanti minuti sono?`, campi: [{ nome: "Ore", valore: h }, { nome: "Minuti", valore: m }], perche: `Tieni le ${h} ore. Poi 0,${String(Math.round((dec - h) * 100)).padStart(2, "0").replace(/0$/, "")} × 60 = ${m} minuti. Quindi ${h} ore e ${m} minuti.` };
+};
+/** Da ore e minuti al numero con la virgola: minuti ÷ 60. */
+const inDecimale = (h: number, m: number): Esercizio => ({ tipo: "numeri", domanda: `Un driver ha lavorato ${h} ore e ${m} minuti. Che numero scrivi nel tracking?`, campi: [{ nome: "Numero da scrivere", valore: Math.round((h + m / 60) * 100) / 100 }], perche: `Tieni le ${h} ore. Poi ${m} ÷ 60 = ${it(m / 60)}. Quindi ${it(h + m / 60)}.` });
+
 // ── tracking di esempio (nomi inventati) ──
 const _ = null;
 type Righe = TrackingDemo["righe"];
@@ -109,6 +117,54 @@ In fondo al blocco c'è **Indennità Trasferta**: vale 1 nei giorni in cui al dr
       ],
     },
     {
+      slug: "ore-decimali", titolo: "Ore e minuti: perché 7,8 vuol dire 7 ore e 48", minuti: 7,
+      obiettivo: "Leggere e scrivere le ore del tracking, che sono numeri con la virgola e non ore e minuti.",
+      testo: `Nei tracking le ore **non sono scritte come sull'orologio**. Sono scritte come numeri con la virgola: **7,8** non vuol dire «7 ore e 8 minuti» e nemmeno «7 ore e 80 minuti». Vuol dire **7 ore e 48 minuti**.
+
+**Perché si fa così.** Excel deve poter **sommare** le ore. I numeri con la virgola si sommano senza problemi: 7,8 + 7,8 = 15,6. Con ore e minuti no: 7:48 + 7:48 non fa 14:96. Per questo tutto il tracking, le buste paga e le fatture ragionano in ore decimali.
+
+**Da dove viene 7,8.** Un full time fa 39 ore a settimana su 5 giorni: 39 ÷ 5 = **7,8 ore al giorno**, cioè 7 ore e 48 minuti. È il numero che vedrai più spesso.
+
+**Dal numero alle ore e minuti** (per capire cosa c'è scritto)
+
+1. Tieni la parte prima della virgola: sono le **ore**.
+2. Prendi la parte dopo la virgola e **moltiplicala per 60**: sono i **minuti**.
+
+Esempio: 7,8 → 7 ore. Poi 0,8 × 60 = 48 minuti. Quindi **7 ore e 48 minuti**.
+
+**Dalle ore e minuti al numero** (per sapere cosa va scritto)
+
+1. Tieni le **ore**.
+2. **Dividi i minuti per 60** e metti il risultato dopo la virgola.
+
+Esempio: 7 ore e 48 minuti → 48 ÷ 60 = 0,8. Quindi **7,8**.
+
+**I valori che incontri di più**
+
+| Sull'orologio | Nel tracking |
+|---|---|
+| 15 minuti | 0,25 |
+| 30 minuti | 0,5 |
+| 45 minuti | 0,75 |
+| 7 ore e 48 minuti | 7,8 |
+| 8 ore e 24 minuti (il massimo di Standard in un giorno) | 8,4 |
+
+**L'errore tipico.** Qualcuno scrive **7,48** pensando «7 ore e 48 minuti». Ma 7,48 vuol dire 7 ore e 29 minuti (0,48 × 60 = 28,8): mancano quasi 20 minuti. Se vedi numeri come 7,48 o 8,24 chiedi all'OS.
+
+**Regola da ricordare:** dopo la virgola non ci sono i minuti. Minuti = parte dopo la virgola × 60.`,
+      esercizi: [
+        g("a", inOreMinuti(7.8), inOreMinuti(8.4), inOreMinuti(7.5), inOreMinuti(6.25)),
+        g("b", inDecimale(7, 48), inDecimale(8, 24), inDecimale(4, 30), inDecimale(6, 45)),
+        g("c", inOreMinuti(8.2), inOreMinuti(5.75), inOreMinuti(3.9)),
+        g("d", inDecimale(8, 12), inDecimale(7, 15), inDecimale(9, 6)),
+        g("e", scelta("Perché nel tracking le ore sono scritte con la virgola e non come sull'orologio?", ["Perché è più corto da scrivere", "Perché Excel deve poterle sommare: con ore e minuti la somma non torna", "Perché lo chiede Amazon"], 1, "I numeri con la virgola si sommano: 7,8 + 7,8 = 15,6. Con ore e minuti la somma sarebbe sbagliata.")),
+        g("f", scelta("Nel tracking di un driver leggi 7,48 in tutti i giorni. Cosa pensi?", ["È giusto: sono 7 ore e 48 minuti", "Probabilmente l'OS voleva scrivere 7 ore e 48 minuti, che si scrive 7,8. Glielo chiedo", "Sono 7 ore e 80 minuti"], 1, "7 ore e 48 minuti si scrive 7,8. Scritto 7,48 vuol dire 7 ore e 29 minuti: mancano quasi 20 minuti al giorno."),
+          scelta("Nel tracking di un driver leggi 8,24 in un giorno. Cosa pensi?", ["Sono 8 ore e 24 minuti", "Probabilmente l'OS voleva scrivere 8 ore e 24 minuti, che si scrive 8,4. Glielo chiedo", "Sono 8 ore e 240 minuti"], 1, "8 ore e 24 minuti si scrive 8,4. Scritto 8,24 vuol dire 8 ore e 14 minuti.")),
+        g("g", { tipo: "numeri", domanda: "Un full time lavora 5 giorni da 7,8 ore. Quante ore fa nella settimana?", campi: [{ nome: "Ore", valore: 39 }], perche: "7,8 × 5 = 39: è proprio l'orario di un full time." },
+          { tipo: "numeri", domanda: "Un driver lavora 3 giorni da 7,8 ore. Quante ore fa in tutto?", campi: [{ nome: "Ore", valore: 23.4 }], perche: "7,8 × 3 = 23,4 (cioè 23 ore e 24 minuti)." }),
+      ],
+    },
+    {
       slug: "i-contratti", titolo: "I contratti", minuti: 6,
       obiettivo: "Leggere la colonna «Tipo Contratto» e sapere quante ore a settimana prevede.",
       testo: `Accanto al nome di ogni driver c'è la colonna **Tipo Contratto**. Ti dice quante ore deve fare a settimana: è il numero da cui partono tutti i controlli.
@@ -149,6 +205,8 @@ Per calcolare le ore di un part time in percentuale: 39 × percentuale. Esempio:
 
 Il numero 42 è il **tetto dell'Accordo di secondo livello**, l'accordo sindacale di chi lavora per Amazon. Dove l'Accordo dice una cosa diversa dal contratto nazionale (CCNL), vale l'Accordo. Il tetto è cambiato nel tempo: 43 ore fino al 31/05/2026, **42 dal 01/06/2026**, 41 dal 01/07/2027.
 
+**Perché quelle ore sono assorbite.** Il driver prende la **diaria**: l'indennità di trasferta, 22,50 € per ogni giorno lavorato. L'Accordo (art. 4 sull'orario e art. 5 sulla trasferta; CCNL art. 11 quinquies) dice che, proprio perché c'è la diaria, le ore da 39 a 42 non si pagano come straordinario: sono già compensate da quella. Non è un'ora regalata, è un'ora pagata in un altro modo.
+
 **Esempio.** Un full time lavora 6 giorni da 8 ore: 48 ore.
 
 - Standard: le prime 39
@@ -173,6 +231,7 @@ Due limiti in più: lo **Standard non supera mai 8 ore e 24 minuti in un giorno*
         g("c", riparto("CTI FT", "Un full time", 36, false), riparto("CTI FT", "Un full time", 32, false)),
         g("d", scelta("Un full time ha lavorato 48 ore. Nel tracking trovi: Standard 39, Accordo 1, Straordinario 8. Cosa non va?", ["Niente, il totale è 48", "2 ore di Straordinario dovevano stare nell'Accordo", "Lo Standard doveva essere 40"], 1, "Da 39 a 42 le ore sono assorbite: Accordo 3, Straordinario 6. Qui 2 ore sono pagate come straordinario senza doverlo."),
           scelta("Un full time ha lavorato 44 ore. Nel tracking trovi: Standard 39, Accordo 0, Straordinario 5. Cosa non va?", ["Niente, il totale è 44", "Lo Standard doveva essere 44", "3 ore di Straordinario dovevano stare nell'Accordo"], 2, "Da 39 a 42 le ore sono assorbite: Accordo 3, Straordinario 2.")),
+        g("f", scelta("Perché le ore da 39 a 42 non sono pagate come straordinario?", ["Perché sono poche", "Perché il driver prende la diaria (indennità di trasferta): l'Accordo le considera già compensate da quella", "Perché le recupera la settimana dopo"], 1, "L'Accordo prevede l'assorbimento perché al driver spetta la diaria per ogni giorno lavorato: quelle ore sono già compensate dall'indennità di trasferta.")),
         g("e", scelta("Qual è il tetto dell'Accordo oggi, cioè il numero di ore fino a cui il lavoro è assorbito?", ["39", "42", "44"], 1, "42 ore dal 01/06/2026 (era 43 prima, sarà 41 dal 01/07/2027).")),
       ],
       approfondisci: [{ href: "/vademecum/12-regole-contrattuali", label: "Vademecum: Regole contrattuali" }],
