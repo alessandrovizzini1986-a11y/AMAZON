@@ -8,7 +8,7 @@ const LUN = "2026-11-02";
 const coperti = (k = "DER1|SIC") => new Map([[k, new Set(Array.from({ length: 30 }, (_, i) => addDays("2026-10-26", i)))]]);
 const persona = (contratto: string, giorni: (OreGiorno | null)[], da = LUN, pop: "SIC" | "STD" = "SIC"): Persona =>
   ({ station: "DER1", pop, nome: "Rossi Mario", cf: "CF1", driverId: "A1", contratto, giorni: new Map(giorni.flatMap((o, i) => (o ? [[addDays(da, i), o] as [string, OreGiorno]] : []))) });
-const run = (p: Persona, k?: string) => verificaOre([p], coperti(k), { mese: "2026-11", finoA: "2026-11-22" });
+const run = (p: Persona, k = `${p.station}|${p.pop}`) => verificaOre([p], coperti(k), { mese: "2026-11", finoA: "2026-11-22" });
 
 describe("regole delle ore: contratto, tetto, riparto", () => {
   it("tetto dell'Accordo per data", () => {
@@ -44,7 +44,7 @@ describe("verifica delle settimane", () => {
   it("straordinario prima del tetto: 48 ore con Accordo 1 e Straordinario 8", () => {
     const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7, { acc: 1 }), g(0, { str: 8 }), null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
-    expect(e.richieste[0].testo).toContain("Accordo 1 → 3; Straordinario 8 → 6");
+    expect(e.richieste[0].testo).toContain("Straordinario 8 → 6");
     expect(e.richieste[0].chiave).toBe(`2026-11|DER1|SIC|CF1|STR_PRIMA|${LUN}`);
   });
   it("le assenze possono contare o no verso le 39 ore: si segnala solo se non torna in nessuno dei due modi", () => {
@@ -53,10 +53,14 @@ describe("verifica delle settimane", () => {
     // 5 giorni lavorati (40 h) + un giorno di ferie: torna senza contare le ferie
     expect(run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7, { acc: 1 }), g(0, { ass: 8 }), null])).richieste).toEqual([]);
   });
-  it("part time: un giorno in più è Supplementare; Standard oltre il contratto e Accordo sotto le 39 ore si segnalano", () => {
+  it("part time: un giorno in più è Supplementare; Standard oltre il contratto si segnala; l'Accordo sotto le 39 ore va bene", () => {
     expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), g(0, { sup: 8 }), null, null, null])).richieste).toEqual([]);
     expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), g(8), null, null, null])).richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
-    expect(run(persona("CTI PT 24H", [g(8, { acc: 1 }), g(8), g(8), null, null, null, null])).richieste.map((r) => r.tipo)).toEqual(["ACC_SOTTO"]);
+    // la mezz'ora o l'ora in più del giorno nella riga Accordo è assorbita anche per part time e MOG
+    expect(run(persona("CTI PT 24H", [g(8, { acc: 1 }), g(8), g(8), null, null, null, null])).richieste).toEqual([]);
+    expect(run(persona("MOG 35%", [g(7, { acc: 0.5 }), g(7, { acc: 0.5 }), g(7), g(7), null, null, null], LUN, "STD")).richieste).toEqual([]);
+    // ma non più delle ore assorbibili in una settimana (42 − 39 = 3)
+    expect(run(persona("CTI PT 24H", [g(8, { acc: 2 }), g(8, { acc: 2 }), g(8, { acc: 1 }), null, null, null, null])).richieste.map((r) => r.tipo)).toEqual(["RIPARTO"]);
   });
   it("Supplementare su un full time; dispatcher esclusi dal riparto", () => {
     expect(run(persona("CTI FT", [g(8), g(8), g(8), g(0, { sup: 8 }), null, null, null])).richieste.map((r) => r.tipo)).toEqual(["SUP"]);

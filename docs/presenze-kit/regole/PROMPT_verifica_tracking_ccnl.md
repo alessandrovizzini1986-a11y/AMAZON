@@ -21,6 +21,8 @@ non deve tornare. Il file Excel che ne esce deve aprirsi in pochi secondi.
    - da 39 al tetto dell'Accordo le ore sono assorbite: riga Accordo;
    - oltre il tetto: Straordinario; mai oltre 12 h a settimana; Standard mai oltre 8h24 nel giorno.
    - Tetto: 43 h fino al 31/05/2026, **42 h dal 01/06/2026**, 41 h dal 01/07/2027 (deciso da Alessandro il 22/11/2026).
+   - La riga Accordo va bene anche sotto le 39 ore (mezz'ora in più del giorno, assorbita anche per part time e MOG), fino al
+     massimo assorbibile della settimana: non si segnala. Deciso da Alessandro il 22/11/2026.
    - Le assenze retribuite possono contare o no verso le 39 ore: si segnala solo se il riparto non torna in nessuno dei due modi.
    - Dispatcher esclusi. MOG e contratti non riconosciuti: Standard fino a 39.
 4. **6° giorno di domenica** — elenco (non richiesta) di chi ha lavorato 5 giorni più la domenica: 6 in tutto nella settimana.

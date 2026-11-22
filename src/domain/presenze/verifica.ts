@@ -6,7 +6,7 @@
  * Regole delle ore, per settimana lunedì–domenica:
  * - Standard fino alle ore di contratto (full time 39; part time le sue ore), tolte le assenze retribuite della settimana;
  * - part time: le ore oltre contratto fino a 39 sono Supplementare;
- * - da 39 al tetto dell'Accordo le ore sono assorbite: riga Accordo;
+ * - da 39 al tetto dell'Accordo le ore sono assorbite: riga Accordo (va bene anche sotto le 39 ore, per la mezz'ora in più del giorno);
  * - oltre il tetto: Straordinario.
  * Tetto (CCNL art. 11 quinquies, Accordo art. 4): 43 h fino al 31/05/2026, 42 h dal 01/06/2026, 41 h dal 01/07/2027.
  */
@@ -128,15 +128,15 @@ export function personeDelMese(tracking: TrackingInput[], mese: string, preceden
   }
   return { persone, coperti, avvisi };
 }
-export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "ACC_SOTTO" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT";
+export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT";
 export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
   "+1": "Trasferta senza rotta Amazon", "-1": "Rotta Amazon ma zero ore", H: "Ore senza Amazon", A: "Su Amazon, non nel tracking",
   ORE: "Ore del giorno anomale", ACC: "Accordo di domenica (somministrati)", "7GG": "7 o più giorni di fila",
-  STR_PRIMA: "Straordinario prima del tetto dell'Accordo", STD_OLTRE: "Standard oltre le ore di contratto", ACC_SOTTO: "Accordo sotto le 39 ore",
+  STR_PRIMA: "Straordinario prima del tetto dell'Accordo", STD_OLTRE: "Standard oltre le ore di contratto",
   SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana",
 };
 /** Ordine nel messaggio e nelle tabelle: prima le violazioni. */
-export const ORDINE_TIPO: TipoRichiesta[] = ["7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "ACC_SOTTO", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC"];
+export const ORDINE_TIPO: TipoRichiesta[] = ["7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC"];
 
 export type Richiesta = {
   /** mese|station|pop|persona|tipo|riferimento: non contiene numeri che cambiano, così lo stato resta */
@@ -207,7 +207,11 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
         // Le assenze retribuite possono contare o no verso le ore di contratto (dipende da come è compilato il tracking):
         // si segnala solo se il riparto non torna in nessuno dei due modi, e si propone quello più vicino.
         const pt = c.tipo === "PT";
-        const dist = (a: Riparto) => (pt ? Math.abs(s.std + s.sup - a.std - a.sup) : Math.abs(s.std - a.std) + Math.abs(s.sup - a.sup)) + Math.abs(s.acc - a.acc) + Math.abs(s.str - a.str);
+        // Si guardano insieme le ore "ordinarie" (Standard + Supplementare + Accordo) e, a parte, lo Straordinario.
+        // La riga Accordo va bene anche sotto le 39 ore (la mezz'ora in più del giorno è assorbita anche per part time e MOG:
+        // deciso da Alessandro il 22/11/2026), purché non superi le ore assorbibili della settimana.
+        const ord = s.std + s.sup + s.acc, ordDi = (a: Riparto) => a.std + a.sup + a.acc;
+        const dist = (a: Riparto) => Math.abs(ord - ordDi(a)) + Math.abs(s.str - a.str);
         atteso = [ripartoAtteso(tot, s.ass, c, tetto), ripartoAtteso(tot, 0, c, tetto)].sort((x1, x2) => dist(x1) - dist(x2))[0];
         if (s.ass > 0 && tot + s.ass > tetto + 8) {
           // ore lavorate + assenze ben oltre una settimana piena: prima di spostare le ore va capito quale delle due è sbagliata
@@ -215,22 +219,21 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
           nuova("ASSENZE", l, periodo, `Settimana ${periodo}: ${it(tot)} h lavorate + ${it(s.ass)} h di assenze = ${it(tot + s.ass)} h, troppe per una settimana. Verificare se le assenze o le ore sono giuste.`);
         } else {
           const diff: string[] = [];
-          // part time: Standard e Supplementare si guardano insieme (un giorno in più è Supplementare anche sotto le ore di
-          // contratto); a parte si controlla solo che lo Standard non superi le ore di contratto
-          const voci: [string, number, number][] = pt
-            ? [["Standard + Supplementare", s.std + s.sup, atteso.std + atteso.sup], ["Accordo", s.acc, atteso.acc], ["Straordinario", s.str, atteso.str]]
-            : [["Standard", s.std, atteso.std], ["Supplementare", s.sup, atteso.sup], ["Accordo", s.acc, atteso.acc], ["Straordinario", s.str, atteso.str]];
-          for (const [nome, reale, att] of voci) if (Math.abs(reale - att) > TOLLERANZA) diff.push(`${nome} ${it(reale)} → ${it(att)}`);
-          const stdOltre = pt && c.ore !== null && s.std > c.ore + TOLLERANZA;
-          if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(c.ore!)} (il resto in Supplementare)`);
+          const maxAcc = tetto - ORE_FT, maxStd = pt && c.ore !== null ? c.ore : ORE_FT;
+          const strTroppo = s.str > atteso.str + TOLLERANZA, strPoco = s.str < atteso.str - TOLLERANZA;
+          const supNonPt = !pt && s.sup > TOLLERANZA, stdOltre = s.std > maxStd + TOLLERANZA, accOltre = s.acc > maxAcc + TOLLERANZA;
+          if (strTroppo || strPoco) diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`);
+          if (supNonPt) diff.push(`Supplementare ${it(s.sup)} → 0`);
+          if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(maxStd)}${pt ? " (il resto in Supplementare)" : " (il resto in Accordo)"}`);
+          if (accOltre) diff.push(`Accordo ${it(s.acc)} → al massimo ${it(maxAcc)}`);
           if (diff.length) {
             esito = diff.join(" · ");
             const [tipo, perche]: [TipoRichiesta, string] =
-              !pt && s.sup > TOLLERANZA ? ["SUP", "il Supplementare è solo per i part time"]
-              : s.str > atteso.str + TOLLERANZA ? ["STR_PRIMA", `le ore fino a ${tetto} sono assorbite (riga Accordo), lo Straordinario parte oltre ${tetto}`]
-              : stdOltre || (!pt && s.std > atteso.std + TOLLERANZA) ? ["STD_OLTRE", "nella riga Standard vanno solo le ore di contratto"]
-              : s.acc > atteso.acc + TOLLERANZA ? ["ACC_SOTTO", `la riga Accordo vale solo da 39 a ${tetto} ore della settimana`]
-              : ["RIPARTO", "ore nella riga sbagliata"];
+              supNonPt ? ["SUP", "il Supplementare è solo per i part time"]
+              : strTroppo ? ["STR_PRIMA", `le ore fino a ${tetto} sono assorbite (riga Accordo), lo Straordinario parte oltre ${tetto}`]
+              : stdOltre ? ["STD_OLTRE", "nella riga Standard vanno solo le ore di contratto"]
+              : accOltre ? ["RIPARTO", `nella riga Accordo vanno al massimo ${it(maxAcc)} ore a settimana`]
+              : ["RIPARTO", `oltre le ${tetto} ore della settimana le ore sono Straordinario`];
             nuova(tipo, l, periodo, `Settimana ${periodo}: lavorate ${it(tot)} h${s.ass ? ` + ${it(s.ass)} h di assenze` : ""} (${x.contratto || "contratto non indicato"}). Da correggere: ${diff.join("; ")}. Motivo: ${perche}.`);
           }
         }
