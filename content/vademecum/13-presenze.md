@@ -2,7 +2,7 @@
 title: "Controlli presenze Amazon"
 order: 13
 category: "Personale"
-updated: "2026-11-03"
+updated: "2026-11-22"
 ---
 
 Il **controllo presenze** confronta i tracking delle station con quello che vede Amazon (e, a fine mese, con Zucchetti). Serve a intercettare **prima della chiusura payroll** trasferte pagate non dovute, giornate lavorate non registrate nel tracking e driver nel tracking che Amazon non ha visto lavorare. Si fa tutto dal sito, nella sezione **Presenze**: trascini i file, il sito fa i conti e prepara i messaggi per gli Ops.
@@ -18,7 +18,35 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 3. A fine mese prendi anche i 7 export **Zucchetti** (`Amazon_<AAAA>_<MM>_<Città>_….xlsm`).
 4. Trascina tutto insieme nella zona grigia. Il sito riconosce da solo tipo, station e mese di ogni file; se un file non va, lo dice subito con il motivo (foglio del mese non trovato, riga "Tipo" assente, station non nel nome) e carica gli altri. Guarda la griglia del mese: **verde** = c'è il CSV di quel giorno, **rosso** = giorno passato senza CSV; a lato i badge Tracking SIC, Tracking STD e Zucchetti dicono cosa manca.
 
-### Passo 2 — Controllo settimanale ([/presenze/settimanale](/presenze/settimanale))
+### Passo 2 — Verifica tracking ([/presenze/verifica](/presenze/verifica))
+
+È il controllo da fare ogni lunedì e il primo del mese. Mette insieme tutto: chi ha lavorato davvero (tracking contro Amazon), i 6 giorni, le ore nella riga giusta secondo CCNL e Accordo. Ne esce un solo elenco di **richieste per gli Operation Supervisor**.
+
+1. Scegli il **mese** e **fino al** (di base l'ultima domenica: le settimane si controllano intere, da lunedì a domenica).
+2. Premi **Fai la verifica**. Il riquadro "Cosa ho letto" dice, per station, se c'è il tracking SIC, lo STD, quello del mese prima e quali giorni non hanno il CSV Amazon: in rosso quello che manca.
+3. Filtra una station, premi **Copia** sul suo messaggio, incollalo in Teams e poi **Segna come chieste**.
+4. Quando l'OS risponde e corregge il tracking, metti **OK, chiusa** (e la risposta nella Nota).
+5. Ricarica i tracking corretti e rifai la verifica: le righe sistemate diventano "Sparita da sola", gli OK restano OK, compaiono solo le novità. Il primo del mese basta aggiungere i CSV e i tracking degli ultimi giorni: non rifai niente da capo.
+6. **Scarica Excel** quando ti serve il file: è leggero, senza formule. Puoi cambiare lo Stato anche lì e ricaricarlo con **Carica Excel con gli stati** (non toccare la colonna Chiave; l'Excel può solo far avanzare una riga, mai riportarla indietro).
+
+| Tipo di richiesta | Cosa vuol dire |
+|---|---|
+| 7 o più giorni di fila | Violazione: il massimo è 6. Si vede anche a cavallo del mese se c'è il tracking del mese prima. Avvisa subito Alessandro |
+| Straordinario prima del tetto dell'Accordo | Le ore da 39 al tetto (42 dal 01/06/2026) sono assorbite e vanno nella riga Accordo: lo Straordinario parte solo dopo |
+| Standard oltre le ore di contratto | Full time oltre 39 ore, o part time oltre le sue ore, nella riga Standard |
+| Supplementare su un non part time | Il Supplementare è solo per i part time |
+| Accordo sotto le 39 ore | Ore nella riga Accordo in una settimana che non arriva a 39 |
+| Ore e assenze: troppe nella settimana | Ore lavorate più assenze ben oltre una settimana piena: una delle due è sbagliata |
+| Straordinario oltre 12 h in settimana · Standard oltre 8h24 nel giorno | Limiti del CCNL e dell'Accordo |
+| +1, −1, H, A, ORE, ACC | Gli stessi del controllo con Amazon (tabella dei simboli più sotto) |
+
+**6 giorni + domenica**: chi ha lavorato 6 giorni nella settimana, domenica compresa. È dentro la regola ma al limite: l'elenco è sempre in fondo alla pagina e nel foglio dell'Excel, già pronto per la chiusura del mese.
+
+Per i part time un giorno in più è Supplementare anche se la settimana resta sotto le ore di contratto. Le assenze retribuite possono contare o no verso le 39 ore: il sito segnala solo se le ore non tornano in nessuno dei due modi. I dispatcher sono esclusi dal controllo delle ore.
+
+### Controllo solo con Amazon, in dettaglio ([/presenze/settimanale](/presenze/settimanale))
+
+Serve quando vuoi vedere la griglia giorno per giorno di una station, o salvare un'esecuzione come una volta.
 
 1. Scegli **Dal** e **Al** (stesso mese) e la station, oppure "Tutte".
 2. Premi **Esegui controllo**. In alto quattro riquadri sempre visibili: driver con più di 6 giorni consecutivi nel mese (rosso se ce ne sono), casi 6 giorni + domenica nel periodo, **ORE** (giornate oltre 10 h o valori anomali) e **ACC** (Accordo di domenica dei somministrati). Cliccando ORE o ACC la tabella mostra solo quei driver.

@@ -7,6 +7,7 @@ import { assertCan } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { STATIONS } from "@/domain/presenze/regole";
+import { fondiRichieste, type Stato } from "@/domain/presenze/verifica";
 
 const station = z.enum(STATIONS);
 
@@ -82,4 +83,57 @@ export async function aggiornaEsitoOps(id: string, esitoOps: string, notaOps: st
   const r = await db.presenzeRisultato.update({ where: { id }, data: { esitoOps: esito, notaOps: nota || null, aggiornatoIl: new Date() } });
   await audit({ userId: user.id, action: "presenze.esitoOps", entity: "PresenzeRisultato", entityId: id, meta: { esito, nota } });
   revalidatePath(`/presenze/esecuzioni/${r.runId}`);
+}
+
+const meseRe = z.string().regex(/^\d{4}-\d{2}$/);
+const statoRichiesta = z.enum(["DA_FARE", "RICHIESTA", "OK", "RISOLTA"]);
+const richiesta = z.object({
+  chiave: z.string().min(5).max(300), mese: meseRe, station, pop: z.string().max(20), driver: z.string().max(200), tipo: z.string().max(20),
+  rif: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodo: z.string().max(30), testo: z.string().max(1000),
+});
+export type RichiestaVista = { chiave: string; mese: string; station: string; pop: string; driver: string; tipo: string; rif: string; periodo: string; testo: string; stato: Stato; nota: string; aggiornataIl: string; aggiornataDa: string | null };
+
+const vista = (r: { chiave: string; mese: string; station: string; pop: string; driver: string; tipo: string; rif: string; periodo: string; testo: string; stato: string; nota: string | null; aggiornataIl: Date; aggiornataDa: string | null }): RichiestaVista =>
+  ({ ...r, stato: r.stato as Stato, nota: r.nota ?? "", aggiornataIl: r.aggiornataIl.toISOString() });
+
+/** Richieste salvate di un mese (per riaprire la pagina senza rifare il controllo). */
+export async function richiesteDelMese(mese: string): Promise<RichiestaVista[]> {
+  const user = await requireUser();
+  assertCan(user, "presenze.view");
+  return (await db.presenzeRichiesta.findMany({ where: { mese: meseRe.parse(mese) }, orderBy: [{ station: "asc" }, { driver: "asc" }, { rif: "asc" }] })).map(vista);
+}
+
+/**
+ * Salva l'esito di una verifica: le richieste nuove nascono "da chiedere", quelle già note tengono lo stato,
+ * quelle sparite dal controllo (tracking corretto) diventano "sparita da sola". Regole: fondiRichieste.
+ */
+export async function sincronizzaRichieste(input: { mese: string; stations: string[]; trovate: z.infer<typeof richiesta>[] }): Promise<{ nuove: number; riaperte: number; sparite: number; richieste: RichiestaVista[] }> {
+  const user = await requireUser();
+  assertCan(user, "presenze.run");
+  const mese = meseRe.parse(input.mese), stations = z.array(station).max(7).parse(input.stations);
+  const trovate = z.array(richiesta).max(20000).parse(input.trovate).filter((t) => t.mese === mese);
+  const salvate = await db.presenzeRichiesta.findMany({ where: { mese }, select: { chiave: true, stato: true, testo: true } });
+  const f = fondiRichieste(salvate.map((s) => ({ ...s, stato: s.stato as Stato })), trovate as never, stations, mese);
+  await db.$transaction(async (tx) => {
+    if (f.crea.length) await tx.presenzeRichiesta.createMany({ data: f.crea.map((c) => ({ ...c, aggiornataDa: user.name })), skipDuplicates: true });
+    for (const a of f.aggiorna) await tx.presenzeRichiesta.update({ where: { chiave: a.chiave }, data: { stato: a.stato, testo: a.testo, ...(a.riaperta ? { nota: "riaperta: i dati sono cambiati" } : {}) } });
+  }, { timeout: 60_000 });
+  const sparite = f.aggiorna.filter((a) => a.stato === "RISOLTA").length, riaperte = f.aggiorna.filter((a) => a.riaperta).length;
+  await audit({ userId: user.id, action: "presenze.verifica", entity: "PresenzeRichiesta", meta: { mese, stations, trovate: trovate.length, nuove: f.crea.length, riaperte, sparite } });
+  revalidatePath("/presenze/verifica");
+  return { nuove: f.crea.length, riaperte, sparite, richieste: await richiesteDelMese(mese) };
+}
+
+/** Cambia stato e nota di una o più richieste (dalla pagina o dall'Excel ricaricato). */
+export async function aggiornaRichieste(items: { chiave: string; stato: string; nota?: string }[]): Promise<{ ok: number }> {
+  const user = await requireUser();
+  assertCan(user, "presenze.run");
+  const xs = z.array(z.object({ chiave: z.string().min(5).max(300), stato: statoRichiesta, nota: z.string().max(500).optional() })).max(20000).parse(items);
+  let ok = 0;
+  await db.$transaction(async (tx) => {
+    for (const x of xs) ok += (await tx.presenzeRichiesta.updateMany({ where: { chiave: x.chiave }, data: { stato: x.stato, ...(x.nota !== undefined ? { nota: x.nota.trim() || null } : {}), aggiornataDa: user.name } })).count;
+  }, { timeout: 60_000 });
+  await audit({ userId: user.id, action: "presenze.richieste", entity: "PresenzeRichiesta", meta: { righe: ok, stati: [...new Set(xs.map((x) => x.stato))] } });
+  revalidatePath("/presenze/verifica");
+  return { ok };
 }
