@@ -3,12 +3,13 @@
  * I numeri degli esercizi sulla proiezione si calcolano qui con la stessa formula del foglio (totale ÷ giorno × giorni del mese).
  */
 import type { Corso, Esercizio, Gruppo } from "@/domain/corsi/corsi";
-import { COSTO_ORA_BASE, NOME_FILE_STIMA, PERCORSO_FILE_STIMA } from "@/domain/costi/metaMese";
+import { COSTO_ORA_BASE, NOME_FILE_STIMA, PERCORSO_FILE_STIMA, PERCORSO_PRESENZE_GLS } from "@/domain/costi/metaMese";
 
 const it = (x: number) => (Math.round(x * 100) / 100).toLocaleString("it-IT", { useGrouping: "always" });
 const scelta = (domanda: string, opzioni: string[], giusta: number, perche: string): Esercizio => ({ tipo: "scelta", domanda, opzioni, giusta, perche });
 const g = (id: string, ...alternative: Esercizio[]): Gruppo => ({ id, alternative });
 const PERCORSO = PERCORSO_FILE_STIMA.join(" › ");
+const PERCORSO_GLS = PERCORSO_PRESENZE_GLS.join(" › ");
 
 /** "Fino al giorno G il costo è T: quanto sarà il mese intero?" */
 const proiezione = (totale: number, giorno: number, giorniMese: number, mese: string): Esercizio => {
@@ -45,7 +46,7 @@ Il mese non è finito, quindi i dati ci sono solo per una parte: si prendono le 
 | 1 | Scarichi i CSV di Amazon e raccogli i tracking SIC e STD di tutte le station | Portale Amazon, cartelle degli OS |
 | 2 | Fai la **verifica dei tracking** e mandi le richieste agli OS | Personale → Presenze → Verifica tracking |
 | 3 | Aspetti le correzioni importanti e ricarichi i tracking corretti | Archivio file |
-| 4 | Prendi il file **presenze GLS** del mese | Te lo dà chi segue GLS |
+| 4 | Prendi il file **presenze GLS Delivery** del mese | Cartella GLS (sotto) |
 | 5 | Fai la **stima di metà mese** e scarichi il foglio | Personale → Costi del personale → Stima di metà mese |
 | 6 | Copi il foglio nel file **${NOME_FILE_STIMA}** | Cartella condivisa (sotto) |
 | 7 | Avvisi che la stima è pronta: il file si allega alla mail mensile | Mail |
@@ -54,6 +55,8 @@ Il mese non è finito, quindi i dati ci sono solo per una parte: si prendono le 
 
 **Dove sta il file.** ${PERCORSO} › **${NOME_FILE_STIMA}**. Dentro c'è **un foglio per ogni mese** (Lug_26, Ott_26…): ogni mese se ne aggiunge uno, i vecchi non si toccano.
 
+**Dove sta il file presenze GLS.** ${PERCORSO_GLS}. Ci sono due file per ogni mese: prendi quello che finisce con **_Delivery** (es. «GLS Castel Maggiore - Presenze NOVEMBRE_2026_Delivery»). Quello **_Magazzino** per ora non serve.
+
 **Regola da ricordare:** prima verifichi, poi stimi. Mai il contrario.`,
       esercizi: [
         g("a", scelta("Quando si fa la stima dei costi del personale?", ["Il primo del mese", "Il terzo lunedì del mese", "L'ultimo giorno del mese"], 1, "La stima si fa a metà mese, il terzo lunedì: serve a sapere in anticipo come andrà il mese.")),
@@ -61,7 +64,8 @@ Il mese non è finito, quindi i dati ci sono solo per una parte: si prendono le 
           scelta("Hai i tracking ma non hai ancora fatto la verifica. Cosa fai?", ["Faccio subito la stima, la verifica dopo", "Prima la verifica e le richieste agli OS, poi la stima", "Salto la verifica: a metà mese non serve"], 1, "Prima si puliscono i dati con la verifica, poi si contano le ore per la stima.")),
         g("c", scelta("Perché si chiama «stima»?", ["Perché i numeri sono inventati", "Perché il mese non è finito: si contano le ore fino a ieri e si allungano a fine mese", "Perché si usano i dati del mese scorso"], 1, "A metà mese esistono solo le ore dei primi giorni: il resto del mese si calcola in proporzione.")),
         g("d", scelta("Nel file Stima Costi è arrivato un mese nuovo. Cosa fai?", ["Scrivo sopra il foglio del mese scorso", "Aggiungo un foglio nuovo per il mese, i vecchi restano come sono", "Creo un file nuovo"], 1, "Il file ha un foglio per ogni mese: si aggiunge quello nuovo e i precedenti restano come storico.")),
-        g("e", scelta("Quale file serve per la colonna GLS della stima?", ["Il CSV di Amazon", "Il file presenze GLS del mese", "Il tracking SIC di DER1"], 1, "GLS non ha i tracking Amazon: le sue ore arrivano dal file presenze GLS del mese.")),
+        g("e", scelta("Nella cartella 04-PRESENZE di GLS ci sono due file del mese: _Delivery e _Magazzino. Quale usi per la stima?", ["Tutti e due", "Solo quello _Delivery", "Solo quello _Magazzino"], 1, "Per la stima serve solo il file presenze Delivery. Il Magazzino per ora non si usa."),
+          scelta("Quale file serve per la colonna GLS della stima?", ["Il CSV di Amazon", "Il file presenze GLS Delivery del mese", "Il file presenze GLS Magazzino del mese"], 1, "GLS non ha i tracking Amazon: le sue ore arrivano dal file presenze GLS Delivery del mese.")),
       ],
       approfondisci: [{ href: "/corsi", label: "Corso «Tracking, contratti e Accordo»" }, { href: "/presenze/verifica", label: "Apri la Verifica tracking" }],
     },
@@ -162,7 +166,7 @@ In una riga sola: **mese intero = totale ÷ giorno della stima × giorni del mes
 
 1. Controlla il **mese** in alto.
 2. Guarda il riquadro **Cosa serve**: i tracking SIC e STD devono essere **7 su 7**. Quelli caricati per la verifica ci sono già. Se ne manca uno, trascinalo nel riquadro.
-3. Trascina il file **presenze GLS** del mese.
+3. Trascina il file **presenze GLS Delivery** del mese (cartella GLS › 04-PRESENZE, solo il file _Delivery).
 4. In **Stima fino al giorno** scrivi l'ultimo giorno che i tracking coprono **per intero**: di solito la domenica appena passata.
 5. Premi **Calcola la stima**. Compaiono i tre totali (Amazon SIC, Amazon STD, GLS) e le ore per station.
 6. Se compare **Stima incompleta**, manca un file: i totali non lo contano. Aggiungilo e ricalcola.

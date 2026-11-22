@@ -15,6 +15,10 @@ import { valoreAlla, type ValorePerData } from "./tariffe";
 /** dove sta il file storico in cui va copiato il foglio del mese (cartella condivisa di Teams / OneDrive) */
 export const PERCORSO_FILE_STIMA = ["Adecco", "IT_Amazon Last Mile - General", "01. Costi", "Costi", "04_Costo personale", "Stima costi Annalisa"];
 export const NOME_FILE_STIMA = "Stima Costi_.xlsx";
+/** dove sta il file presenze GLS: serve solo quello "Delivery" (il "Magazzino" per ora no) */
+export const PERCORSO_PRESENZE_GLS = ["Adecco", "IT_ADECCO-Outsourcing_OPS-Industrial-Logistic - GLS - CASTEL MAGGIORE", "04-PRESENZE"];
+const MESI_FILE = ["GENNAIO", "FEBBRAIO", "MARZO", "APRILE", "MAGGIO", "GIUGNO", "LUGLIO", "AGOSTO", "SETTEMBRE", "OTTOBRE", "NOVEMBRE", "DICEMBRE"];
+export const nomePresenzeGls = (mese: string) => `GLS Castel Maggiore - Presenze ${MESI_FILE[Number(mese.slice(5, 7)) - 1]}_${mese.slice(0, 4)}_Delivery`;
 
 export const VOCI_META = ["standard", "magg50", "supp18", "supp65", "str30", "str65", "trasfOrd", "trasfDom", "assenzeGg", "malattiaGg", "infortuni", "eventi"] as const;
 export type VoceMeta = (typeof VOCI_META)[number];

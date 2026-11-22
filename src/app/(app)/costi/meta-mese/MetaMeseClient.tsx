@@ -12,7 +12,7 @@ import { leggiLavoratori } from "@/domain/presenze/lavoratori";
 import { isPresenzeGls, leggiPresenzeGls, mesePresenzeGls, type PresenzeGls } from "@/domain/gls/presenze";
 import type { Festivo } from "@/domain/costi/festivi";
 import type { ValorePerData } from "@/domain/costi/tariffe";
-import { ETICHETTE_META, NOME_FILE_STIMA, PERCORSO_FILE_STIMA, VOCI_COSTO, VOCI_META, costiOraBase, giorniDelMese, oreMetaGls, oreMetaStation, totaliMeta, type CostiOra, type OreMeta, type StimaMeta } from "@/domain/costi/metaMese";
+import { ETICHETTE_META, NOME_FILE_STIMA, PERCORSO_FILE_STIMA, PERCORSO_PRESENZE_GLS, VOCI_COSTO, VOCI_META, costiOraBase, giorniDelMese, nomePresenzeGls, oreMetaGls, oreMetaStation, totaliMeta, type CostiOra, type OreMeta, type StimaMeta } from "@/domain/costi/metaMese";
 import { excelMetaMese, nomeFoglioMeta } from "@/lib/costi/excelMetaMese";
 import { STATION_ORDINE } from "@/lib/costi/excelStimaPersonale";
 
@@ -58,6 +58,7 @@ export function MetaMeseClient(p: Props) {
       try {
         const g = await workbookToGrids(await f.arrayBuffer());
         if (isPresenzeGls(g)) {
+          if (/magazzino/i.test(f.name)) throw new Error("è il file presenze GLS del Magazzino: per la stima serve solo quello Delivery");
           const m = mesePresenzeGls(g);
           if (m !== p.mese) throw new Error(`è il file presenze GLS di ${m ? it(m) : "un mese non riconosciuto"}, serve quello di ${it(p.mese)}`);
           setGls({ nome: f.name, dati: leggiPresenzeGls(g, m) });
@@ -150,10 +151,11 @@ export function MetaMeseClient(p: Props) {
           ); })}
           <li className="flex items-start gap-2"><span className={`mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full ${gls ? "bg-ok" : "bg-warn"}`} aria-hidden /><span>Presenze GLS di {it(p.mese)} {gls ? `— ${gls.nome}` : "— non caricate: la colonna GLS resta vuota"}</span></li>
         </ul>
+        <p className="mt-2 text-ink-muted">Il file presenze GLS è <b>{nomePresenzeGls(p.mese)}</b> e si trova qui: <span className="font-mono text-[13px]">{PERCORSO_PRESENZE_GLS.join(" › ")}</span>. Serve solo il file <b>Delivery</b>, non il Magazzino.</p>
       </section>
 
       <Dropzone titolo="Tracking del mese e presenze GLS" multiple accept=".xlsx,.xlsm" lavoro={lavoro} onFiles={aggiungi}
-        testo={<>Trascina qui i <b>tracking SIC e STD</b> già verificati (se li hai caricati in Presenze sono già qui) e il file <b>presenze GLS</b> di {it(p.mese)}. Il tipo si riconosce dal contenuto.</>} />
+        testo={<>Trascina qui i <b>tracking SIC e STD</b> già verificati (se li hai caricati in Presenze sono già qui) e il file <b>presenze GLS Delivery</b> di {it(p.mese)}. Il tipo si riconosce dal contenuto.</>} />
       {msg.length > 0 && <ul className="text-sm text-ink-muted">{msg.map((m) => <li key={m}>{m}</li>)}</ul>}
 
       <div className="flex flex-wrap items-center gap-3">
