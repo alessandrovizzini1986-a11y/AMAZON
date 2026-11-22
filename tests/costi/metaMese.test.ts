@@ -53,7 +53,9 @@ describe("stima di metà mese", () => {
     expect(ws.getCell("E3").value).toBe(1000); expect(ws.getCell("E18").value).toBe(100); expect(ws.getCell("M18").value).toBe(5);
     expect((ws.getCell("C15").value as { formula: string }).formula).toBe("SUM(C4:C10)");
     expect((ws.getCell("N35").value as { formula: string }).formula).toBe("SUM(M9:M10,M24:M25)");
-    expect((ws.getCell("N27").value as { formula: string }).formula).toBe("N15+N26");
+    expect((ws.getCell("N17").value as { formula: string }).formula).toBe("(N15+N26)/B1*C1"); // GLS: dipendenti + somministrati
+    expect(ws.getCell("M3").fill).toMatchObject({ fgColor: { argb: "FFFFFF00" } }); // colonna GLS gialla come nei fogli fatti a mano
+    expect(ws.getCell("E1").font).toMatchObject({ bold: true, size: 14 });
   });
 });
 

@@ -12,7 +12,7 @@ import { leggiLavoratori } from "@/domain/presenze/lavoratori";
 import { isPresenzeGls, leggiPresenzeGls, mesePresenzeGls, type PresenzeGls } from "@/domain/gls/presenze";
 import type { Festivo } from "@/domain/costi/festivi";
 import type { ValorePerData } from "@/domain/costi/tariffe";
-import { ETICHETTE_META, VOCI_COSTO, VOCI_META, costiOraBase, giorniDelMese, oreMetaGls, oreMetaStation, totaliMeta, type CostiOra, type OreMeta, type StimaMeta } from "@/domain/costi/metaMese";
+import { ETICHETTE_META, NOME_FILE_STIMA, PERCORSO_FILE_STIMA, VOCI_COSTO, VOCI_META, costiOraBase, giorniDelMese, oreMetaGls, oreMetaStation, totaliMeta, type CostiOra, type OreMeta, type StimaMeta } from "@/domain/costi/metaMese";
 import { excelMetaMese, nomeFoglioMeta } from "@/lib/costi/excelMetaMese";
 import { STATION_ORDINE } from "@/lib/costi/excelStimaPersonale";
 
@@ -180,7 +180,16 @@ export function MetaMeseClient(p: Props) {
             <p className="mt-2 text-sm text-ink-muted">Mese intero = totale fino al giorno ÷ {ris.giorno} × {gMese}. {ris.sesto > 0 && <>Festivo lavorato come 6° giorno: {ore(ris.sesto)} ore passate dal 50% al 65%.</>}</p>
             <div className="mt-3 flex flex-wrap gap-3">
               <button type="button" className="btn btn-primary" onClick={() => scarica(excelMetaMese(stima), `Stima_Costi_${nomeFoglioMeta(p.mese)}_al_${String(ris.giorno).padStart(2, "0")}.xlsx`)}>Scarica il foglio {nomeFoglioMeta(p.mese)}</button>
-              <span className="self-center text-sm text-ink-muted">Nel file Stima Costi: tasto destro sulla linguetta del foglio scaricato → Sposta o copia → scegli il tuo file.</span>
+            </div>
+            <div className="mt-4 rounded-control border border-line p-3 text-sm">
+              <p className="font-semibold">Come metterlo nel file che si allega alla mail</p>
+              <ol className="mt-1 list-decimal pl-5">
+                <li>Apri il file <b>{NOME_FILE_STIMA}</b>. Si trova qui: <span className="font-mono text-[13px]">{PERCORSO_FILE_STIMA.join(" › ")}</span></li>
+                <li>Apri anche il foglio scaricato. Tasto destro sulla linguetta <b>{nomeFoglioMeta(p.mese)}</b> in basso → <b>Sposta o copia</b>.</li>
+                <li>In «Nella cartella» scegli <b>{NOME_FILE_STIMA}</b>, in «Prima del foglio» scegli <b>(sposta alla fine)</b>, spunta <b>Crea una copia</b> e premi OK.</li>
+                <li>Se nel file c&apos;è già un foglio {nomeFoglioMeta(p.mese)} di una stima precedente, cancellalo prima (tasto destro → Elimina).</li>
+                <li>Salva. Colori e formule sono gli stessi dei mesi precedenti: non c&apos;è altro da sistemare.</li>
+              </ol>
             </div>
           </section>
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { can } from "@/lib/rbac";
 import { meseScelto } from "@/lib/meseServer";
 import { PageHeader } from "@/components/ui";
@@ -16,6 +17,7 @@ export default async function MetaMesePage({ searchParams }: { searchParams: Pro
     <div className="flex flex-col gap-6">
       <PageHeader eyebrow="Personale · terzo lunedì del mese" title="Stima di metà mese"
         subtitle="Dopo la verifica dei tracking: le ore per categoria fino al giorno della stima, per station e per GLS, proiettate sul mese intero. Scarichi il foglio già compilato da copiare nel file Stima Costi che alleghi alla mail." />
+      <p className="text-sm text-ink-muted">Prima volta? <Link className="underline" href="/corsi">Fai il corso «La stima di metà mese»</Link>: spiega il file e tutti i passi della giornata.</p>
       <MetaMeseClient mese={mese} oggi={oggi} canRun={can(user, "costi.run")} tariffe={tar} festivi={fest} />
     </div>
   );
