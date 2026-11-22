@@ -2,10 +2,10 @@
 title: "Costi del personale a fine mese"
 order: 15
 category: "Personale"
-updated: "2026-11-06"
+updated: "2026-11-22"
 ---
 
-A fine mese il sito stima quanto costa il personale delle sette station (DER1, DER2, DLO2, DLO4, DLO5, DLZ2, DVN1), prima che arrivino le fatture. Si fa tutto nella sezione **Costi del personale**.
+A fine mese il sito stima quanto costa il personale delle sette station (DER1, DER2, DLO2, DLO4, DLO5, DLZ2, DVN1), prima che arrivino le fatture. Si fa tutto nella sezione **Costi del personale**. A metà mese c'è anche la stima parziale, con GLS: è il primo capitolo qui sotto.
 
 Le popolazioni sono due:
 
@@ -13,6 +13,47 @@ Le popolazioni sono due:
 - **SIC** (dipendenti interni): **busta che si paga il 27 del mese dopo** (M+1). Si confronta con i **Costi del personale PS** di M+1.
 
 I file restano **sul tuo PC**: il sito li legge nel browser. Sul server vanno solo le righe che servono (CDC 5569) e i risultati. Il sito non fa nessuna chiamata a servizi esterni.
+
+### A metà mese: la stima parziale ([/costi/meta-mese](/costi/meta-mese))
+
+Il **terzo lunedì del mese**, dopo la [Verifica tracking](/vademecum/13-presenze), si stima quanto costerà il personale a fine mese. Il sito conta le ore dai tracking e prepara il foglio del mese per il file **Stima Costi_.xlsx**, quello che si allega alla mail mensile.
+
+**Cosa serve**
+
+| File | Dove si trova |
+|---|---|
+| Tracking SIC e STD delle 7 station, già verificati | Sono già nell'archivio di questo PC se hai fatto la Verifica tracking |
+| Presenze GLS del mese, **solo il file Delivery** | `Adecco › IT_ADECCO-Outsourcing_OPS-Industrial-Logistic - GLS - CASTEL MAGGIORE › 04-PRESENZE`, file `GLS Castel Maggiore - Presenze MESE_ANNO_Delivery` |
+
+**I passi**
+
+1. Scegli il **mese** e guarda il riquadro **Cosa serve**: i tracking devono essere 7 su 7 per SIC e per STD.
+2. Trascina il file **presenze GLS Delivery**. Il file Magazzino viene rifiutato: per ora non serve.
+3. In **Stima fino al giorno** scrivi l'ultimo giorno che i tracking coprono per intero, di solito la domenica appena passata. Non la data di oggi.
+4. Premi **Calcola la stima**. Escono i tre totali (Amazon SIC, Amazon STD, GLS) e le ore per station. Se compare **Stima incompleta**, manca un file: aggiungilo e ricalcola.
+5. Premi **Scarica il foglio**: è un Excel con un solo foglio (es. `Nov_26`), con gli stessi colori e le stesse formule dei mesi precedenti.
+6. Copialo nel file storico: tasto destro sulla linguetta → **Sposta o copia** → scegli `Stima Costi_.xlsx`, **(sposta alla fine)**, spunta **Crea una copia**. Il file è in `Adecco › IT_Amazon Last Mile - General › 01. Costi › Costi › 04_Costo personale › Stima costi Annalisa`.
+
+**Come si legge il foglio**
+
+| Riga del foglio | Da dove viene |
+|---|---|
+| STANDARD | Riga Standard nei giorni feriali |
+| MAGGIORAZIONE 50% | Riga Standard di domenica o festivo, patrono della station compreso |
+| SUPPLEMENTARI 18% / 65% | Riga Supplementare: feriale / domenica o festivo |
+| STRAORDINARI 30% / 65% | Riga Straordinario: feriale / domenica o festivo |
+| TRASFERTE ORD / DOM | Giorni con più di 4 ore lavorate: feriali / domenica. Ai dispatcher dipendenti non si conta |
+| Ferie, ROL, ExFest e Malattie | Ore ÷ 8 = giornate |
+
+Un festivo infrasettimanale lavorato come **6° giorno** non va al 50% ma al **65%**.
+
+**I conti**
+
+- Costo di una riga = ore × costo orario. Il costo orario si può cambiare dalla pagina e resta salvato su quel PC; le trasferte seguono le tariffe del sito.
+- **Mese intero = totale ÷ giorno della stima × giorni del mese.** I giorni del mese li mette il sito.
+- Nel totale **SIC** entra solo la parte variabile, dalla Maggiorazione 50% alle trasferte: lo Standard dei dipendenti no. Nel totale **STD** entrano tutte le righe. Il totale **GLS** somma dipendenti e somministrati.
+
+Per impararlo passo per passo c'è il corso **La stima di metà mese** in [Corsi](/corsi).
 
 ### Il giorno di chiusura ([/costi/fine-mese](/costi/fine-mese))
 

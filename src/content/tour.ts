@@ -8,7 +8,7 @@ import { menuPer } from "@/components/navModel";
 import { can } from "@/lib/rbac";
 
 /** Cambia la versione per riproporre il tour a tutti (es. dopo un cambio grosso del sito). */
-export const TOUR_VERSIONE = "v2"; // v2: Spedizioni GLS, la "i" sugli indicatori, storico forecast, PDR, PIN fuel card, ruoli e password
+export const TOUR_VERSIONE = "v3"; // v3: stima di metà mese e corso dedicato. v2: v2: Spedizioni GLS, la "i" sugli indicatori, storico forecast, PDR, PIN fuel card, ruoli e password
 /** La chiave contiene il ruolo: chi cambia ruolo (es. da Stagista ad Admin) rivede il tour del nuovo ruolo. */
 export const chiaveTour = (role: Role) => `benvenuto-${TOUR_VERSIONE}:${role}`;
 /** Il tour parte dalla Home: lo hanno i ruoli che la vedono. */
@@ -41,8 +41,9 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   personale: (v) => ({
     titolo: "Personale: presenze e costi",
-    testo: ["Presenze è il controllo delle giornate dei driver. Costi del personale è la stima di fine mese e il confronto con il consuntivo.", ...(v.has("/costi/gls") ? ["Costi GLS è lo stesso lavoro per l'appalto di Castel Maggiore."] : [])],
-    quando: "Ogni settimana per le presenze, a chiusura del mese per i costi.",
+    testo: ["Presenze è il controllo delle giornate dei driver, con la Verifica tracking che prepara le richieste per gli OS.",
+      "Costi del personale: la stima di metà mese (il foglio Stima Costi già compilato dai tracking), la stima di fine mese e il confronto con il consuntivo.", ...(v.has("/costi/gls") ? ["Costi GLS è lo stesso lavoro per l'appalto di Castel Maggiore."] : [])],
+    quando: "Ogni settimana per le presenze; il terzo lunedì e a chiusura del mese per i costi.",
   }),
   amazon: (v) => ({
     titolo: "Amazon: fatture e rotte",
@@ -66,7 +67,7 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   aiuto: (v) => ({
     titolo: "Aiuto: quando hai un dubbio",
-    testo: [...(v.has("/corsi") ? ["Nei Corsi impari le regole una alla volta, con gli esercizi: la lezione dopo si apre quando hai fatto giusta quella prima."] : []), "Il Vademecum spiega ogni procedura passo per passo. Il Glossario traduce le sigle del lavoro: DSP, CDC, SIC, ADIT e le altre.", ...(v.has("/home?tour=1") ? ["Da qui puoi anche rifare questo tour."] : [])],
+    testo: [...(v.has("/corsi") ? ["Nei Corsi impari una regola alla volta, con gli esercizi: i tracking e la stima di metà mese. La lezione dopo si apre quando hai fatto giusta quella prima."] : []), "Il Vademecum spiega ogni procedura passo per passo. Il Glossario traduce le sigle del lavoro: DSP, CDC, SIC, ADIT e le altre.", ...(v.has("/home?tour=1") ? ["Da qui puoi anche rifare questo tour."] : [])],
     quando: "Ogni volta che non sai come si fa una cosa.",
   }),
   gestione: () => ({
