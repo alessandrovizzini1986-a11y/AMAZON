@@ -2,7 +2,7 @@
 title: "Come funziona il sito"
 order: 16
 category: "Base"
-updated: "2026-11-07"
+updated: "2026-11-22"
 ---
 
 Questa pagina spiega in breve come si usa FleetDSP: dove finiscono i dati che carichi, come ti guida il sito e come usarlo da telefono.
@@ -68,6 +68,7 @@ Il sito ti ferma solo quando c'è un errore vero:
 | [Presenze](/presenze) | ogni settimana e a fine mese | 1. Carica i CSV Amazon e i tracking nell'archivio → 2. Esegui e salva il controllo → 3. Manda i messaggi agli Ops e segna gli esiti → 4. A fine mese: tracking contro Zucchetti |
 | [Telepass e carburante](/carburante-telepass) | a inizio mese | 1. Anagrafiche aggiornate → 2. Elabora il CSV Telepass e scarica l'Excel → 3. Elabora l'export Q8 e scarica l'Excel |
 | [Fatture Amazon](/fatture-amazon) | ogni lunedì | 1. Importa i PDF dal prossimo numero → 2. Incolla le righe in fatt_2026 → 3. Allinea il registro |
+| [Stima di metà mese](/costi/meta-mese) | il terzo lunedì del mese | 1. Verifica tracking fatta → 2. Presenze GLS Delivery → 3. Calcola la stima fino all'ultima domenica → 4. Scarica il foglio e copialo in Stima Costi_.xlsx |
 | [Costi del personale](/costi) | a chiusura del mese | 1. Anagrafica CDL al massimo di 3 mesi → 2. ADIT del mese prima → 3. Calcola e salva le stime STD e SIC → 4. Teams ed Excel |
 | [Consuntivo costi](/costi/consuntivo) | quando arrivano ADIT e paga | 1. ADIT del mese → 2. Riconciliazione STD → 3. Costi del personale del mese dopo → 4. Riconciliazione SIC → 5. Aggiorna parametri, solo con l'ok di Alessandro |
 
