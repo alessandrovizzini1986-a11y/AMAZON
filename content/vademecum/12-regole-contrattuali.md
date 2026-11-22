@@ -31,6 +31,8 @@ Due fonti: il **CCNL Logistica, Trasporto merci e Spedizione** del 06/12/2024 e 
 
 **Perché le ore da 39 al tetto sono assorbite.** Il driver prende la diaria (indennità di trasferta) per ogni giorno lavorato: per questo l'Accordo non le fa pagare come straordinario. Nel tracking stanno nella riga Accordo.
 
+**Diaria di part time e MOG che fanno il same day.** È riproporzionata, cioè ridotta in proporzione all'orario: non spetta intera.
+
 **Ore con la virgola.** Nei tracking le ore sono numeri decimali: 7,8 = 7 ore e 48 minuti (0,8 × 60 = 48); al contrario 48 ÷ 60 = 0,8. 8 ore e 24 minuti = 8,4. Un 7,48 o un 8,24 sono quasi sempre errori di chi ha scritto i minuti dopo la virgola.
 
 **Indennità e costo (stima costi, sezione 8)**
