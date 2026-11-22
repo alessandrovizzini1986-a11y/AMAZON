@@ -195,19 +195,19 @@ Una cosa che invece **è giusta**: se un part time lavora un giorno in più, que
     },
     {
       slug: "i-giorni", titolo: "I giorni: mai più di sei di fila", minuti: 6,
-      obiettivo: "Riconoscere una violazione dei giorni di lavoro e distinguerla dal caso «6 giorni + domenica».",
+      obiettivo: "Riconoscere una violazione dei giorni di lavoro e distinguerla dal caso «6° giorno di domenica».",
       testo: `Oltre alle ore si contano i **giorni**.
 
 **La regola.** Un driver non può lavorare più di **6 giorni di fila**. Il settimo deve essere riposo.
 
 **7 o più giorni di fila** è una violazione: va segnalata **subito ad Alessandro**, oltre che all'OS. Attenzione: i giorni si contano anche **a cavallo di due mesi**. Chi lavora dal 28 ottobre al 3 novembre ha fatto 7 giorni di fila, anche se in ogni mese ne vedi pochi.
 
-**«6 giorni + domenica»** è un'altra cosa: il driver ha lavorato 6 giorni nella settimana da lunedì a domenica, e uno di questi è la domenica. **Non è un errore**: è dentro la regola, ma è il limite. Per questo il sito ti prepara l'elenco: sai già chi sono senza doverli cercare a fine mese.
+**«6° giorno di domenica»** è un'altra cosa: il driver ha lavorato 5 giorni più la domenica, quindi **6 giorni in tutto** nella settimana da lunedì a domenica, con un giorno di riposo in mezzo. Non sono 7. **Non è un errore**: è dentro la regola, ma è il limite. Per questo il sito ti prepara l'elenco: sai già chi sono senza doverli cercare a fine mese.
 
 | Situazione | È un errore? | Cosa fai |
 |---|---|---|
 | 5 giorni lavorati, 2 di riposo | No | Niente |
-| 6 giorni lavorati, domenica compresa | No, ma è il limite | Li trovi nell'elenco «6 giorni + domenica» |
+| 5 giorni + la domenica = 6 giorni | No, ma è il limite | Li trovi nell'elenco «6° giorno di domenica» |
 | 7 o più giorni di fila | **Sì** | Avvisi subito Alessandro e chiedi all'OS |
 
 **Come si conta «ha lavorato».** Un giorno conta come lavorato se c'è almeno un'ora in una delle quattro righe del lavoro. Un giorno di ferie o di malattia **interrompe** la fila.
@@ -217,7 +217,7 @@ Una cosa che invece **è giusta**: se un part time lavora un giorno in più, que
         g("a", scelta("Un driver lavora da lunedì a domenica, tutti e sette i giorni. È:", ["normale", "il limite, ma è permesso", "una violazione: il massimo è 6 giorni di fila"], 2, "Sette giorni di fila superano il massimo di 6: è una violazione, da segnalare subito.")),
         g("b", scelta("Un driver lavora dal 28 ottobre al 3 novembre compresi, senza riposi. Quanti giorni di fila sono?", ["4, perché a novembre sono solo 3", "7, perché i giorni si contano anche a cavallo del mese", "3"], 1, "28, 29, 30, 31 ottobre + 1, 2, 3 novembre = 7 giorni di fila. Il cambio di mese non interrompe la fila."),
           scelta("Un driver lavora dal 27 settembre al 3 ottobre compresi, senza riposi. Quanti giorni di fila sono?", ["3", "4, perché a settembre sono solo 4", "7, perché i giorni si contano anche a cavallo del mese"], 2, "27, 28, 29, 30 settembre + 1, 2, 3 ottobre = 7 giorni di fila. Il cambio di mese non interrompe la fila.")),
-        g("c", scelta("Un driver lavora lunedì, martedì, giovedì, venerdì, sabato e domenica (riposo il mercoledì). Cosa fai?", ["Lo segnalo come violazione", "Niente da chiedere: è «6 giorni + domenica», dentro la regola. Lo trovo nell'elenco", "Chiedo all'OS di togliere la domenica"], 1, "Sei giorni lavorati su sette, con la domenica: è il limite, non un errore.")),
+        g("c", scelta("Un driver lavora lunedì, martedì, giovedì, venerdì, sabato e domenica (riposo il mercoledì). Cosa fai?", ["Lo segnalo come violazione", "Niente da chiedere: è «6° giorno di domenica», dentro la regola. Lo trovo nell'elenco", "Chiedo all'OS di togliere la domenica"], 1, "Sei giorni lavorati su sette, con la domenica: è il limite, non un errore.")),
         g("d", scelta("Un driver lavora 4 giorni, poi ha un giorno di ferie, poi lavora altri 4 giorni. Quanti giorni di fila ha fatto al massimo?", ["9", "8", "4"], 2, "Il giorno di ferie non è un giorno lavorato: interrompe la fila. Le due file sono da 4 giorni.")),
         g("e", scelta("Trovi un driver con 8 giorni di lavoro di fila. Chi avvisi?", ["Solo l'OS", "Subito Alessandro, e chiedo all'OS", "Nessuno fino a fine mese"], 1, "Sette o più giorni di fila vanno segnalati subito ad Alessandro, oltre alla richiesta all'OS.")),
       ],
@@ -318,7 +318,7 @@ Ripasso veloce delle regole:
         g("b", riparto("CTI PT 32H", "Un part time da 32 ore", 43, true), riparto("CTI PT 24H", "Un part time da 24 ore", 45, true), riparto("CTI PT 20H", "Un part time da 20 ore", 42, true)),
         g("c", scelta("Un full time ha lavorato 40 ore: Standard 40, Accordo 0. Cosa chiedi all'OS?", ["Niente, è giusto", "Di spostare 1 ora dallo Standard all'Accordo", "Di spostare 1 ora nello Straordinario"], 1, "Lo Standard di un full time si ferma a 39: l'ora da 39 a 40 va nell'Accordo."),
           scelta("Un full time ha lavorato 41 ore: Standard 41, Accordo 0. Cosa chiedi all'OS?", ["Di spostare 2 ore dallo Standard all'Accordo", "Niente, è giusto", "Di spostare 2 ore nello Straordinario"], 0, "Lo Standard di un full time si ferma a 39: le ore da 39 a 41 vanno nell'Accordo.")),
-        g("d", scelta("Un driver lavora dal 30 novembre al 6 dicembre compresi. Cosa fai?", ["Niente: in ogni mese sono pochi giorni", "È una violazione (7 giorni di fila): avviso Alessandro e chiedo all'OS", "Lo metto nell'elenco «6 giorni + domenica»"], 1, "30 novembre + dall'1 al 6 dicembre = 7 giorni di fila. La fila si conta anche a cavallo del mese.")),
+        g("d", scelta("Un driver lavora dal 30 novembre al 6 dicembre compresi. Cosa fai?", ["Niente: in ogni mese sono pochi giorni", "È una violazione (7 giorni di fila): avviso Alessandro e chiedo all'OS", "Lo metto nell'elenco «6° giorno di domenica»"], 1, "30 novembre + dall'1 al 6 dicembre = 7 giorni di fila. La fila si conta anche a cavallo del mese.")),
         g("e", scelta("Amazon vede un driver con 120 pacchi il 12 del mese. Nel tracking il 12 ha 8 ore di MALATTIA e nessuna ora di lavoro. Cosa succede?", ["È un −1 da chiedere all'OS", "Non si segnala: malattia batte lavorato", "Si toglie la malattia"], 1, "Se il tracking dice malattia e Amazon lo vede in rotta, non è un errore di compilazione: non si segnala in questo controllo.")),
         g("f", scelta("Un somministrato (STD) ha 3 ore nella riga Accordo di domenica. Che simbolo compare e perché?", ["+1, perché manca la rotta", "ACC, perché la domenica è già pagata con maggiorazione e quella cella va tolta", "ORE, perché ha lavorato troppo"], 1, "ACC: per i somministrati la domenica non va nella riga Accordo.")),
         g("g", scelta("Un driver ha 6 ore nel tracking, la trasferta a 1, e su Amazon 0 pacchi. Nella riga RIPOSO c'è scritto «SB». Cosa fai?", ["Niente: SB spiega la giornata", "Chiedo all'OS cosa ha fatto: SB è un turno, non una spiegazione", "Tolgo io la trasferta"], 1, "SB non è una spiegazione valida: resta un +1 da chiedere. E il tracking non lo correggi tu.")),

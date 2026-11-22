@@ -23,7 +23,7 @@ non deve tornare. Il file Excel che ne esce deve aprirsi in pochi secondi.
    - Tetto: 43 h fino al 31/05/2026, **42 h dal 01/06/2026**, 41 h dal 01/07/2027 (deciso da Alessandro il 22/11/2026).
    - Le assenze retribuite possono contare o no verso le 39 ore: si segnala solo se il riparto non torna in nessuno dei due modi.
    - Dispatcher esclusi. MOG e contratti non riconosciuti: Standard fino a 39.
-4. **6 giorni + domenica** — elenco (non richiesta) di chi ha lavorato 6 giorni nella settimana, domenica compresa.
+4. **6° giorno di domenica** — elenco (non richiesta) di chi ha lavorato 5 giorni più la domenica: 6 in tutto nella settimana.
 
 ## Richieste
 - Una riga per persona, tipo e riferimento (giorno o lunedì della settimana), con chiave stabile
@@ -33,7 +33,7 @@ non deve tornare. Il file Excel che ne esce deve aprirsi in pochi secondi.
 - Lo stato si cambia nel sito o nell'Excel ricaricato; l'Excel può solo far avanzare una riga.
 
 ## Excel
-Solo valori, nessuna formula: Leggimi · Richieste (Stato a tendina) · Chiuse · 6_giorni_domenica · Ore_settimana · Avvisi.
+Solo valori, nessuna formula: Leggimi · Richieste (Stato a tendina) · Chiuse · Sesto_giorno_domenica · Ore_settimana · Avvisi.
 
 ## Poka-yoke
 - "Cosa ho letto": per station, in rosso i tracking e i giorni di CSV che mancano.

@@ -40,7 +40,7 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 | Straordinario oltre 12 h in settimana · Standard oltre 8h24 nel giorno | Limiti del CCNL e dell'Accordo |
 | +1, −1, H, A, ORE, ACC | Gli stessi del controllo con Amazon (tabella dei simboli più sotto) |
 
-**6 giorni + domenica**: chi ha lavorato 6 giorni nella settimana, domenica compresa. È dentro la regola ma al limite: l'elenco è sempre in fondo alla pagina e nel foglio dell'Excel, già pronto per la chiusura del mese.
+**6° giorno di domenica**: chi ha lavorato 5 giorni più la domenica, quindi 6 in tutto nella settimana (non 7). È dentro la regola ma al limite: l'elenco è sempre in fondo alla pagina e nel foglio dell'Excel, già pronto per la chiusura del mese.
 
 Per i part time un giorno in più è Supplementare anche se la settimana resta sotto le ore di contratto. Le assenze retribuite possono contare o no verso le 39 ore: il sito segnala solo se le ore non tornano in nessuno dei due modi. I dispatcher sono esclusi dal controllo delle ore.
 
@@ -49,7 +49,7 @@ Per i part time un giorno in più è Supplementare anche se la settimana resta s
 Serve quando vuoi vedere la griglia giorno per giorno di una station, o salvare un'esecuzione come una volta.
 
 1. Scegli **Dal** e **Al** (stesso mese) e la station, oppure "Tutte".
-2. Premi **Esegui controllo**. In alto quattro riquadri sempre visibili: driver con più di 6 giorni consecutivi nel mese (rosso se ce ne sono), casi 6 giorni + domenica nel periodo, **ORE** (giornate oltre 10 h o valori anomali) e **ACC** (Accordo di domenica dei somministrati). Cliccando ORE o ACC la tabella mostra solo quei driver.
+2. Premi **Esegui controllo**. In alto quattro riquadri sempre visibili: driver con più di 6 giorni consecutivi nel mese (rosso se ce ne sono), casi di 6° giorno di domenica nel periodo, **ORE** (giornate oltre 10 h o valori anomali) e **ACC** (Accordo di domenica dei somministrati). Cliccando ORE o ACC la tabella mostra solo quei driver.
 3. Leggi il riepilogo per station e la tabella driver (di base mostra solo quelli da verificare). La colonna **Giorni da verificare** è già pronta, es. `5(-1), 6(H)`.
 4. Copia il **messaggio Teams** di ogni station (bottone "Copia" per il testo, "Copia tabella" per incollarlo come tabella) e mandalo al referente Ops. Scarica l'**Excel per le Ops** se serve allegarlo. Poi **Salva esecuzione**: da "Apri per segnare gli esiti" segni per ogni riga *chiuso* o *giustificato* quando gli Ops rispondono.
 
@@ -57,7 +57,7 @@ Serve quando vuoi vedere la griglia giorno per giorno di una station, o salvare 
 
 1. Scegli il **mese** (di base quello appena chiuso).
 2. Premi **Esegui controllo**: confronta, giorno per giorno, le ore del tracking SIC (lavoro + assenze, esclusi i riposi) con la riga TOTALE di Zucchetti.
-3. Leggi riepilogo, **Giorni con ore diverse** (con la lettura: "manca su Zucchetti", "ore diverse"…), **Lavoratori non abbinati** e, per ogni station, la matrice tracking/Zucchetti dei soli lavoratori con differenze. In alto: 7 o più giorni consecutivi (rosso) e casi 6 giorni + domenica.
+3. Leggi riepilogo, **Giorni con ore diverse** (con la lettura: "manca su Zucchetti", "ore diverse"…), **Lavoratori non abbinati** e, per ogni station, la matrice tracking/Zucchetti dei soli lavoratori con differenze. In alto: 7 o più giorni consecutivi (rosso) e casi di 6° giorno di domenica.
 4. Copia i messaggi Teams, scarica l'Excel (`Controllo_fine_mese_<AAAA-MM>.xlsx`) e salva l'esecuzione.
 
 ### Passo 4 — Dopo le risposte
@@ -90,7 +90,7 @@ Serve quando vuoi vedere la griglia giorno per giorno di una station, o salvare 
 - **Malattia e infortunio battono il lavorato**: se nel tracking il giorno ha ore di malattia o infortunio (e 0 ore di lavoro) e Amazon lo vede in rotta, **nessun −1** (nota "malattia batte il lavorato"). Se è davvero andato a lavorare in malattia è un tema HR, non un errore di tracking: non va in questo controllo.
 - **ORE e ACC** si segnalano sempre, anche quando trasferta e rotta coincidono, e hanno una sezione propria nel messaggio Teams.
 - **Non** sono giustificativi: SB (turno "Same B"), L1 (rotta standard 8 ore), R, C1, D, F, P. Se c'è un codice di assenza ma anche ore lavorate, è un errore di compilazione da segnalare.
-- Fine mese: **6 giorni + domenica** = 6 giorni lavorati nella settimana che finisce di domenica, domenica compresa; **7 o più giorni consecutivi** è sempre una violazione da segnalare subito.
+- Fine mese: **6° giorno di domenica** = 5 giorni lavorati più la domenica, 6 in tutto nella settimana che finisce di domenica; **7 o più giorni consecutivi** è sempre una violazione da segnalare subito.
 
 **Attenzione: trappole note**
 

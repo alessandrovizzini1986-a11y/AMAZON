@@ -62,7 +62,7 @@ describe("verifica delle settimane", () => {
     expect(run(persona("CTI FT", [g(8), g(8), g(8), g(0, { sup: 8 }), null, null, null])).richieste.map((r) => r.tipo)).toEqual(["SUP"]);
     expect(run(persona("DISPATCHER", [g(8), g(8), g(8), g(8), g(8), g(0, { str: 8 }), null])).richieste).toEqual([]);
   });
-  it("7 giorni di fila anche a cavallo del mese; 6 giorni + domenica è solo un elenco", () => {
+  it("7 giorni di fila anche a cavallo del mese; il 6° giorno di domenica è solo un elenco", () => {
     const sette = run(persona("CTI FT", Array.from({ length: 7 }, () => g(5)), "2026-10-29"));
     expect(sette.richieste.filter((r) => r.tipo === "7GG").map((r) => [r.rif, r.periodo])).toEqual([["2026-10-29", "29/10–04/11"]]);
     const sei = run(persona("CTI FT", [g(6), g(6), null, g(6), g(6), g(6), g(6)]));

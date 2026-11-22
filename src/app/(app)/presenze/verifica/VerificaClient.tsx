@@ -181,7 +181,7 @@ export function VerificaClient({ utente, giustificativi, dispatcher, referenti, 
             {tile("Chieste", conta("RICHIESTA"), "aspetto la risposta", conta("RICHIESTA") ? "border-warn bg-warn-soft" : "", () => setFStato("RICHIESTA"))}
             {tile("OK, chiuse", conta("OK"), "non tornano più", "", () => setFStato("OK"))}
             {tile("Sparite da sole", conta("RISOLTA"), "tracking corretto", "", () => setFStato("RISOLTA"))}
-            {tile("6 giorni + domenica", verifica?.seiDomenica.length ?? 0, verifica ? "già visti, elenco sotto" : "si vedono dopo il controllo", "")}
+            {tile("6° giorno di domenica", verifica?.seiDomenica.length ?? 0, verifica ? "già visti, elenco sotto" : "si vedono dopo il controllo", "")}
           </section>
 
           <section className="card flex flex-col gap-3 p-4 md:p-5">
@@ -231,7 +231,7 @@ export function VerificaClient({ utente, giustificativi, dispatcher, referenti, 
 
       {verifica && verifica.seiDomenica.length > 0 && (
         <section className="card overflow-x-auto p-4 md:p-5">
-          <h2 className="mb-1 text-[19px] font-semibold">6 giorni lavorati compresa la domenica ({verifica.seiDomenica.length})</h2>
+          <h2 className="mb-1 text-[19px] font-semibold">6° giorno di domenica: 5 giorni + la domenica ({verifica.seiDomenica.length})</h2>
           <p className="mb-3 text-sm text-ink-muted">Sono dentro la regola (6 giorni su 7), ma è il limite: li trovi già qui, così a fine mese non devi ricontrollarli. Se lavorano anche il giorno dopo il riposo salta fuori da solo tra le richieste «7 o più giorni di fila».</p>
           <table className="table-base text-sm">
             <thead><tr><th>Station</th><th>Pop.</th><th>Driver</th><th>Contratto</th><th>Domenica</th><th>Giorno di riposo</th><th className="text-right">Ore della settimana</th></tr></thead>

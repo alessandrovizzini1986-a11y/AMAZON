@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const ddmm = (d: Date) => d.toISOString().slice(8, 10) + "/" + d.toISOString().slice(5, 7);
 const CAT_LABEL: Record<string, string> = {
   "+1": "+1 trasferta senza rotta", "-1": "−1 rotta senza ore", H: "H ore senza Amazon", A: "A non nei tracking",
-  DELTA: "Delta Zucchetti", NON_ABBINATO: "Non abbinato", "6+DOM": "6 giorni + domenica", CONSECUTIVI: ">6 consecutivi",
+  DELTA: "Delta Zucchetti", NON_ABBINATO: "Non abbinato", "6+DOM": "6° giorno di domenica", CONSECUTIVI: ">6 consecutivi",
 };
 
 export default async function EsecuzionePage({ params }: { params: Promise<{ id: string }> }) {

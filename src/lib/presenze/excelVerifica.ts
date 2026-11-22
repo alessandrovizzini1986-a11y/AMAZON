@@ -12,7 +12,7 @@ const ordine = (a: RigaRichiesta, b: RigaRichiesta) =>
 
 /**
  * Excel della verifica tracking: solo valori (nessuna formula), quindi leggero e veloce da aprire.
- * Fogli: Leggimi · Richieste (aperte, con Stato a tendina) · Chiuse · 6_giorni_domenica · Ore_settimana · Avvisi.
+ * Fogli: Leggimi · Richieste (aperte, con Stato a tendina) · Chiuse · Sesto_giorno_domenica · Ore_settimana · Avvisi.
  * Lo Stato si può cambiare qui e ricaricare il file nel sito: la colonna Chiave serve a ritrovare la riga.
  */
 export function excelVerifica(x: { mese: string; finoA: string; utente: string; richieste: RigaRichiesta[]; verifica: EsitoVerifica | null; avvisi: string[] }): ExcelJS.Workbook {
@@ -59,7 +59,7 @@ export function excelVerifica(x: { mese: string; finoA: string; utente: string; 
   }
 
   const v = x.verifica;
-  tabella(wb.addWorksheet("6_giorni_domenica"), "T_SeiDom",
+  tabella(wb.addWorksheet("Sesto_giorno_domenica"), "T_SeiDom",
     [{ name: "Station" }, { name: "Pop." }, { name: "Driver", width: 30 }, { name: "Contratto", width: 16 }, { name: "Domenica", date: true }, { name: "Giorno di riposo" }, { name: "Ore della settimana" }],
     (v?.seiDomenica ?? []).map((s) => [s.station, s.pop, s.driver, s.contratto, s.domenica, s.riposo, s.ore]));
   tabella(wb.addWorksheet("Ore_settimana"), "T_Ore",

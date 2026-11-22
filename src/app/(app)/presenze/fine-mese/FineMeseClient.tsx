@@ -117,7 +117,7 @@ export function FineMeseClient({ referenti, runs, canRun, mog }: { referenti: Re
               <div className="text-xs text-brand">{nConsec ? "Mostra elenco ↓" : "Nessuna violazione"}</div>
             </button>
             <button type="button" onClick={() => setVista(vista === "6dom" ? "" : "6dom")} className="card p-4 text-left">
-              <div className="text-sm font-medium text-ink-muted">Casi 6 giorni + domenica (SIC)</div>
+              <div className="text-sm font-medium text-ink-muted">6° giorno di domenica (SIC): 5 giorni + la domenica</div>
               <div className="text-3xl font-bold">{seiDom.length}</div>
               <div className="text-xs text-brand">{seiDom.length ? "Mostra elenco ↓" : "Nessun caso"}</div>
             </button>
@@ -137,7 +137,7 @@ export function FineMeseClient({ referenti, runs, canRun, mog }: { referenti: Re
 
           {vista === "6dom" && (
             <section className="card overflow-x-auto p-4 md:p-5">
-              <h2 className="mb-3 text-[19px] font-semibold">6 giorni + domenica (SIC)</h2>
+              <h2 className="mb-3 text-[19px] font-semibold">6° giorno di domenica (SIC)</h2>
               {seiDom.length === 0 ? <p className="text-sm text-ink-muted">Nessun caso.</p> : (
                 <table className="table-base text-sm">
                   <thead><tr><th>Station</th><th>Domenica</th><th>Lavoratore</th></tr></thead>
