@@ -1,0 +1,299 @@
+/**
+ * Verifica tracking secondo CCNL e Accordo di secondo livello (docs/presenze-kit/regole/PROMPT_verifica_tracking_ccnl.md).
+ * Si aggiunge al controllo tracking vs Amazon (controlloSettimanale) e produce un unico elenco di richieste per gli
+ * Operation Supervisor, con una chiave stabile: così lo stato (da fare / richiesta / ok) resta tra un controllo e l'altro.
+ *
+ * Regole delle ore, per settimana lunedì–domenica:
+ * - Standard fino alle ore di contratto (full time 39; part time le sue ore), tolte le assenze retribuite della settimana;
+ * - part time: le ore oltre contratto fino a 39 sono Supplementare;
+ * - da 39 al tetto dell'Accordo le ore sono assorbite: riga Accordo;
+ * - oltre il tetto: Straordinario.
+ * Tetto (CCNL art. 11 quinquies, Accordo art. 4): 43 h fino al 31/05/2026, 42 h dal 01/06/2026, 41 h dal 01/07/2027.
+ */
+import { addDays, weekday } from "./grid";
+import { ASSENZE_RETRIB, leggiLavoratori, type Lavoratore } from "./lavoratori";
+import { alertDelGiorno, type EsitoSettimanale, type TrackingInput } from "./controlloSettimanale";
+import { findTrackingSheet } from "./tracking";
+import { normName, type Station } from "./regole";
+
+export const ORE_FT = 39;
+export const TOLLERANZA = 0.5; // ore: sotto questa differenza non si segnala
+export const STD_MAX_GIORNO = 8.4; // 8h24 (Accordo art. 4)
+export const STR_MAX_SETT = 12; // CCNL art. 13
+
+/** Tetto settimanale fino a cui le ore sono assorbite (riga Accordo). */
+export function tettoAccordo(data: string): number {
+  return data < "2026-06-01" ? 43 : data < "2027-07-01" ? 42 : 41;
+}
+
+export type Contratto = { tipo: "FT" | "PT" | "MOG" | "DISPATCHER" | "ND"; ore: number | null };
+
+/** "CTI FT" → 39 · "CTI PT 32H" → 32 · "PT OR 32,5H" → 32,5 · "STD PT 60%" → 23,4 · "MOG 35%" → MOG · "CTI PT" → ore non note. */
+export function leggiContratto(s: string): Contratto {
+  const u = s.toUpperCase().replace(/\s+/g, " ").trim();
+  if (u.includes("DISPATCH") || u === "DSP") return { tipo: "DISPATCHER", ore: null };
+  if (u.includes("MOG")) return { tipo: "MOG", ore: null };
+  const n = (x: string) => Number(x.replace(",", "."));
+  const h = /(\d{1,2}(?:[.,]\d+)?)\s*H\b/.exec(u);
+  const pt = /\bPT\b|PART/.test(u);
+  if (h && n(h[1]) < ORE_FT) return { tipo: "PT", ore: n(h[1]) };
+  if (pt) {
+    const p = /(\d{1,3}(?:[.,]\d+)?)\s*%?\s*$/.exec(u);
+    return { tipo: "PT", ore: p && n(p[1]) > 0 && n(p[1]) < 100 ? Math.round(ORE_FT * n(p[1])) / 100 : null };
+  }
+  if (/\bFT\b|FULL/.test(u)) return { tipo: "FT", ore: ORE_FT };
+  return { tipo: "ND", ore: null };
+}
+
+export type Riparto = { std: number; sup: number; acc: number; str: number };
+
+/** Come vanno divise le ore lavorate della settimana. */
+export function ripartoAtteso(lavorate: number, assenze: number, c: Contratto, tetto: number): Riparto {
+  const base = c.tipo === "PT" && c.ore ? c.ore : ORE_FT;
+  const std = Math.min(lavorate, Math.max(base - assenze, 0));
+  let r = lavorate - std;
+  const sup = c.tipo === "PT" ? Math.min(r, Math.max(ORE_FT - assenze - std, 0)) : 0;
+  r -= sup;
+  const acc = Math.min(r, Math.max(tetto - ORE_FT, 0));
+  return { std, sup, acc, str: r - acc };
+}
+
+export type OreGiorno = { std: number; sup: number; acc: number; str: number; ass: number };
+export type Persona = {
+  station: Station; pop: "SIC" | "STD"; nome: string; cf: string; driverId: string; contratto: string;
+  /** giorno ISO → ore (solo i giorni con qualcosa) */
+  giorni: Map<string, OreGiorno>;
+};
+
+const chiavePersona = (l: Lavoratore) => (l.cf.trim().toUpperCase() || l.matricola || normName(l.nome));
+const lav = (g: OreGiorno | undefined) => (g ? g.std + g.sup + g.acc + g.str : 0);
+const r1 = (x: number) => Math.round(x * 100) / 100;
+const it = (x: number) => String(r1(x)).replace(".", ",");
+const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+const prec = (mese: string) => { const [y, m] = mese.split("-").map(Number); return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`; };
+
+/**
+ * Persone dei tracking del mese con le ore per giorno, più i giorni del mese prima quando ci sono (file del mese
+ * prima nell'archivio, oppure le colonne che sconfinano nel file del mese): servono per le settimane a cavallo.
+ * `coperti` dice, per station e popolazione, di quali giorni abbiamo il tracking.
+ */
+export function personeDelMese(tracking: TrackingInput[], mese: string, precedenti: TrackingInput[] = []): { persone: Persona[]; coperti: Map<string, Set<string>>; avvisi: string[] } {
+  const persone: Persona[] = [], coperti = new Map<string, Set<string>>(), avvisi: string[] = [];
+  const ym = (m: string) => m.split("-").map(Number) as [number, number];
+  for (const t of tracking) {
+    const k = `${t.station}|${t.tipo}`;
+    let foglio: string, giorniFoglio: string[], lavoratori: Lavoratore[];
+    try {
+      const ts = findTrackingSheet(t.sheets, ...ym(mese));
+      foglio = ts.grid.name; giorniFoglio = ts.dayCols.map((d) => d.date);
+      lavoratori = leggiLavoratori(t.sheets, ...ym(mese), true).lavoratori; // anche le colonne che sconfinano
+    } catch { avvisi.push(`${t.station} ${t.tipo}: nel file ${t.fileName} non trovo i giorni di ${mese.slice(5)}/${mese.slice(0, 4)}`); continue; }
+    const cop = coperti.get(k) ?? new Set<string>();
+    giorniFoglio.forEach((d) => cop.add(d));
+    // mese prima: il suo file nell'archivio, oppure il suo foglio nello stesso file (mai lo stesso foglio riletto:
+    // con i giorni scritti come numeri 1..31 un foglio non dice da solo di che mese è)
+    const pm = prec(mese);
+    const prima = new Map<string, Lavoratore>();
+    const copPrima = new Set<string>();
+    const fp = precedenti.find((x) => x.station === t.station && x.tipo === t.tipo);
+    for (const [sheets, stesso] of [[fp?.sheets, false], [t.sheets, true]] as const) {
+      if (!sheets) continue;
+      try {
+        const ts = findTrackingSheet(sheets, ...ym(pm));
+        if (stesso && ts.grid.name === foglio) continue;
+        const gg = ts.dayCols.map((d) => d.date).filter((d) => d.startsWith(pm + "-"));
+        for (const l of leggiLavoratori(sheets, ...ym(pm)).lavoratori) {
+          const kp = chiavePersona(l), gia = prima.get(kp);
+          if (!gia) prima.set(kp, { ...l, giorni: { ...l.giorni } });
+          else for (const [d, v] of Object.entries(l.giorni)) if (!copPrima.has(d)) gia.giorni[d] = v;
+        }
+        gg.forEach((d) => copPrima.add(d));
+      } catch { /* quel file non ha il mese prima */ }
+    }
+    copPrima.forEach((d) => cop.add(d));
+    coperti.set(k, cop);
+    for (const l of lavoratori) {
+      const giorni = new Map<string, OreGiorno>();
+      // prima le colonne che sconfinano nel foglio del mese, poi (se c'è) il tracking del mese prima, che vale di più
+      const sconfino = Object.fromEntries(Object.entries(l.giorni).filter(([d]) => !d.startsWith(mese + "-")));
+      const delMese = Object.fromEntries(Object.entries(l.giorni).filter(([d]) => d.startsWith(mese + "-")));
+      for (const src of [sconfino, prima.get(chiavePersona(l))?.giorni ?? {}, delMese]) {
+        for (const [d, v] of Object.entries(src)) {
+          const o: OreGiorno = { std: v.Standard ?? 0, sup: v.Supplementare ?? 0, acc: v.Accordo ?? 0, str: v.Straordinario ?? 0, ass: ASSENZE_RETRIB.reduce((s, a) => s + (v[a] ?? 0), 0) };
+          if (o.std + o.sup + o.acc + o.str + o.ass > 0) giorni.set(d, o); else giorni.delete(d);
+        }
+      }
+      persone.push({ station: t.station, pop: t.tipo, nome: l.nome, cf: l.cf.trim().toUpperCase(), driverId: l.driverId, contratto: l.contratto, giorni });
+    }
+  }
+  return { persone, coperti, avvisi };
+}
+export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "ACC_SOTTO" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT";
+export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
+  "+1": "Trasferta senza rotta Amazon", "-1": "Rotta Amazon ma zero ore", H: "Ore senza Amazon", A: "Su Amazon, non nel tracking",
+  ORE: "Ore del giorno anomale", ACC: "Accordo di domenica (somministrati)", "7GG": "7 o più giorni di fila",
+  STR_PRIMA: "Straordinario prima del tetto dell'Accordo", STD_OLTRE: "Standard oltre le ore di contratto", ACC_SOTTO: "Accordo sotto le 39 ore",
+  SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana",
+};
+/** Ordine nel messaggio e nelle tabelle: prima le violazioni. */
+export const ORDINE_TIPO: TipoRichiesta[] = ["7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "ACC_SOTTO", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC"];
+
+export type Richiesta = {
+  /** mese|station|pop|persona|tipo|riferimento: non contiene numeri che cambiano, così lo stato resta */
+  chiave: string; mese: string; station: Station; pop: string; driver: string; tipo: TipoRichiesta;
+  /** giorno o lunedì della settimana (AAAA-MM-GG) */
+  rif: string; periodo: string; testo: string;
+};
+
+export type SettimanaRiga = {
+  station: Station; pop: string; driver: string; contratto: string; lunedi: string; periodo: string; giorniLavorati: number;
+  std: number; sup: number; acc: number; str: number; ass: number; tot: number; atteso: Riparto | null; esito: string;
+};
+export type SeiDomenica = { station: Station; pop: string; driver: string; contratto: string; domenica: string; riposo: string; ore: number };
+
+export type EsitoVerifica = { richieste: Richiesta[]; settimane: SettimanaRiga[]; seiDomenica: SeiDomenica[]; nonVerificabili: string[] };
+
+const GIORNI = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"];
+
+/**
+ * Controlli sulle ore del tracking, dal primo del mese fino a `finoA`.
+ * Le settimane si guardano solo se complete (lunedì–domenica tutti coperti dal tracking e domenica ≤ finoA).
+ */
+export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>>, p: { mese: string; finoA: string; dispatcher?: string[] }): EsitoVerifica {
+  const da = `${p.mese}-01`;
+  const disp = new Set((p.dispatcher ?? []).map(normName));
+  const richieste: Richiesta[] = [], settimane: SettimanaRiga[] = [], seiDomenica: SeiDomenica[] = [];
+  const nonVer = new Set<string>();
+  let primoLun = da; while (weekday(primoLun) !== 0) primoLun = addDays(primoLun, -1);
+  const lunedi: string[] = []; for (let l = primoLun; addDays(l, 6) <= p.finoA; l = addDays(l, 7)) lunedi.push(l);
+
+  for (const x of persone) {
+    const cop = coperti.get(`${x.station}|${x.pop}`) ?? new Set<string>();
+    const c = leggiContratto(x.contratto);
+    const dispatcher = c.tipo === "DISPATCHER" || disp.has(normName(x.nome));
+    const chi = x.cf || x.driverId || normName(x.nome);
+    const nuova = (tipo: TipoRichiesta, rif: string, periodo: string, testo: string) =>
+      richieste.push({ chiave: `${p.mese}|${x.station}|${x.pop}|${chi}|${tipo}|${rif}`, mese: p.mese, station: x.station, pop: x.pop, driver: x.nome, tipo, rif, periodo, testo });
+
+    // 7 o più giorni di fila (anche a cavallo del mese, se c'è il tracking del mese prima)
+    const lavorati = [...x.giorni.entries()].filter(([d, g]) => d <= p.finoA && lav(g) > 0).map(([d]) => d).sort();
+    for (let i = 0; i < lavorati.length;) {
+      let j = i; while (j + 1 < lavorati.length && addDays(lavorati[j], 1) === lavorati[j + 1]) j++;
+      const n = j - i + 1;
+      if (n >= 7 && lavorati[j] >= da) nuova("7GG", lavorati[i], `${ddmm(lavorati[i])}–${ddmm(lavorati[j])}`, `${n} giorni di lavoro di fila dal ${ddmm(lavorati[i])} al ${ddmm(lavorati[j])}: il massimo è 6. Verificare il tracking e, se è vero, dare subito il riposo.`);
+      i = j + 1;
+    }
+
+    // Standard oltre 8h24 in un giorno
+    for (const [d, g] of x.giorni) if (d >= da && d <= p.finoA && g.std > STD_MAX_GIORNO + 0.01 && !dispatcher) nuova("STD_GIORNO", d, ddmm(d), `Standard ${it(g.std)} h il ${ddmm(d)}: oltre 8h24 al giorno le ore non vanno nella riga Standard.`);
+
+    for (const l of lunedi) {
+      const dd = Array.from({ length: 7 }, (_, i) => addDays(l, i));
+      const periodo = `${ddmm(l)}–${ddmm(dd[6])}`;
+      if (!dd.every((d) => cop.has(d))) { nonVer.add(`${x.station} ${x.pop}: settimana ${periodo} non verificabile, manca il tracking di una parte dei giorni`); continue; }
+      const g = dd.map((d) => x.giorni.get(d));
+      const s: OreGiorno = { std: 0, sup: 0, acc: 0, str: 0, ass: 0 };
+      for (const o of g) if (o) { s.std += o.std; s.sup += o.sup; s.acc += o.acc; s.str += o.str; s.ass += o.ass; }
+      const tot = s.std + s.sup + s.acc + s.str, gg = g.filter((o) => lav(o) > 0).length;
+      if (tot + s.ass === 0) continue;
+
+      // 6 giorni lavorati con la domenica: da sapere prima della chiusura (non è una richiesta)
+      if (gg === 6 && lav(g[6]) > 0) seiDomenica.push({ station: x.station, pop: x.pop, driver: x.nome, contratto: x.contratto, domenica: dd[6], riposo: GIORNI[g.findIndex((o) => lav(o) === 0)], ore: r1(tot) });
+
+      let atteso: Riparto | null = null, esito = "ok";
+      if (dispatcher) esito = "dispatcher: riparto non controllato";
+      else {
+        const tetto = tettoAccordo(dd[6]);
+        // Le assenze retribuite possono contare o no verso le ore di contratto (dipende da come è compilato il tracking):
+        // si segnala solo se il riparto non torna in nessuno dei due modi, e si propone quello più vicino.
+        const pt = c.tipo === "PT";
+        const dist = (a: Riparto) => (pt ? Math.abs(s.std + s.sup - a.std - a.sup) : Math.abs(s.std - a.std) + Math.abs(s.sup - a.sup)) + Math.abs(s.acc - a.acc) + Math.abs(s.str - a.str);
+        atteso = [ripartoAtteso(tot, s.ass, c, tetto), ripartoAtteso(tot, 0, c, tetto)].sort((x1, x2) => dist(x1) - dist(x2))[0];
+        if (s.ass > 0 && tot + s.ass > tetto + 8) {
+          // ore lavorate + assenze ben oltre una settimana piena: prima di spostare le ore va capito quale delle due è sbagliata
+          esito = "ore + assenze troppe";
+          nuova("ASSENZE", l, periodo, `Settimana ${periodo}: ${it(tot)} h lavorate + ${it(s.ass)} h di assenze = ${it(tot + s.ass)} h, troppe per una settimana. Verificare se le assenze o le ore sono giuste.`);
+        } else {
+          const diff: string[] = [];
+          // part time: Standard e Supplementare si guardano insieme (un giorno in più è Supplementare anche sotto le ore di
+          // contratto); a parte si controlla solo che lo Standard non superi le ore di contratto
+          const voci: [string, number, number][] = pt
+            ? [["Standard + Supplementare", s.std + s.sup, atteso.std + atteso.sup], ["Accordo", s.acc, atteso.acc], ["Straordinario", s.str, atteso.str]]
+            : [["Standard", s.std, atteso.std], ["Supplementare", s.sup, atteso.sup], ["Accordo", s.acc, atteso.acc], ["Straordinario", s.str, atteso.str]];
+          for (const [nome, reale, att] of voci) if (Math.abs(reale - att) > TOLLERANZA) diff.push(`${nome} ${it(reale)} → ${it(att)}`);
+          const stdOltre = pt && c.ore !== null && s.std > c.ore + TOLLERANZA;
+          if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(c.ore!)} (il resto in Supplementare)`);
+          if (diff.length) {
+            esito = diff.join(" · ");
+            const [tipo, perche]: [TipoRichiesta, string] =
+              !pt && s.sup > TOLLERANZA ? ["SUP", "il Supplementare è solo per i part time"]
+              : s.str > atteso.str + TOLLERANZA ? ["STR_PRIMA", `le ore fino a ${tetto} sono assorbite (riga Accordo), lo Straordinario parte oltre ${tetto}`]
+              : stdOltre || (!pt && s.std > atteso.std + TOLLERANZA) ? ["STD_OLTRE", "nella riga Standard vanno solo le ore di contratto"]
+              : s.acc > atteso.acc + TOLLERANZA ? ["ACC_SOTTO", `la riga Accordo vale solo da 39 a ${tetto} ore della settimana`]
+              : ["RIPARTO", "ore nella riga sbagliata"];
+            nuova(tipo, l, periodo, `Settimana ${periodo}: lavorate ${it(tot)} h${s.ass ? ` + ${it(s.ass)} h di assenze` : ""} (${x.contratto || "contratto non indicato"}). Da correggere: ${diff.join("; ")}. Motivo: ${perche}.`);
+          }
+        }
+        if (s.str > STR_MAX_SETT + 0.01) nuova("STR_SETT", l, periodo, `Settimana ${periodo}: ${it(s.str)} h di Straordinario, oltre il massimo di ${STR_MAX_SETT} h a settimana. Verificare.`);
+      }
+      settimane.push({ station: x.station, pop: x.pop, driver: x.nome, contratto: x.contratto, lunedi: l, periodo, giorniLavorati: gg, std: r1(s.std), sup: r1(s.sup), acc: r1(s.acc), str: r1(s.str), ass: r1(s.ass), tot: r1(tot), atteso, esito });
+    }
+  }
+  return { richieste, settimane, seiDomenica, nonVerificabili: [...nonVer].sort() };
+}
+
+const CHIEDI: Record<"+1" | "-1" | "H" | "A", string> = {
+  "+1": "Trasferta nel tracking ma Amazon non lo vede in rotta: cosa ha fatto? Se mezzi, ufficio, corso o altra station scriverlo nella riga RIPOSO.",
+  "-1": "Amazon lo vede in rotta ma nel tracking ha 0 ore: inserire la giornata.",
+  H: "Ore nel tracking ma assente su Amazon, senza trasferta né giustificativo: cosa ha fatto?",
+  A: "In rotta su Amazon ma non è nei tracking della station: è un prestito, un nuovo assunto o un errore?",
+};
+
+/** Le anomalie del controllo tracking vs Amazon (+1, −1, H, A, ORE, ACC) come richieste, una per driver e giorno. */
+export function richiesteDaAmazon(e: EsitoSettimanale, mese: string): Richiesta[] {
+  const out: Richiesta[] = [];
+  for (const r of e.dettaglio) {
+    const chi = r.driverId.startsWith("NOID|") ? normName(r.driver) : r.driverId;
+    for (const cat of alertDelGiorno(r)) {
+      const tipo = cat as TipoRichiesta;
+      const nota = tipo === "ORE" || tipo === "ACC" ? r.extra.find((x) => x.cat === tipo)?.nota ?? "" : r.nota;
+      const base = tipo === "+1" || tipo === "-1" || tipo === "H" ? CHIEDI[tipo] : "";
+      out.push({ chiave: `${mese}|${e.station}|${r.tipo}|${chi}|${tipo}|${r.data}`, mese, station: e.station, pop: r.tipo, driver: r.driver, tipo, rif: r.data, periodo: ddmm(r.data),
+        testo: [`${ddmm(r.data)}: ${base}`.trim(), `Tracking ${it(r.ore)} h, trasferta ${r.trasferta}, pacchi Amazon ${r.pacchi ?? "—"}.`, nota].filter(Boolean).join(" ") });
+    }
+  }
+  for (const n of e.nonInTracking) if (n.categoria === "A") out.push({ chiave: `${mese}|${e.station}|AMAZON|${n.driverId}|A|${n.data}`, mese, station: e.station, pop: "AMAZON", driver: n.driver, tipo: "A", rif: n.data, periodo: ddmm(n.data), testo: [`${ddmm(n.data)}: ${CHIEDI.A}`, `Pacchi ${n.pacchi}.`, n.nota].filter(Boolean).join(" ") });
+  return out;
+}
+
+export type Stato = "DA_FARE" | "RICHIESTA" | "OK" | "RISOLTA";
+export const ETICHETTA_STATO: Record<Stato, string> = { DA_FARE: "Da chiedere", RICHIESTA: "Chiesta, aspetto risposta", OK: "OK, chiusa", RISOLTA: "Sparita da sola" };
+
+export type RichiestaSalvata = { chiave: string; stato: Stato; testo: string };
+
+/**
+ * Unisce le richieste appena trovate con quelle già salvate.
+ * - nuova → DA_FARE; - già salvata → tiene lo stato (se era OK e il testo è cambiato si riapre);
+ * - salvata ma non più trovata, in una station appena controllata → RISOLTA (gli OK restano OK).
+ */
+export function fondiRichieste(salvate: RichiestaSalvata[], trovate: Richiesta[], stationControllate: string[], mese: string) {
+  const by = new Map(salvate.map((s) => [s.chiave, s]));
+  const viste = new Set<string>();
+  const crea: Richiesta[] = [], aggiorna: { chiave: string; stato: Stato; testo: string; riaperta: boolean }[] = [];
+  for (const t of trovate) {
+    if (viste.has(t.chiave)) continue;
+    viste.add(t.chiave);
+    const s = by.get(t.chiave);
+    if (!s) { crea.push(t); continue; }
+    const cambiato = s.testo !== t.testo;
+    if (s.stato === "RISOLTA") aggiorna.push({ chiave: t.chiave, stato: "DA_FARE", testo: t.testo, riaperta: true });
+    else if (s.stato === "OK" && cambiato) aggiorna.push({ chiave: t.chiave, stato: "DA_FARE", testo: t.testo, riaperta: true });
+    else if (cambiato) aggiorna.push({ chiave: t.chiave, stato: s.stato, testo: t.testo, riaperta: false });
+  }
+  const ambito = new Set(stationControllate);
+  for (const s of salvate) {
+    const [m, st] = s.chiave.split("|");
+    if (m === mese && ambito.has(st) && !viste.has(s.chiave) && (s.stato === "DA_FARE" || s.stato === "RICHIESTA")) aggiorna.push({ chiave: s.chiave, stato: "RISOLTA", testo: s.testo, riaperta: false });
+  }
+  return { crea, aggiorna };
+}

@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/presenze/archivio", label: "1. Archivio file" },
-  { href: "/presenze/settimanale", label: "2. Controllo settimanale" },
+  { href: "/presenze/verifica", label: "2. Verifica tracking" },
+  { href: "/presenze/settimanale", label: "Solo Amazon (dettaglio)" },
   { href: "/presenze/fine-mese", label: "3. Fine mese" },
 ];
 

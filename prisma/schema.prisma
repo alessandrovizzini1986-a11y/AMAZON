@@ -578,6 +578,27 @@ model PresenzeRisultato {
   @@index([runId])
 }
 
+// Richieste agli Operation Supervisor nate dalla verifica tracking (Amazon + CCNL/Accordo).
+// La chiave è stabile (mese|station|pop|persona|tipo|riferimento): lo stato resta tra un controllo e l'altro.
+model PresenzeRichiesta {
+  chiave       String   @id
+  mese         String // AAAA-MM
+  station      String
+  pop          String // SIC | STD | STD+SIC | AMAZON
+  driver       String
+  tipo         String
+  rif          String // giorno o lunedì della settimana
+  periodo      String
+  testo        String
+  stato        String   @default("DA_FARE") // DA_FARE | RICHIESTA | OK | RISOLTA
+  nota         String?
+  creataIl     DateTime @default(now())
+  aggiornataIl DateTime @default(now()) @updatedAt
+  aggiornataDa String?
+
+  @@index([mese, station])
+}
+
 // Dispatcher: esclusi da ogni alert del controllo settimanale (modificabili da ADMIN)
 model PresenzeDispatcher {
   id        String   @id @default(cuid())

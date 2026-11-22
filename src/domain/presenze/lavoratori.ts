@@ -57,10 +57,11 @@ function pyFloat(v: unknown): number | null {
   return /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(s) ? parseFloat(s) : null;
 }
 
-export function leggiLavoratori(sheets: SheetGrid[], anno: number, mese: number): { lavoratori: Lavoratore[]; foglio: string } {
+/** Con `tuttiIGiorni` tiene anche le colonne che sconfinano nel mese prima o dopo (settimane a cavallo). */
+export function leggiLavoratori(sheets: SheetGrid[], anno: number, mese: number, tuttiIGiorni = false): { lavoratori: Lavoratore[]; foglio: string } {
   const ts = findTrackingSheet(sheets, anno, mese);
   const prefix = `${anno}-${String(mese).padStart(2, "0")}-`;
-  const days = ts.dayCols.filter((d) => d.date.startsWith(prefix));
+  const days = tuttiIGiorni ? ts.dayCols : ts.dayCols.filter((d) => d.date.startsWith(prefix));
   // nome: "Lavoratore", "Nominativo" o, in alcuni tracking (DLZ2 STD), la colonna "Driver" accanto a "Driver ID"
   const esatta = (h: string) => { const i = ts.header.findIndex((v) => v.trim() === h); return i >= 0 ? i : null; };
   const cNome = headerCol(ts, ["lavorat", "nominativ"]) ?? esatta("driver") ?? esatta("cognome e nome") ?? esatta("nome");
