@@ -1101,6 +1101,23 @@ model TrainingExtra {
   @@index([day])
 }
 
+// Costo dei furgoni per compagnia di noleggio, mese per mese (Flotta → Situazione per stazione).
+// Il mese in corso si riscrive a ogni apertura della pagina: l'ultima scrittura del mese resta come storico.
+// fonte MAIL = mese inserito a mano dalle mail di stima costi (mezzi non noti).
+model FlottaCostoMese {
+  id           String   @id @default(cuid())
+  mese         String // AAAA-MM
+  appalto      String // AMAZON | GLS
+  compagnia    String
+  mezzi        Int?
+  canone       Decimal  @db.Decimal(12, 2)
+  stimati      Int      @default(0) // mezzi con canone stimato dal sito
+  fonte        String   @default("SITO") // SITO | MAIL
+  aggiornatoIl DateTime @default(now())
+
+  @@unique([mese, appalto, compagnia])
+}
+
 // Corsi (Aiuto → Corsi): una riga per utente e lezione ("corso/slug"). La lezione dopo si apre quando superataIl è valorizzato.
 model CorsoProgresso {
   id         String    @id @default(cuid())
