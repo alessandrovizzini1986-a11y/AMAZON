@@ -66,7 +66,7 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   aiuto: (v) => ({
     titolo: "Aiuto: quando hai un dubbio",
-    testo: ["Il Vademecum spiega ogni procedura passo per passo. Il Glossario traduce le sigle del lavoro: DSP, CDC, SIC, ADIT e le altre.", ...(v.has("/home?tour=1") ? ["Da qui puoi anche rifare questo tour."] : [])],
+    testo: [...(v.has("/corsi") ? ["Nei Corsi impari le regole una alla volta, con gli esercizi: la lezione dopo si apre quando hai fatto giusta quella prima."] : []), "Il Vademecum spiega ogni procedura passo per passo. Il Glossario traduce le sigle del lavoro: DSP, CDC, SIC, ADIT e le altre.", ...(v.has("/home?tour=1") ? ["Da qui puoi anche rifare questo tour."] : [])],
     quando: "Ogni volta che non sai come si fa una cosa.",
   }),
   gestione: () => ({

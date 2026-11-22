@@ -1101,6 +1101,19 @@ model TrainingExtra {
   @@index([day])
 }
 
+// Corsi (Aiuto → Corsi): una riga per utente e lezione ("corso/slug"). La lezione dopo si apre quando superataIl è valorizzato.
+model CorsoProgresso {
+  id         String    @id @default(cuid())
+  userId     String
+  lezione    String
+  tentativi  Int       @default(0)
+  superataIl DateTime?
+  ultimoIl   DateTime  @default(now())
+
+  @@unique([userId, lezione])
+  @@index([userId])
+}
+
 // ───────────── Telefoni e SIM (Wind) ─────────────
 // SIM: chiave = numero (Service ID Wind). inWind = nel file Wind ufficiale (paghiamo il canone).
 // PIN e PUK: si leggono solo con "Mostra" (ADMIN), ogni lettura va nell'audit.
