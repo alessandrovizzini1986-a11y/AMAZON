@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { numero, type Esito, type EsercizioVista, type Risposta } from "@/domain/corsi/corsi";
+import { NESSUN_ERRORE, numero, type Esito, type EsercizioVista, type Risposta } from "@/domain/corsi/corsi";
+import { TrackingFinto } from "@/components/TrackingFinto";
 import { consegna } from "../../actions";
 
 /**
  * Esercizi di una lezione: tutti obbligatori, corretti insieme. Se ne sbagli uno vedi la spiegazione e riprovi
- * (gli esercizi con i numeri cambiano). `conta` = la lezione è ancora da superare.
+ * (gli esercizi cambiano a ogni tentativo). `conta` = la lezione è ancora da superare.
  */
 export function Esercizi({ corso, slug, esercizi, variante, conta, dopo, tentativi }: {
   corso: string; slug: string; esercizi: EsercizioVista[]; variante: number; conta: boolean; dopo: { href: string; titolo: string } | null; tentativi: number;
@@ -16,18 +17,19 @@ export function Esercizi({ corso, slug, esercizi, variante, conta, dopo, tentati
   const router = useRouter(), path = usePathname();
   const [scelte, setScelte] = useState<Record<string, number>>({});
   const [numeri, setNumeri] = useState<Record<string, string[]>>({});
+  const [celle, setCelle] = useState<Record<string, string>>({});
   const [esiti, setEsiti] = useState<Esito[] | null>(null);
   const [superata, setSuperata] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errore, setErrore] = useState("");
 
-  const completo = esercizi.every((e) => (e.tipo === "scelta" ? scelte[e.id] !== undefined : e.campi.every((_, i) => numero(numeri[e.id]?.[i] ?? "") !== null)));
+  const risposta = (e: EsercizioVista): Risposta => (e.tipo === "scelta" ? scelte[e.id] ?? null : e.tipo === "cella" ? celle[e.id] ?? null : e.campi.map((_, i) => numero(numeri[e.id]?.[i] ?? "")));
+  const fatto = (e: EsercizioVista) => { const r = risposta(e); return Array.isArray(r) ? r.every((x) => x !== null) : r !== null; };
+  const completo = esercizi.every(fatto);
   const invia = async () => {
     setBusy(true); setErrore("");
     try {
-      const risposte: Record<string, Risposta> = {};
-      for (const e of esercizi) risposte[e.id] = e.tipo === "scelta" ? scelte[e.id] ?? null : e.campi.map((_, i) => numero(numeri[e.id]?.[i] ?? ""));
-      const r = await consegna({ corso, slug, risposte, variante });
+      const r = await consegna({ corso, slug, risposte: Object.fromEntries(esercizi.map((e) => [e.id, risposta(e)])), variante });
       setEsiti(r.esiti); setSuperata(r.superata);
     } catch (x) { setErrore(x instanceof Error ? x.message : "Non sono riuscito a correggere: riprova."); }
     finally { setBusy(false); }
@@ -49,7 +51,17 @@ export function Esercizi({ corso, slug, esercizi, variante, conta, dopo, tentati
           return (
             <li key={e.id} className={`rounded-control border p-4 ${r ? (r.ok ? "border-ok bg-ok-soft" : "border-danger bg-danger-soft") : "border-line"}`}>
               <p className="font-medium"><span className="mr-2 text-ink-muted">{n + 1}.</span>{e.domanda}</p>
-              {e.tipo === "scelta" ? (
+              {e.tipo !== "cella" && e.tracking && <div className="mt-3"><TrackingFinto t={e.tracking} /></div>}
+              {e.tipo === "cella" && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <TrackingFinto t={e.tracking} onCella={(id) => setCelle({ ...celle, [e.id]: id })} scelta={celle[e.id] ?? null} esito={r ? (r.ok ? "ok" : "ko") : null} bloccato={!!esiti} />
+                  <label className={`flex min-h-[44px] cursor-pointer items-center gap-3 self-start rounded-control border bg-surface-raised px-3 py-2 ${celle[e.id] === NESSUN_ERRORE ? "border-brand ring-1 ring-brand" : "border-[#d5dbe3]"}`}>
+                    <input type="checkbox" className="h-4 w-4" disabled={!!esiti} checked={celle[e.id] === NESSUN_ERRORE} onChange={(ev) => { const c = { ...celle }; if (ev.target.checked) c[e.id] = NESSUN_ERRORE; else delete c[e.id]; setCelle(c); }} />
+                    <span>Non c&apos;è nessun errore: è compilato bene</span>
+                  </label>
+                </div>
+              )}
+              {e.tipo === "scelta" && (
                 <div className="mt-3 flex flex-col gap-2" role="radiogroup" aria-label={`Risposta all'esercizio ${n + 1}`}>
                   {e.opzioni.map((o, i) => (
                     <label key={i} className={`flex min-h-[44px] cursor-pointer items-center gap-3 rounded-control border bg-surface-raised px-3 py-2 ${scelte[e.id] === i ? "border-brand ring-1 ring-brand" : "border-[#d5dbe3]"}`}>
@@ -58,7 +70,8 @@ export function Esercizi({ corso, slug, esercizi, variante, conta, dopo, tentati
                     </label>
                   ))}
                 </div>
-              ) : (
+              )}
+              {e.tipo === "numeri" && (
                 <div className="mt-3 flex flex-wrap gap-3">
                   {e.campi.map((c, i) => (
                     <label key={c} className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">{c}
@@ -78,7 +91,7 @@ export function Esercizi({ corso, slug, esercizi, variante, conta, dopo, tentati
       {!esiti && (
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className="btn-primary h-11" disabled={!completo || busy} onClick={invia}>{busy ? "Correggo…" : "Correggi"}</button>
-          {!completo && <span className="text-sm text-ink-muted">Rispondi a tutti gli esercizi per poterli correggere.</span>}
+          {!completo && <span className="text-sm text-ink-muted">Rispondi a tutti gli esercizi per poterli correggere (ne mancano {esercizi.filter((e) => !fatto(e)).length}).</span>}
         </div>
       )}
       {esiti && superata && (
@@ -89,7 +102,7 @@ export function Esercizi({ corso, slug, esercizi, variante, conta, dopo, tentati
       )}
       {esiti && !superata && (
         <div className="flex flex-wrap items-center gap-3 rounded-control bg-warn-soft px-4 py-3">
-          <p className="mr-auto text-sm text-warn"><b>{giuste} giuste su {esercizi.length}.</b> Leggi le spiegazioni in rosso, rileggi la regola qui sopra e riprova: gli esercizi con i numeri cambiano.</p>
+          <p className="mr-auto text-sm text-warn"><b>{giuste} giuste su {esercizi.length}.</b> Leggi le spiegazioni in rosso, rileggi la regola qui sopra e riprova: gli esercizi cambiano.</p>
           <button type="button" className="btn-primary" onClick={riprova}>Riprova</button>
         </div>
       )}

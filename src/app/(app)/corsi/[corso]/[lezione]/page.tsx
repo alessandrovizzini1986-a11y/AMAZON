@@ -8,7 +8,9 @@ import { corso } from "@/content/corsi";
 import { chiaveLezione, statoLezioni, vista } from "@/domain/corsi/corsi";
 import { VademecumContent } from "../../../vademecum/VademecumContent";
 import { progresso } from "../../dati";
+import { TrackingFinto } from "@/components/TrackingFinto";
 import { Esercizi } from "./Esercizi";
+import { TrackingVero } from "./TrackingVero";
 
 export const dynamic = "force-dynamic";
 
@@ -30,16 +32,26 @@ export default async function LezionePage({ params, searchParams }: { params: Pr
   const dopo = c.lezioni[i + 1], prima = c.lezioni[i - 1];
 
   return (
-    <article className="mx-auto flex max-w-3xl flex-col gap-6">
+    <article className="mx-auto flex max-w-4xl flex-col gap-6">
       <PageHeader eyebrow={`${c.titolo} · lezione ${i + 1} di ${c.lezioni.length}`} title={l.titolo} subtitle={`${l.obiettivo} Circa ${l.minuti} minuti.`} />
       {ripasso && <p className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">Stai guardando questa lezione in ripasso, come tutor: gli esercizi si correggono ma non contano come lezione superata.</p>}
       {stato === "superata" && <p className="rounded-control bg-ok-soft px-4 py-3 text-sm text-ok">Lezione già superata: puoi rileggerla e rifare gli esercizi quando vuoi, l&apos;avanzamento non cambia.</p>}
       <div className="card p-4 md:p-6"><VademecumContent html={renderMarkdown(l.testo)} /></div>
+      {l.figure && (
+        <section className="card flex flex-col gap-5 p-4 md:p-6" aria-label="Come lo vedi nel file">
+          <div>
+            <h2 className="text-[19px] font-semibold">Come lo vedi nel file</h2>
+            <p className="text-sm text-ink-muted">È un tracking disegnato come quello vero, con nomi inventati. Le righe e l&apos;ordine sono gli stessi del file Excel.</p>
+          </div>
+          {l.figure.map((f, k) => <div key={k} className="flex flex-col gap-1"><TrackingFinto t={f.tracking} /><p className="text-sm">{f.didascalia}</p></div>)}
+        </section>
+      )}
       {l.approfondisci && (
         <p className="text-sm text-ink-muted">Per approfondire: {l.approfondisci.map((a, k) => <span key={a.href}>{k > 0 && " · "}<Link className="underline" href={a.href}>{a.label}</Link></span>)}</p>
       )}
       <Esercizi key={variante} corso={c.id} slug={l.slug} esercizi={l.esercizi.map((g) => vista(g, variante))} variante={variante} conta={stato === "aperta"}
         dopo={dopo ? { href: `/corsi/${c.id}/${dopo.slug}`, titolo: dopo.titolo } : null} tentativi={tentativi} />
+      {l.trackingVero && <TrackingVero />}
       <nav className="flex flex-wrap justify-between gap-3 border-t border-line pt-4 text-sm" aria-label="Lezioni vicine">
         {prima ? <Link className="btn-secondary" href={`/corsi/${c.id}/${prima.slug}`}>← {prima.titolo}</Link> : <span />}
         <Link className="btn-secondary" href="/corsi">Tutte le lezioni</Link>
