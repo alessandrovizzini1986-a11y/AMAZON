@@ -8,7 +8,7 @@ export const SPIEGA_RIGA: Record<RigaTracking | "Amazon", string> = {
   Standard: "Ore normali, quelle del contratto. Ha lavorato.",
   Straordinario: "Ore oltre il tetto dell'Accordo (42). Ha lavorato.",
   Supplementare: "Ore in più di un part time, fino a 39. Ha lavorato.",
-  Accordo: "Ore da 39 a 42 della settimana: lavorate ma assorbite, non pagate come straordinario.",
+  Accordo: "Ore da 39 a 42 della settimana: lavorate ma assorbite, perché il driver prende la diaria. Non sono pagate come straordinario.",
   Totali: "Somma delle quattro righe del lavoro. La calcola il file.",
   RIPOSO: "Giorno di riposo. Qui l'OS scrive anche le sigle: MEZZI, UFF, CORSO, altra station.",
   FERIE: "Ferie. Non ha lavorato.", ROL: "Permesso retribuito (riduzione orario). Non ha lavorato.", ExF: "Ex festività. Non ha lavorato.",
