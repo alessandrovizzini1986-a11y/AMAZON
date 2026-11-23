@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
+import { DA_INCOLLARE } from "@/domain/fatture/allinea";
 
 const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const d = (s: string) => new Date(s + "T00:00:00Z");
@@ -43,7 +44,7 @@ export async function allineaNumeri(lotto: z.infer<typeof numeroFile>[]): Promis
 export async function concludiAllineamento(c: { file: string; righe: number; numeri: number; trovati: number; nuovi: number; righeNumeroVuoto: number }) {
   const user = await requireUser();
   assertCan(user, "fatture.allinea");
-  const esportateNonPresenti = await db.amazonInvoice.findMany({ where: { esportataIl: { not: null }, presenteInFatt2026Il: null }, select: { numero: true }, orderBy: { numero: "asc" } });
+  const esportateNonPresenti = await db.amazonInvoice.findMany({ where: DA_INCOLLARE, select: { numero: true }, orderBy: { numero: "asc" } });
   await audit({ userId: user.id, action: "fatture.allinea", entity: "AmazonInvoice", meta: { ...c, esportateNonPresenti: esportateNonPresenti.length } });
   revalidatePath("/fatture-amazon", "layout");
   return { esportateNonPresenti: esportateNonPresenti.map((x) => x.numero) };

@@ -5,6 +5,7 @@ import { can } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
 import { statoNumeri } from "./dati";
+import { DA_INCOLLARE } from "@/domain/fatture/allinea";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Fatture Amazon — FleetDSP" };
@@ -15,7 +16,7 @@ export default async function FatturePage() {
   const [{ ultimo, prossimo }, tot, daIncollare, righe] = await Promise.all([
     statoNumeri(),
     db.amazonInvoice.count().catch(() => 0),
-    db.amazonInvoice.count({ where: { esportataIl: { not: null }, presenteInFatt2026Il: null } }).catch(() => 0),
+    db.amazonInvoice.count({ where: DA_INCOLLARE }).catch(() => 0),
     db.amazonInvoiceLine.count().catch(() => 0),
   ]);
   const card = (l: string, v: string, href: string, warn = false) => (
