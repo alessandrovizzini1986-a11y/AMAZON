@@ -51,14 +51,13 @@ export function percorsoConsuntivo(x: { mese: string; aditMese: boolean; payroll
   };
 }
 
-/** Fatture Amazon, il giro del lunedì. */
-export function percorsoFatture(x: { importateSettimana: number; esportateNonInFatt: number; allineateSettimana: number }): Percorso {
+/** Fatture Amazon, il giro del lunedì. Le righe restano sul sito: non c'è più da ricaricare il proprio file. */
+export function percorsoFatture(x: { importateSettimana: number }): Percorso {
   return {
     id: "fatture-lunedi", titolo: "Fatture della settimana",
     passi: stati([
       { id: "importa", titolo: "Scarica i PDF dal prossimo numero e importali", href: "/fatture-amazon/importa", fatto: x.importateSettimana > 0, nota: x.importateSettimana ? `${x.importateSettimana} importate questa settimana` : undefined },
-      { id: "incolla", titolo: "Scarica l'Excel o copia le righe e incollale in fatt_2026", href: "/fatture-amazon/importa", fatto: x.importateSettimana > 0 && x.esportateNonInFatt === 0, nota: x.esportateNonInFatt ? `${x.esportateNonInFatt} esportate ma non ancora in fatt_2026` : undefined },
-      { id: "allinea", titolo: "Allinea il registro con fatt_2026", href: "/fatture-amazon/allinea", fatto: x.allineateSettimana > 0 && x.esportateNonInFatt === 0 },
+      { id: "file", titolo: "Se ti serve il tuo file aggiornato: scarica le righe nuove o il file completo", href: "/fatture-amazon", fatto: x.importateSettimana > 0 },
     ]),
   };
 }

@@ -18,11 +18,11 @@ describe("percorsi a binario", () => {
   it("consuntivo: ADIT, poi riconciliazione STD, poi paga, poi SIC", () => {
     expect(prossimo(percorsoConsuntivo({ mese: "2026-09", aditMese: true, payrollMeseSucc: false, ricStd: true, ricSic: false }))!.id).toBe("payroll");
   });
-  it("fatture: esportate e non incollate → il passo è incollare", () => {
-    const p = percorsoFatture({ importateSettimana: 12, esportateNonInFatt: 3, allineateSettimana: 0 });
-    expect(prossimo(p)!.id).toBe("incolla");
-    expect(p.passi.find((x) => x.id === "incolla")!.nota).toContain("3 esportate");
-    expect(completato(percorsoFatture({ importateSettimana: 12, esportateNonInFatt: 0, allineateSettimana: 12 }))).toBe(true);
+  it("fatture: importati i PDF il giro è finito, non c'è da ricaricare il file", () => {
+    const p = percorsoFatture({ importateSettimana: 0 });
+    expect(prossimo(p)!.id).toBe("importa");
+    expect(p.passi.map((x) => x.id)).toEqual(["importa", "file"]);
+    expect(completato(percorsoFatture({ importateSettimana: 12 }))).toBe(true);
   });
   it("presenze e telepass", () => {
     expect(prossimo(percorsoPresenze({ settimana: "2026-10-25", runSettimana: true, esitiAperti: 4, mese: "2026-10", runFineMese: false }))!.id).toBe("esiti");

@@ -1,7 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { percorsoConsuntivo, percorsoCostiFineMese, percorsoFatture, percorsoPresenze, percorsoTelepass, type Percorso } from "@/domain/percorsi/percorso";
-import { DA_INCOLLARE } from "@/domain/fatture/allinea";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const mesePrec = (m: string) => { const [a, b] = m.split("-").map(Number); return b === 1 ? `${a - 1}-12` : `${a}-${String(b - 1).padStart(2, "0")}`; };
@@ -34,12 +33,8 @@ export async function percorsiCosti(oggi = iso(new Date())): Promise<Percorso[]>
 export async function percorsoFattureSettimana(): Promise<Percorso | null> {
   return sicuro(async () => {
     const da = giorniFa(7);
-    const [importate, esportate, allineate] = await Promise.all([
-      db.amazonInvoice.count({ where: { fonte: "PDF", createdAt: { gte: da } } }),
-      db.amazonInvoice.count({ where: DA_INCOLLARE }),
-      db.amazonInvoice.count({ where: { presenteInFatt2026Il: { gte: da } } }),
-    ]);
-    return percorsoFatture({ importateSettimana: importate, esportateNonInFatt: esportate, allineateSettimana: allineate });
+    const importate = await db.amazonInvoice.count({ where: { fonte: "PDF", createdAt: { gte: da } } });
+    return percorsoFatture({ importateSettimana: importate });
   }, null);
 }
 
