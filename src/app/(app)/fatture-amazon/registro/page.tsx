@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui";
 import { utenteCon } from "../dati";
 import { annullaEsportazione } from "./actions";
 import { Aiuto } from "@/components/Aiuto";
+import { DA_INCOLLARE } from "@/domain/fatture/allinea";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Registro fatture Amazon — FleetDSP" };
@@ -22,13 +23,13 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
     ...(p.ds ? { ds: p.ds } : {}),
     ...(p.q ? { numero: { contains: p.q.trim().toUpperCase() } } : {}),
     ...(p.da || p.a ? { periodoA: { ...(p.da ? { gte: new Date(p.da + "T00:00:00Z") } : {}), ...(p.a ? { lte: new Date(p.a + "T00:00:00Z") } : {}) } } : {}),
-    ...(stato === "esportata" ? { esportataIl: { not: null } } : stato === "presente" ? { presenteInFatt2026Il: { not: null } } : stato === "entrambi" ? { esportataIl: { not: null }, presenteInFatt2026Il: { not: null } } : stato === "da-incollare" ? { esportataIl: { not: null }, presenteInFatt2026Il: null } : {}),
+    ...(stato === "esportata" ? { esportataIl: { not: null } } : stato === "presente" ? { presenteInFatt2026Il: { not: null } } : stato === "entrambi" ? { esportataIl: { not: null }, presenteInFatt2026Il: { not: null } } : stato === "da-incollare" ? DA_INCOLLARE : {}),
   };
   const [fatture, n, dsList, daIncollare] = await Promise.all([
     db.amazonInvoice.findMany({ where, orderBy: { numero: "desc" }, take: 500 }),
     db.amazonInvoice.count({ where }),
     db.amazonInvoice.findMany({ distinct: ["ds"], select: { ds: true }, orderBy: { ds: "asc" } }),
-    db.amazonInvoice.count({ where: { esportataIl: { not: null }, presenteInFatt2026Il: null } }),
+    db.amazonInvoice.count({ where: DA_INCOLLARE }),
   ]);
   // fatture con righe forse doppie (stesso giorno, quantità e imponibile; rotte escluse): stesso criterio di src/domain/fatture/doppioni.ts
   const doppie = await db.$queryRaw<{ numero: string; gruppi: bigint }[]>`select i.numero, count(*) gruppi from (select "invoiceId" from "AmazonInvoiceLine" where abs(avere) >= 0.005 and descrizione !~* 'block of' group by "invoiceId", data::date, quantita, avere having count(*) > 1) x join "AmazonInvoice" i on i.id = x."invoiceId" group by i.numero order by i.numero`.catch(() => []);
