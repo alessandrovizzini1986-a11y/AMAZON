@@ -25,11 +25,10 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
     ...(p.da || p.a ? { periodoA: { ...(p.da ? { gte: new Date(p.da + "T00:00:00Z") } : {}), ...(p.a ? { lte: new Date(p.a + "T00:00:00Z") } : {}) } } : {}),
     ...(stato === "esportata" ? { esportataIl: { not: null } } : stato === "presente" ? { presenteInFatt2026Il: { not: null } } : stato === "entrambi" ? { esportataIl: { not: null }, presenteInFatt2026Il: { not: null } } : stato === "da-incollare" ? DA_INCOLLARE : {}),
   };
-  const [fatture, n, dsList, daIncollare] = await Promise.all([
+  const [fatture, n, dsList] = await Promise.all([
     db.amazonInvoice.findMany({ where, orderBy: { numero: "desc" }, take: 500 }),
     db.amazonInvoice.count({ where }),
     db.amazonInvoice.findMany({ distinct: ["ds"], select: { ds: true }, orderBy: { ds: "asc" } }),
-    db.amazonInvoice.count({ where: DA_INCOLLARE }),
   ]);
   // fatture con righe forse doppie (stesso giorno, quantità e imponibile; rotte escluse): stesso criterio di src/domain/fatture/doppioni.ts
   const doppie = await db.$queryRaw<{ numero: string; gruppi: bigint }[]>`select i.numero, count(*) gruppi from (select "invoiceId" from "AmazonInvoiceLine" where abs(avere) >= 0.005 and descrizione !~* 'block of' group by "invoiceId", data::date, quantita, avere having count(*) > 1) x join "AmazonInvoice" i on i.id = x."invoiceId" group by i.numero order by i.numero`.catch(() => []);
@@ -38,11 +37,6 @@ export default async function RegistroPage({ searchParams }: { searchParams: Pro
     <div className="flex flex-col gap-6">
       <PageHeader eyebrow="Amazon · registro" title="Registro delle fatture"
         subtitle="Tutte le fatture conosciute dal sito: quelle esportate da Importa e quelle trovate in fatt_2026 con l'allineamento." />
-      {daIncollare > 0 && stato !== "da-incollare" && (
-        <Link href="/fatture-amazon/registro?stato=da-incollare" className="rounded-control bg-warn-soft px-4 py-3 text-sm font-semibold text-warn">
-          {daIncollare} fatture esportate ma non ancora viste in fatt_2026: scaricate ma non incollate? Mostra l&apos;elenco →
-        </Link>
-      )}
       {doppie.length > 0 && (
         <details className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">
           <summary className="cursor-pointer font-semibold">{doppie.length} fatture con righe forse doppie (stesso giorno, quantità e importo): aprile e controlla <Aiuto k="fatture.elimina-riga" /></summary>
