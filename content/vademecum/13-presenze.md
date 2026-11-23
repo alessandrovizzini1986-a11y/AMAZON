@@ -32,7 +32,7 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 | Tipo di richiesta | Cosa vuol dire |
 |---|---|
 | 7 o più giorni di fila | Violazione: il massimo è 6. Si vede anche a cavallo del mese se c'è il tracking del mese prima. Avvisa subito Alessandro |
-| Accordo non compilato: straordinario sotto il tetto | Le ore da 39 al tetto (42 dal 01/06/2026) sono assorbite e vanno nella riga Accordo: lo Straordinario parte solo dopo. Spesso la riga Accordo non viene compilata: per questo c'è **una sola richiesta per station** (non una per driver), con le ore in gioco e l'elenco dei driver. Il dettaglio per settimana è nel foglio Settimane dell'Excel |
+| Straordinario prima delle 39 ore | Lo Straordinario parte solo dopo le 39 ore ordinarie della settimana. La riga Accordo **non compilata non è un errore**: se lo Standard è a 39, le ore dopo possono stare nello Straordinario (deciso il 24/11/2026). Resta un errore l'Accordo di domenica |
 | Standard oltre le ore di contratto | Full time oltre 39 ore, o part time oltre le sue ore, nella riga Standard |
 | Supplementare su un non part time | Il Supplementare è solo per i part time |
 | Ore e assenze: troppe nella settimana | Ore lavorate più assenze ben oltre una settimana piena: una delle due è sbagliata |
