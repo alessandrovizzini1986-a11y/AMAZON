@@ -41,11 +41,13 @@ describe("verifica delle settimane", () => {
     expect(e.richieste).toEqual([]);
     expect(e.settimane.find((s) => s.lunedi === LUN)).toMatchObject({ std: 39, acc: 1, tot: 40, giorniLavorati: 5, esito: "ok" });
   });
-  it("straordinario prima del tetto: 48 ore con Accordo 1 e Straordinario 8", () => {
+  it("straordinario sotto il tetto: una sola richiesta per station con le ore in gioco, non una per driver", () => {
     const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7, { acc: 1 }), g(0, { str: 8 }), null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
-    expect(e.richieste[0].testo).toContain("Straordinario 8 → 6");
-    expect(e.richieste[0].chiave).toBe(`2026-11|DER1|SIC|CF1|STR_PRIMA|${LUN}`);
+    expect(e.richieste[0].driver).toBe("Tutta la station");
+    expect(e.richieste[0].testo).toContain("2 h di Straordinario");
+    expect(e.richieste[0].chiave).toBe("2026-11|DER1|SIC|STATION|STR_PRIMA|2026-11");
+    expect(e.settimane.find((x) => x.lunedi === LUN)!.esito).toContain("Straordinario 8 → 6"); // il dettaglio resta nel foglio Settimane
   });
   it("le assenze possono contare o no verso le 39 ore: si segnala solo se non torna in nessuno dei due modi", () => {
     // 4 giorni da 8 h + 8 h di ferie + 1 h di Accordo: torna contando le ferie
@@ -99,5 +101,16 @@ describe("le richieste tengono lo stato tra un controllo e l'altro", () => {
       { chiave: "2026-11|DER1|f", stato: "DA_FARE", testo: "t", riaperta: true },
       { chiave: "2026-11|DER1|b", stato: "RISOLTA", testo: "t", riaperta: false },
     ]); // DER2 non è stata controllata: resta com'è; "e" era OK e resta OK
+  });
+});
+
+describe("gruppi per il menu dei filtri", () => {
+  it("ogni tipo sta in un solo gruppo", async () => {
+    const { GRUPPI_TIPO, ORDINE_TIPO, gruppoDi } = await import("@/domain/presenze/verifica");
+    const tutti = GRUPPI_TIPO.flatMap((g) => [...g.tipi]);
+    expect([...tutti].sort()).toEqual([...ORDINE_TIPO].sort());
+    expect(new Set(tutti).size).toBe(tutti.length);
+    expect(GRUPPI_TIPO.length).toBe(4);
+    expect([gruppoDi("+1"), gruppoDi("STR_PRIMA"), gruppoDi("ACC"), gruppoDi("7GG"), gruppoDi("STD_OLTRE")]).toEqual(["GIORNI", "ACCORDO", "ACCORDO", "RIPOSI", "ORE"]);
   });
 });
