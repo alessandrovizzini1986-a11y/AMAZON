@@ -132,7 +132,7 @@ export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "S
 export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
   "+1": "Trasferta senza rotta Amazon", "-1": "Rotta Amazon ma zero ore", H: "Ore senza Amazon", A: "Su Amazon, non nel tracking",
   ORE: "Ore del giorno anomale", ACC: "Accordo di domenica (somministrati)", "7GG": "7 o più giorni di fila",
-  STR_PRIMA: "Accordo non compilato (una riga per station)", STD_OLTRE: "Standard oltre le ore di contratto",
+  STR_PRIMA: "Straordinario prima delle 39 ore", STD_OLTRE: "Standard oltre le ore di contratto",
   SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana",
 };
 /**
@@ -141,8 +141,8 @@ export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
  */
 export const GRUPPI_TIPO = [
   { id: "GIORNI", nome: "Ha lavorato davvero? (tracking e Amazon non coincidono)", tipi: ["-1", "+1", "H", "A"] },
-  { id: "ORE", nome: "Ore nella riga sbagliata", tipi: ["STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "ORE"] },
-  { id: "ACCORDO", nome: "Accordo (non compilato, o di domenica)", tipi: ["STR_PRIMA", "ACC"] },
+  { id: "ORE", nome: "Ore nella riga sbagliata", tipi: ["STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "ORE"] },
+  { id: "ACCORDO", nome: "Accordo di domenica", tipi: ["ACC"] },
   { id: "RIPOSI", nome: "Riposi: 7 o più giorni di fila", tipi: ["7GG"] },
 ] as const satisfies readonly { id: string; nome: string; tipi: readonly TipoRichiesta[] }[];
 export const gruppoDi = (t: string) => GRUPPI_TIPO.find((g) => (g.tipi as readonly string[]).includes(t))?.id ?? "ORE";
@@ -176,9 +176,6 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
   const disp = new Set((p.dispatcher ?? []).map(normName));
   const richieste: Richiesta[] = [], settimane: SettimanaRiga[] = [], seiDomenica: SeiDomenica[] = [];
   const nonVer = new Set<string>();
-  // Straordinario sotto il tetto dell'Accordo: spesso la riga Accordo non viene compilata affatto, quindi una richiesta
-  // per driver e per settimana fa solo rumore. Si raccoglie tutto e si fa UNA richiesta per station e popolazione, con le ore in gioco.
-  const strPrima = new Map<string, { station: Station; pop: string; ore: number; sett: number; driver: Map<string, { n: number; ore: number }> }>();
   let primoLun = da; while (weekday(primoLun) !== 0) primoLun = addDays(primoLun, -1);
   const lunedi: string[] = []; for (let l = primoLun; addDays(l, 6) <= p.finoA; l = addDays(l, 7)) lunedi.push(l);
 
@@ -235,22 +232,21 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
         } else {
           const diff: string[] = [];
           const maxAcc = tetto - ORE_FT, maxStd = pt && c.ore !== null ? c.ore : ORE_FT;
-          const strTroppo = s.str > atteso.str + TOLLERANZA, strPoco = s.str < atteso.str - TOLLERANZA;
+          // La riga Accordo può anche non essere compilata (deciso da Alessandro il 24/11/2026): dopo le 39 ore ordinarie
+          // le ore possono andare a Straordinario. È un errore solo lo Straordinario segnato PRIMA di arrivare a 39 ore.
+          const strMax = Math.max(ripartoAtteso(tot, s.ass, c, ORE_FT).str, ripartoAtteso(tot, 0, c, ORE_FT).str);
+          const strTroppo = s.str > strMax + TOLLERANZA, strPoco = s.str < atteso.str - TOLLERANZA;
           const supNonPt = !pt && s.sup > TOLLERANZA, stdOltre = s.std > maxStd + TOLLERANZA, accOltre = s.acc > maxAcc + TOLLERANZA;
-          if (strTroppo || strPoco) diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`);
+          if (strTroppo) diff.push(`Straordinario ${it(s.str)} → al massimo ${it(strMax)}`, `Standard${pt ? " e Supplementare" : ""} ${it(s.std + s.sup)} → ${it(Math.min(tot, ORE_FT))} prima di passare allo Straordinario`);
+          else if (strPoco) diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`);
           if (supNonPt) diff.push(`Supplementare ${it(s.sup)} → 0`);
           if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(maxStd)}${pt ? " (il resto in Supplementare)" : " (il resto in Accordo)"}`);
           if (accOltre) diff.push(`Accordo ${it(s.acc)} → al massimo ${it(maxAcc)}`);
           if (diff.length) {
             esito = diff.join(" · ");
-            if (strTroppo) {
-              const k = `${x.station}|${x.pop}`, a = strPrima.get(k) ?? { station: x.station, pop: x.pop, ore: 0, sett: 0, driver: new Map() };
-              const inPiu = s.str - atteso.str, d = a.driver.get(x.nome) ?? { n: 0, ore: 0 };
-              a.ore += inPiu; a.sett++; d.n++; d.ore += inPiu; a.driver.set(x.nome, d); strPrima.set(k, a);
-            }
-            // richiesta sul singolo driver solo per gli altri errori di riparto
             const altro: [TipoRichiesta, string] | null =
               supNonPt ? ["SUP", "il Supplementare è solo per i part time"]
+              : strTroppo ? ["STR_PRIMA", `lo Straordinario parte solo dopo le ${ORE_FT} ore ordinarie della settimana`]
               : stdOltre ? ["STD_OLTRE", "nella riga Standard vanno solo le ore di contratto"]
               : accOltre ? ["RIPARTO", `nella riga Accordo vanno al massimo ${it(maxAcc)} ore a settimana`]
               : strPoco ? ["RIPARTO", `oltre le ${tetto} ore della settimana le ore sono Straordinario`]
@@ -262,14 +258,6 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
       }
       settimane.push({ station: x.station, pop: x.pop, driver: x.nome, contratto: x.contratto, lunedi: l, periodo, giorniLavorati: gg, std: r1(s.std), sup: r1(s.sup), acc: r1(s.acc), str: r1(s.str), ass: r1(s.ass), tot: r1(tot), atteso, esito });
     }
-  }
-  for (const a of strPrima.values()) {
-    const elenco = [...a.driver.entries()].sort((p1, p2) => p2[1].ore - p1[1].ore);
-    const primi = elenco.slice(0, 15).map(([n, d]) => `${n} (${d.n} sett., ${it(r1(d.ore))} h)`).join("; ");
-    richieste.push({
-      chiave: `${p.mese}|${a.station}|${a.pop}|STATION|STR_PRIMA|${p.mese}`, mese: p.mese, station: a.station, pop: a.pop, driver: "Tutta la station", tipo: "STR_PRIMA", rif: da, periodo: p.mese.split("-").reverse().join("/"),
-      testo: `${a.station} ${a.pop}: ${it(r1(a.ore))} h di Straordinario segnate sotto il tetto dell'Accordo, in ${a.sett} settimane di ${elenco.length} driver. Le ore da 39 al tetto sono assorbite: vanno nella riga Accordo, lo Straordinario parte solo dopo. Compilare la riga Accordo. Driver: ${primi}${elenco.length > 15 ? `; e altri ${elenco.length - 15}` : ""}. Il dettaglio per settimana è nel foglio Settimane.`,
-    });
   }
   return { richieste, settimane, seiDomenica, nonVerificabili: [...nonVer].sort() };
 }

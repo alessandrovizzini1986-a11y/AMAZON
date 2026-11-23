@@ -41,13 +41,18 @@ describe("verifica delle settimane", () => {
     expect(e.richieste).toEqual([]);
     expect(e.settimane.find((s) => s.lunedi === LUN)).toMatchObject({ std: 39, acc: 1, tot: 40, giorniLavorati: 5, esito: "ok" });
   });
-  it("straordinario sotto il tetto: una sola richiesta per station con le ore in gioco, non una per driver", () => {
-    const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7, { acc: 1 }), g(0, { str: 8 }), null]));
+  it("riga Accordo non compilata: non è un errore; lo è lo Straordinario prima delle 39 ore", () => {
+    // 48 ore con Accordo 1 e Straordinario 8: lo Standard è a 39, va bene così
+    expect(run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7, { acc: 1 }), g(0, { str: 8 }), null])).richieste).toEqual([]);
+    // 44 ore, Standard 39 e Straordinario 5, Accordo vuoto: va bene
+    expect(run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7), g(0, { str: 5 }), null])).richieste).toEqual([]);
+    // 38 ore: Standard 32 e Straordinario 6 → errore sul driver
+    const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), null, g(0, { str: 6 }), null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
-    expect(e.richieste[0].driver).toBe("Tutta la station");
-    expect(e.richieste[0].testo).toContain("2 h di Straordinario");
-    expect(e.richieste[0].chiave).toBe("2026-11|DER1|SIC|STATION|STR_PRIMA|2026-11");
-    expect(e.settimane.find((x) => x.lunedi === LUN)!.esito).toContain("Straordinario 8 → 6"); // il dettaglio resta nel foglio Settimane
+    expect(e.richieste[0].testo).toContain("Straordinario 6 → al massimo 0");
+    expect(e.richieste[0].chiave).toBe(`2026-11|DER1|SIC|CF1|STR_PRIMA|${LUN}`);
+    // part time 24 ore che ne lavora 40: Standard 24, Supplementare 15, Straordinario 1 al posto dell'Accordo → va bene
+    expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), g(0, { sup: 8 }), g(0, { sup: 7, str: 1 }), null, null])).richieste).toEqual([]);
   });
   it("le assenze possono contare o no verso le 39 ore: si segnala solo se non torna in nessuno dei due modi", () => {
     // 4 giorni da 8 h + 8 h di ferie + 1 h di Accordo: torna contando le ferie
@@ -111,6 +116,6 @@ describe("gruppi per il menu dei filtri", () => {
     expect([...tutti].sort()).toEqual([...ORDINE_TIPO].sort());
     expect(new Set(tutti).size).toBe(tutti.length);
     expect(GRUPPI_TIPO.length).toBe(4);
-    expect([gruppoDi("+1"), gruppoDi("STR_PRIMA"), gruppoDi("ACC"), gruppoDi("7GG"), gruppoDi("STD_OLTRE")]).toEqual(["GIORNI", "ACCORDO", "ACCORDO", "RIPOSI", "ORE"]);
+    expect([gruppoDi("+1"), gruppoDi("STR_PRIMA"), gruppoDi("ACC"), gruppoDi("7GG"), gruppoDi("STD_OLTRE")]).toEqual(["GIORNI", "ORE", "ACCORDO", "RIPOSI", "ORE"]);
   });
 });

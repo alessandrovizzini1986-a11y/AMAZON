@@ -41,7 +41,7 @@ const riga = (...v: Cella[]): Cella[] => v;
 
 const FT_GIUSTO = trk("Bianchi Luca", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, 0.5, _, 0.5, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { titolo: "Giusto: 40 ore = Standard 39 + Accordo 1" });
 const FT_48_GIUSTO = trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, 2, _), Straordinario: riga(_, _, _, _, _, 6, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }, { titolo: "Giusto: 48 ore = Standard 39 + Accordo 3 + Straordinario 6" });
-const FT_48_SBAGLIATO = trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), Straordinario: riga(_, _, _, _, _, 8, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }, { titolo: "Sbagliato: Accordo 1 e Straordinario 8 (2 ore pagate come straordinario senza doverlo)" });
+const FT_48_SBAGLIATO = trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), Straordinario: riga(_, _, _, _, _, 8, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }, { titolo: "Si lascia così: Accordo 1 e Straordinario 8 (riga Accordo non completa, non si chiede)" });
 const PT_GIUSTO = trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Supplementare: riga(_, _, _, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { titolo: "Giusto: part time 24 ore che ne lavora 40 = Standard 24 + Supplementare 15 + Accordo 1" });
 const TUTTE_LE_RIGHE = trk("Rossi Mario", "CTI FT", { Standard: riga(8, 8, _, 8, 7, _, _), Accordo: riga(_, 0.5, _, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), FERIE: riga(_, _, 8, _, _, _, _), Trasferta: riga(1, 1, 0, 1, 1, 0, 0) }, { tutte: true, titolo: "Un driver in una settimana: le 17 righe, come nel file" });
 
@@ -215,7 +215,7 @@ Il numero 42 è il **tetto dell'Accordo di secondo livello**, l'accordo sindacal
 
 Controllo: 39 + 3 + 6 = 48.
 
-**L'errore più comune.** L'OS scrive Standard 39, Accordo 1, Straordinario 8. Il totale è giusto (48), ma 2 ore sono finite nello Straordinario invece che nell'Accordo: le pagheremmo di più senza doverlo.
+**Quando la riga Accordo non è compilata.** Capita spesso: l'OS scrive Standard 39 e poi tutto il resto in Straordinario, oppure Accordo 1 e Straordinario 8. **Non è un errore da chiedere**: una volta arrivati a 39 ore di Standard, le ore dopo possono stare nello Straordinario. L'errore vero è un altro: **Straordinario segnato prima di arrivare a 39 ore**. Esempio: Standard 32 e Straordinario 6 in una settimana da 38 ore. Lì lo Straordinario non ci può essere.
 
 Due limiti in più: lo **Standard non supera mai 8 ore e 24 minuti in un giorno**, e lo **Straordinario non supera mai 12 ore in una settimana**.
 
@@ -223,14 +223,14 @@ Due limiti in più: lo **Standard non supera mai 8 ore e 24 minuti in un giorno*
       figure: [
         { tracking: FT_GIUSTO, didascalia: "L'Accordo sono le mezz'ore in più di martedì e giovedì: la settimana arriva a 40 ore." },
         { tracking: FT_48_GIUSTO, didascalia: "Sei giorni: il sabato porta la settimana a 48 ore. Fino a 42 è Accordo, il resto Straordinario." },
-        { tracking: FT_48_SBAGLIATO, didascalia: "Stessa settimana compilata male: il totale è sempre 48, ma il sabato è tutto in Straordinario." },
+        { tracking: FT_48_SBAGLIATO, didascalia: "Stessa settimana con la riga Accordo non completa: il sabato è tutto in Straordinario. Lo Standard è a 39, quindi non si chiede niente." },
       ],
       esercizi: [
         g("a", riparto("CTI FT", "Un full time", 40, false), riparto("CTI FT", "Un full time", 41, false), riparto("CTI FT", "Un full time", 41.5, false)),
         g("b", riparto("CTI FT", "Un full time", 48, false), riparto("CTI FT", "Un full time", 46, false), riparto("CTI FT", "Un full time", 45, false)),
         g("c", riparto("CTI FT", "Un full time", 36, false), riparto("CTI FT", "Un full time", 32, false)),
-        g("d", scelta("Un full time ha lavorato 48 ore. Nel tracking trovi: Standard 39, Accordo 1, Straordinario 8. Cosa non va?", ["Niente, il totale è 48", "2 ore di Straordinario dovevano stare nell'Accordo", "Lo Standard doveva essere 40"], 1, "Da 39 a 42 le ore sono assorbite: Accordo 3, Straordinario 6. Qui 2 ore sono pagate come straordinario senza doverlo."),
-          scelta("Un full time ha lavorato 44 ore. Nel tracking trovi: Standard 39, Accordo 0, Straordinario 5. Cosa non va?", ["Niente, il totale è 44", "Lo Standard doveva essere 44", "3 ore di Straordinario dovevano stare nell'Accordo"], 2, "Da 39 a 42 le ore sono assorbite: Accordo 3, Straordinario 2.")),
+        g("d", scelta("Un full time ha lavorato 48 ore. Nel tracking trovi: Standard 39, Accordo 1, Straordinario 8. Cosa fai?", ["Niente: lo Standard è a 39, la riga Accordo non completa non si chiede", "Chiedo di spostare 2 ore dallo Straordinario all'Accordo", "Chiedo di portare lo Standard a 40"], 0, "La riga Accordo può non essere compilata: dopo le 39 ore di Standard le ore possono stare nello Straordinario. Non è una richiesta per l'OS."),
+          scelta("Un full time ha lavorato 38 ore. Nel tracking trovi: Standard 32, Straordinario 6. Cosa fai?", ["Niente, il totale è 38", "Chiedo all'OS: lo Straordinario parte solo dopo 39 ore di Standard, qui sono tutte Standard", "Chiedo di mettere 6 ore nell'Accordo"], 1, "Con 38 ore in tutto non si arriva a 39: lo Straordinario non ci può essere. Sono 38 ore di Standard.")),
         g("f", scelta("Perché le ore da 39 a 42 non sono pagate come straordinario?", ["Perché sono poche", "Perché il driver prende la diaria (indennità di trasferta): l'Accordo le considera già compensate da quella", "Perché le recupera la settimana dopo"], 1, "L'Accordo prevede l'assorbimento perché al driver spetta la diaria per ogni giorno lavorato: quelle ore sono già compensate dall'indennità di trasferta.")),
         g("e", scelta("Qual è il tetto dell'Accordo oggi, cioè il numero di ore fino a cui il lavoro è assorbito?", ["39", "42", "44"], 1, "42 ore dal 01/06/2026 (era 43 prima, sarà 41 dal 01/07/2027).")),
       ],
@@ -364,7 +364,7 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
 
 | Cosa vedi | Perché è sbagliato |
 |---|---|
-| Straordinario con meno di 42 ore nella settimana, o più alto del dovuto | Fino a 42 le ore sono assorbite: vanno nell'Accordo |
+| Straordinario segnato prima di arrivare a 39 ore | Lo Straordinario parte solo dopo le 39 ore ordinarie. La riga Accordo non compilata, invece, non si chiede |
 | Standard più alto delle ore di contratto | Le ore in più sono Supplementare (part time) o Accordo |
 | Supplementare su un full time | Il Supplementare è solo per i part time |
 | Più di 3 ore nella riga Accordo in una settimana | Le ore assorbite sono al massimo 3 (da 39 a 42) |
@@ -378,9 +378,9 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
 Negli esercizi clicchi **la cella sbagliata** direttamente nel tracking. Se è tutto giusto, spunti «Non c'è nessun errore».`,
       esercizi: [
         g("a",
-          cella(TROVA, trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), Straordinario: riga(_, _, _, _, _, 8, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }), ["Straordinario|5"], "48 ore: Standard 39, Accordo 3, Straordinario 6. Il sabato ha 8 ore di Straordinario: 2 dovevano stare nell'Accordo."),
-          cella(TROVA, trk("Gallo Piero", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Straordinario: riga(_, _, _, _, _, 5, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }), ["Straordinario|5"], "44 ore: Standard 39, Accordo 3, Straordinario 2. Il sabato ha 5 ore di Straordinario e niente in Accordo: 3 vanno spostate."),
-          cella(TROVA, trk("Costa Elena", "CTD FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Straordinario: riga(_, _, 2, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Straordinario|2"], "41 ore: Standard 39, Accordo 2, Straordinario 0. Sotto le 42 ore lo Straordinario non c'è: le 2 ore di mercoledì vanno nell'Accordo.")),
+          cella(TROVA, trk("Verdi Anna", "CTI FT", { Standard: riga(8, 8, 8, 8, _, _, _), Straordinario: riga(_, _, _, _, _, 6, _), RIPOSO: riga(_, _, _, _, "R", _, "R"), Trasferta: riga(1, 1, 1, 1, 0, 1, 0) }), ["Straordinario|5"], "38 ore in tutto: Standard 32 e Straordinario 6. Lo Straordinario parte solo dopo 39 ore di Standard: le 6 ore di sabato sono Standard."),
+          cella(TROVA, trk("Gallo Piero", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Straordinario: riga(_, _, _, _, _, 5, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }), [NESSUN_ERRORE], "44 ore: lo Standard è a 39 e il resto è in Straordinario. La riga Accordo non è compilata, ma non è un errore da chiedere: dopo le 39 ore di Standard le ore possono stare nello Straordinario."),
+          cella(TROVA, trk("Costa Elena", "CTD FT", { Standard: riga(8, 8, 6, 8, 7, _, _), Straordinario: riga(_, _, 2, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Straordinario|2"], "39 ore in tutto: Standard 37 e Straordinario 2. Senza superare le 39 ore lo Straordinario non c'è: le 2 ore di mercoledì sono Standard.")),
         g("b",
           cella(TROVA, trk("Neri Sara", "CTI PT 24H", { Standard: riga(8, 8, 8, 8, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }), ["Standard|0", "Standard|1", "Standard|2", "Standard|3"], "Part time da 24 ore con 32 ore di Standard: le 8 ore oltre il contratto vanno nel Supplementare."),
           cella(TROVA, trk("Fabbri Ugo", "CTI PT 32H", { Standard: riga(8, 8, 8, 8, 8, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Standard|0", "Standard|1", "Standard|2", "Standard|3", "Standard|4"], "Part time da 32 ore con 40 ore di Standard: 7 vanno nel Supplementare (fino a 39) e 1 nell'Accordo.")),
@@ -520,7 +520,7 @@ Ripasso veloce delle regole:
         g("f", scelta("Un somministrato (STD) ha 3 ore nella riga Accordo di domenica. Che simbolo compare e perché?", ["+1, perché manca la rotta", "ACC, perché la domenica è già pagata con maggiorazione e quella cella va tolta", "ORE, perché ha lavorato troppo"], 1, "ACC: per i somministrati la domenica non va nella riga Accordo.")),
         g("g", scelta("Un driver ha 6 ore nel tracking, la trasferta a 1, e su Amazon 0 pacchi. Nella riga RIPOSO c'è scritto «SB». Cosa fai?", ["Niente: SB spiega la giornata", "Chiedo all'OS cosa ha fatto: SB è un turno, non una spiegazione", "Tolgo io la trasferta"], 1, "SB non è una spiegazione valida: resta un +1 da chiedere. E il tracking non lo correggi tu.")),
         g("i",
-          cella(TROVA, trk("Gallo Piero", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), Accordo: riga(_, _, _, _, 1, _, _), Straordinario: riga(_, _, _, _, _, 6, _), RIPOSO: riga(_, _, _, _, _, _, "R"), Trasferta: riga(1, 1, 1, 1, 1, 1, 0) }), ["Straordinario|5"], "46 ore: Standard 39, Accordo 3, Straordinario 4. Il sabato ha 6 ore di Straordinario: 2 vanno nell'Accordo."),
+          cella(TROVA, trk("Gallo Piero", "CTI FT", { Standard: riga(8, 8, 8, 7, _, _, _), Straordinario: riga(_, _, _, _, 5, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Straordinario|4"], "36 ore in tutto: Standard 31 e Straordinario 5. Lo Straordinario parte solo dopo 39 ore di Standard: le 5 ore di venerdì sono Standard."),
           cella(TROVA, trk("Longo Rita", "CTI PT 24H", { Standard: riga(8, 8, 8, _, _, _, _), Supplementare: riga(_, _, _, 8, _, _, _), RIPOSO: riga(_, _, _, _, "R", "R", "R"), Trasferta: riga(1, 1, 1, 1, 0, 0, 0) }), [NESSUN_ERRORE], "Part time da 24 ore con 32 ore: Standard 24 e Supplementare 8. È compilato bene.")),
         g("l",
           cella(TROVA_GIORNO, trk("Riva Dino", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), RIPOSO: riga(_, _, _, "UFF", _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }, { amazon: riga(130, 0, 141, 0, 136, _, _) }), ["*|1"], "Martedì e giovedì Amazon vede 0 pacchi. Giovedì c'è UFF, che spiega la giornata. Martedì non c'è niente: è quello il +1 da chiedere."),
