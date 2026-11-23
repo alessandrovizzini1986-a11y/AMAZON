@@ -6,7 +6,7 @@ import { controlloSettimanale, type EsitoSettimanale } from "@/domain/presenze/c
 import { componi, entroGiorniLavorativi, TESTI, type Messaggio } from "@/domain/presenze/messaggi";
 import { addDays, weekday } from "@/domain/presenze/grid";
 import { STATIONS, type Station } from "@/domain/presenze/regole";
-import { ETICHETTA_STATO, ETICHETTA_TIPO, ORDINE_TIPO, personeDelMese, richiesteDaAmazon, tettoAccordo, verificaOre, type EsitoVerifica, type Richiesta, type Stato, type TipoRichiesta } from "@/domain/presenze/verifica";
+import { ETICHETTA_STATO, ETICHETTA_TIPO, GRUPPI_TIPO, ORDINE_TIPO, gruppoDi, personeDelMese, richiesteDaAmazon, tettoAccordo, verificaOre, type EsitoVerifica, type Richiesta, type Stato, type TipoRichiesta } from "@/domain/presenze/verifica";
 import { caricaDatiMese } from "@/lib/presenze/carica";
 import { excelVerifica, leggiStatiExcel } from "@/lib/presenze/excelVerifica";
 import { scarica } from "@/lib/presenze/excelUtil";
@@ -117,8 +117,8 @@ export function VerificaClient({ utente, giustificativi, dispatcher, referenti, 
 
   const conta = (s: Stato) => righe.filter((r) => r.stato === s).length;
   const stationsViste = useMemo(() => [...new Set(righe.map((r) => r.station))].sort(), [righe]);
-  const tipiVisti = useMemo(() => ORDINE_TIPO.filter((t) => righe.some((r) => r.tipo === t)), [righe]);
-  const visibili = righe.filter((r) => (fSt === "TUTTE" || r.station === fSt) && (fTipo === "TUTTI" || r.tipo === fTipo) && (fStato === "TUTTE" || (fStato === "APERTE" ? r.stato === "DA_FARE" || r.stato === "RICHIESTA" : r.stato === fStato)))
+  const gruppiVisti = useMemo(() => GRUPPI_TIPO.filter((g) => righe.some((r) => gruppoDi(r.tipo) === g.id)), [righe]);
+  const visibili = righe.filter((r) => (fSt === "TUTTE" || r.station === fSt) && (fTipo === "TUTTI" || gruppoDi(r.tipo) === fTipo) && (fStato === "TUTTE" || (fStato === "APERTE" ? r.stato === "DA_FARE" || r.stato === "RICHIESTA" : r.stato === fStato)))
     .sort((a, b) => a.station.localeCompare(b.station) || ORDINE_TIPO.indexOf(a.tipo as TipoRichiesta) - ORDINE_TIPO.indexOf(b.tipo as TipoRichiesta) || a.driver.localeCompare(b.driver) || a.rif.localeCompare(b.rif));
   const entro = entroGiorniLavorativi(oggiIso());
   const messaggi: Messaggio[] = stationsViste.map((st) => {
@@ -195,7 +195,7 @@ export function VerificaClient({ utente, giustificativi, dispatcher, referenti, 
               <div role="group" aria-label="Station" className="flex flex-wrap overflow-hidden rounded-control border border-[#d5dbe3]">
                 {["TUTTE", ...stationsViste].map((s, i) => <button key={s} type="button" aria-pressed={fSt === s} onClick={() => setFSt(s)} className={`h-10 px-3 text-sm ${i ? "border-l border-[#d5dbe3]" : ""} ${fSt === s ? "bg-brand font-semibold text-white" : "bg-surface-raised"}`}>{s === "TUTTE" ? "Tutte" : s}</button>)}
               </div>
-              <select className="input h-10 w-72" aria-label="Tipo" value={fTipo} onChange={(e) => setFTipo(e.target.value)}><option value="TUTTI">Tutti i tipi</option>{tipiVisti.map((t) => <option key={t} value={t}>{etTipo(t)} ({righe.filter((r) => r.tipo === t && (r.stato === "DA_FARE" || r.stato === "RICHIESTA")).length} aperte)</option>)}</select>
+              <select className="input h-10 w-96 max-w-full" aria-label="Tipo" value={fTipo} onChange={(e) => setFTipo(e.target.value)}><option value="TUTTI">Tutti i tipi</option>{gruppiVisti.map((g) => <option key={g.id} value={g.id}>{g.nome} ({righe.filter((r) => gruppoDi(r.tipo) === g.id && (r.stato === "DA_FARE" || r.stato === "RICHIESTA")).length} aperte)</option>)}</select>
               <select className="input h-10 w-56" aria-label="Stato" value={fStato} onChange={(e) => setFStato(e.target.value as typeof fStato)}><option value="APERTE">Aperte (da chiedere + chieste)</option>{(Object.keys(ETICHETTA_STATO) as Stato[]).map((s) => <option key={s} value={s}>{ETICHETTA_STATO[s]}</option>)}<option value="TUTTE">Tutte</option></select>
               {canRun && visibili.some((r) => r.stato === "DA_FARE") && <button type="button" className="btn-secondary h-10" onClick={() => cambia(visibili.filter((r) => r.stato === "DA_FARE").map((r) => r.chiave), "RICHIESTA")}>Segna come chieste le {visibili.filter((r) => r.stato === "DA_FARE").length} in elenco</button>}
             </div>
