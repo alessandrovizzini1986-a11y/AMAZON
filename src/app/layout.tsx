@@ -7,6 +7,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://amazon-alpha-khaki
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  // sito privato: fuori dai motori di ricerca e dai motori di intelligenza artificiale
+  robots: { index: false, follow: false, nocache: true, noarchive: true, nosnippet: true, noimageindex: true, googleBot: { index: false, follow: false, noimageindex: true, nosnippet: true } },
+  other: { robots: "noai, noimageai" },
   title: "FleetDSP — Gestionale Flotta",
   description: "Gestionale flotta veicoli commerciali per operatori logistici DSP",
   openGraph: {

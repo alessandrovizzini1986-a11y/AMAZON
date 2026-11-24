@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
     config.resolve.alias = { ...(config.resolve.alias ?? {}), canvas: false };
     return config;
   },
+  // sito privato: ogni risposta dice ai motori (di ricerca e di IA) di non indicizzare, non archiviare e non usare i contenuti
+  async headers() {
+    return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai" }] }];
+  },
   experimental: {
     serverActions: {
       // gli import Excel/CSV possono superare il limite di default (1MB)
