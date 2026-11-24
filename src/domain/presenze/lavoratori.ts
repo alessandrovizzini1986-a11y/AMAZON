@@ -46,6 +46,8 @@ export type Lavoratore = {
   matricola: string;
   /** giorno ISO → voce → ore (solo giorni del mese) */
   giorni: Record<string, Partial<Record<Voce, number>>>;
+  /** giorno ISO → sigla scritta nella riga RIPOSO (R, F, M, L1…), in maiuscolo; solo i giorni con una sigla */
+  riposo?: Record<string, string>;
 };
 
 /** Valore numerico di una cella come float() di Python (stringhe numeriche sì, "8,5" no). */
@@ -86,7 +88,11 @@ export function leggiLavoratori(sheets: SheetGrid[], anno: number, mese: number,
       const m = at(g, r, cMatr);
       if (m !== null && m !== "") cur.matricola = matrKey(m);
     }
-    if (voce === "Totali" || voce === "RIPOSO" || voce === "TRASFERTA" || voce === "ALTRO") continue;
+    if (voce === "RIPOSO") {
+      for (const { col, date } of days) { const v = text(at(g, r, col)).trim().toUpperCase(); if (v && v !== "0") (cur.riposo ??= {})[date] = v; }
+      continue;
+    }
+    if (voce === "Totali" || voce === "TRASFERTA" || voce === "ALTRO") continue;
     for (const { col, date } of days) {
       const v = pyFloat(at(g, r, col));
       if (v && v <= 24) {
