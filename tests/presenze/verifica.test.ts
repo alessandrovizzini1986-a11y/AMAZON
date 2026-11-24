@@ -123,7 +123,7 @@ describe("gruppi per il menu dei filtri", () => {
     expect([...tutti].sort()).toEqual([...ORDINE_TIPO].sort());
     expect(gruppoDi("ASS_ORE")).toBe("ORE");
     expect(new Set(tutti).size).toBe(tutti.length);
-    expect(GRUPPI_TIPO.length).toBe(4);
+    expect(GRUPPI_TIPO.length).toBe(5);
     expect([gruppoDi("+1"), gruppoDi("STR_PRIMA"), gruppoDi("ACC"), gruppoDi("7GG"), gruppoDi("STD_OLTRE")]).toEqual(["GIORNI", "ORE", "ACCORDO", "RIPOSI", "ORE"]);
   });
 });
@@ -243,5 +243,27 @@ describe("messaggio per l'OS", () => {
     expect(m.testo.match(/Puoi verificare e farmi sapere\?/g)!.length).toBe(1);
     expect(m.testo.trim().endsWith("Puoi verificare e farmi sapere? Grazie!")).toBe(true);
     expect(TESTI.salutoNome(null)).toBe("Ciao");
+  });
+});
+
+describe("lo stesso lavoratore in tutti e due i tracking", () => {
+  const cop = new Map([["DER1|SIC", new Set(Array.from({ length: 30 }, (_, i) => addDays("2026-10-26", i)))], ["DER1|STD", new Set(Array.from({ length: 30 }, (_, i) => addDays("2026-10-26", i)))]]);
+  const sett = [g(8), g(8), g(8), g(8), g(7), null, null];
+  const v = (pp: Persona[]) => verificaOre(pp, cop, { mese: "2026-11", finoA: "2026-11-22" }).richieste.filter((r) => r.tipo === "DOPPIO");
+  it("stesso codice fiscale in STD e SIC con ore negli stessi giorni: una richiesta grave, con i giorni", () => {
+    const r = v([persona("CTI FT", sett, LUN, "SIC"), { ...persona("MOG 35", sett, LUN, "STD"), nome: "Mario Rossi" }]);
+    expect(r.length).toBe(1);
+    expect(r[0].testo).toContain("stesso codice fiscale");
+    expect(r[0].testo).toContain("con ore in tutti e due il 02/11, 03/11");
+    expect(r[0].pop).toBe("STD+SIC");
+  });
+  it("riconosciuto anche per ID driver o per nome; persone diverse no", () => {
+    expect(v([{ ...persona("CTI FT", sett, LUN, "SIC"), cf: "" }, { ...persona("MOG 35", sett, LUN, "STD"), cf: "ALTRO" }])[0].testo).toContain("stesso ID driver");
+    expect(v([{ ...persona("CTI FT", sett, LUN, "SIC"), cf: "", driverId: "" }, { ...persona("MOG 35", sett, LUN, "STD"), cf: "", driverId: "B2", nome: "MARIO ROSSI" }])[0].testo).toContain("stesso nome");
+    expect(v([persona("CTI FT", sett, LUN, "SIC"), { ...persona("MOG 35", sett, LUN, "STD"), cf: "CF9", driverId: "Z9", nome: "Altro Nome" }])).toEqual([]);
+  });
+  it("in giorni diversi (passaggio da un contratto all'altro) lo segnala comunque, dicendolo", () => {
+    const r = v([persona("CTI FT", [null, null, null, g(8), g(8), null, null], LUN, "SIC"), persona("MOG 35", [g(8), g(8), null, null, null, null, null], LUN, "STD")]);
+    expect(r[0].testo).toContain("in giorni diversi");
   });
 });

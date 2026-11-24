@@ -105,13 +105,15 @@ export type ParametriSettimanale = {
   dispatcher?: string[];
   /** addetti allo spostamento mezzi (cognome nome): lavorano senza rotta Amazon, quindi niente +1 né H; gli altri controlli restano */
   addettiMezzi?: string[];
+  /** true = un ID che è l'ID ufficiale di un altro driver non viene usato per questo blocco (cella finita nella riga sbagliata) */
+  idRigoroso?: boolean;
   /** true = l'Accordo di domenica dei somministrati (ACC) non si segnala: lo guarda il responsabile (deciso il 24/11/2026) */
   senzaAccordoDomenica?: boolean;
 };
 
 // ------------------------------------------------------------------ tracking (v2)
 
-function parseTrackingV2(input: TrackingInput, p: { da: string; a: string; sogliaOre: number }, amIds: Set<string>) {
+function parseTrackingV2(input: TrackingInput, p: { da: string; a: string; sogliaOre: number; idRigoroso?: boolean }, amIds: Set<string>) {
   const [yy, mmFrom] = p.da.split("-").map(Number);
   const mmTo = Number(p.a.split("-")[1]);
   const mese = mmFrom !== mmTo ? mmTo : mmFrom;
@@ -137,11 +139,18 @@ function parseTrackingV2(input: TrackingInput, p: { da: string; a: string; sogli
   };
   const cell = (r: number, c: number): Cell => at(ts.grid, r, c);
 
-  for (const b of trackingBlocks(ts)) {
+  const blocchi = trackingBlocks(ts);
+  // ID scritto nella prima riga (Standard) di ogni blocco: è l'ID "ufficiale" di quel driver
+  const idPrimaRiga = new Set(blocchi.map((b) => (okId(cell(b.rows[0], idc)) ? text(cell(b.rows[0], idc)).trim().toUpperCase() : "")).filter(Boolean));
+  for (const b of blocchi) {
     const r0 = b.rows[0];
     const nome = text(cell(r0, namec)).trim();
-    const ids = b.rows.filter((r) => okId(cell(r, idc))).map((r) => text(cell(r, idc)).trim().toUpperCase());
     const id0 = okId(cell(r0, idc)) ? text(cell(r0, idc)).trim().toUpperCase() : null;
+    // Un ID che compare in una riga del blocco ma è l'ID ufficiale di un ALTRO driver è una cella finita nella riga sbagliata
+    // (tipico: l'ultima riga del blocco con l'ID del driver sotto): non va usato, altrimenti due persone diventano una e le ore si sommano.
+    const ids = b.rows.filter((r) => okId(cell(r, idc))).map((r) => text(cell(r, idc)).trim().toUpperCase()).filter((i) => !p.idRigoroso || i === id0 || !idPrimaRiga.has(i));
+    const idAltrui = b.rows.filter((r) => okId(cell(r, idc))).map((r) => text(cell(r, idc)).trim().toUpperCase()).some((i) => i !== id0 && idPrimaRiga.has(i));
+    if (p.idRigoroso && idAltrui && !id0) anomalie.push({ file: tipoFile, riga: r0 + 1, driver: nome, anomalia: "Nel blocco c'è l'ID di un altro driver e manca il suo: ID ignorato, driver cercato per nome" });
     const uniq = [...new Set(ids)];
     const inAm = uniq.filter((i) => amIds.has(i));
     let did: string | null = inAm.length === 1 ? inAm[0] : id0 ?? (ids.length ? mostCommon(ids) : null);
@@ -274,7 +283,7 @@ export function controlloSettimanale(
   const fogli: Record<string, string> = {};
   for (const tipo of ["STD", "SIC"] as const) {
     const t = own.find((x) => x.tipo === tipo)!;
-    const res = parseTrackingV2(t, { da: p.da, a: p.a, sogliaOre }, amIds);
+    const res = parseTrackingV2(t, { da: p.da, a: p.a, sogliaOre, idRigoroso: p.idRigoroso }, amIds);
     for (const [k, v] of res.rows) allRows.set(k, v);
     for (const [k, v] of res.info) allInfo.set(k, v);
     anom.push(...res.anomalie);

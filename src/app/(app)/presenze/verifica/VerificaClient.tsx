@@ -64,7 +64,7 @@ export function VerificaClient({ utente, giustificativi, dispatcher, mezzi, refe
         const sic = trk.some((t) => t.tipo === "SIC"), std = trk.some((t) => t.tipo === "STD");
         let e: EsitoSettimanale | null = null;
         if (sic && std && dati.flex.length) {
-          try { e = controlloSettimanale(trk, dati.flex, { station: st, da, a, giustificativi, dispatcher, addettiMezzi: mezzi, senzaAccordoDomenica: true }, dati.tracking); trovate.push(...richiesteDaAmazon(e, p.mese)); }
+          try { e = controlloSettimanale(trk, dati.flex, { station: st, da, a, giustificativi, dispatcher, addettiMezzi: mezzi, senzaAccordoDomenica: true, idRigoroso: true }, dati.tracking); trovate.push(...richiesteDaAmazon(e, p.mese)); }
           catch (x) { err.push(`${st}: ${x instanceof Error ? x.message : "errore nel controllo con Amazon"}`); }
         } else if (!(sic && std)) err.push(`${st}: manca il tracking ${[!sic && "SIC", !std && "STD"].filter(Boolean).join(" e ")}: controllo con Amazon saltato per questa station`);
         stato.push({ station: st, sic, std, prima: prima.tracking.some((t) => t.station === st), csv: e?.giorniCsv.length ?? 0, senzaCsv: e?.giorniSenzaCsv ?? [] });

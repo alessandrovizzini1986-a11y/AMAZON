@@ -78,7 +78,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, mezzi, r
         const mancano = (["SIC", "STD"] as const).filter((t) => !dati.tracking.some((x) => x.station === st && x.tipo === t));
         if (mancano.length) { err.push(`${st}: manca il tracking ${mancano.join(" e ")} del mese`); continue; }
         try {
-          out.push(controlloSettimanale(dati.tracking.filter((t) => t.station === st), dati.flex, { station: st, da: p.da, a: p.a, giustificativi, dispatcher, addettiMezzi: mezzi, senzaAccordoDomenica: true }, dati.tracking));
+          out.push(controlloSettimanale(dati.tracking.filter((t) => t.station === st), dati.flex, { station: st, da: p.da, a: p.a, giustificativi, dispatcher, addettiMezzi: mezzi, senzaAccordoDomenica: true, idRigoroso: true }, dati.tracking));
           doms.push(...domenicheStation(st, dati.tracking, p.da, p.a));
         } catch (e) {
           err.push(`${st}: ${e instanceof Error ? e.message : "errore"}`);

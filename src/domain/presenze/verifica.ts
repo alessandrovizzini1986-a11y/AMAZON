@@ -150,18 +150,19 @@ export function personeDelMese(tracking: TrackingInput[], mese: string, preceden
   }
   return { persone, coperti, avvisi };
 }
-export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT" | "ASS_ORE";
+export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT" | "ASS_ORE" | "DOPPIO";
 export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
   "+1": "Trasferta senza rotta Amazon", "-1": "Rotta Amazon ma zero ore", H: "Ore senza Amazon", A: "Su Amazon, non nel tracking",
   ORE: "Ore del giorno anomale", ACC: "Accordo di domenica (somministrati)", "7GG": "7 o più giorni di fila",
   STR_PRIMA: "Straordinario prima delle 39 ore", STD_OLTRE: "Standard oltre le ore di contratto",
-  SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana", ASS_ORE: "Assenza segnata senza le ore",
+  SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana", ASS_ORE: "Assenza segnata senza le ore", DOPPIO: "Driver in tutti e due i tracking (STD e SIC)",
 };
 /**
  * Gruppi per il menu dei filtri: quattro domande al posto di quattordici tipi. Il tipo preciso resta nella colonna Tipo
  * e nei messaggi per gli OS.
  */
 export const GRUPPI_TIPO = [
+  { id: "DOPPIO", nome: "Driver in tutti e due i tracking (grave)", tipi: ["DOPPIO"] },
   { id: "GIORNI", nome: "Ha lavorato davvero? (tracking e Amazon non coincidono)", tipi: ["-1", "+1", "H", "A"] },
   { id: "ORE", nome: "Ore nella riga sbagliata", tipi: ["STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "ORE", "ASS_ORE"] },
   { id: "ACCORDO", nome: "Accordo di domenica (non più richiesto)", tipi: ["ACC"] },
@@ -170,7 +171,7 @@ export const GRUPPI_TIPO = [
 export const gruppoDi = (t: string) => GRUPPI_TIPO.find((g) => (g.tipi as readonly string[]).includes(t))?.id ?? "ORE";
 
 /** Ordine nel messaggio e nelle tabelle: prima le violazioni. */
-export const ORDINE_TIPO: TipoRichiesta[] = ["7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC", "ASS_ORE"];
+export const ORDINE_TIPO: TipoRichiesta[] = ["DOPPIO", "7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC", "ASS_ORE"];
 
 export type Richiesta = {
   /** mese|station|pop|persona|tipo|riferimento: non contiene numeri che cambiano, così lo stato resta */
@@ -200,6 +201,27 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
   const nonVer = new Set<string>();
   let primoLun = da; while (weekday(primoLun) !== 0) primoLun = addDays(primoLun, -1);
   const lunedi: string[] = []; for (let l = primoLun; addDays(l, 6) <= p.finoA; l = addDays(l, 7)) lunedi.push(l);
+
+  // Lo stesso lavoratore nel tracking STD e in quello SIC della stessa station: è l'anomalia più grave, perché le sue ore
+  // finiscono due volte nei costi. Riconosciuto per codice fiscale, ID driver o nome (deciso da Alessandro il 25/11/2026).
+  const visti = new Set<string>();
+  for (const a of persone) {
+    if (a.pop !== "STD") continue;
+    for (const b of persone) {
+      if (b.pop !== "SIC" || b.station !== a.station) continue;
+      const perche = a.cf && a.cf === b.cf ? "stesso codice fiscale" : a.driverId.trim() && a.driverId.trim().toUpperCase() === b.driverId.trim().toUpperCase() ? "stesso ID driver" : normName(a.nome) && normName(a.nome) === normName(b.nome) ? "stesso nome" : null;
+      const chi = a.cf || a.driverId || normName(a.nome);
+      if (!perche || visti.has(`${a.station}|${chi}`)) continue;
+      visti.add(`${a.station}|${chi}`);
+      const nelMese = (q: Persona) => [...q.giorni.entries()].filter(([d, g]) => d >= da && d <= p.finoA && lav(g) > 0).map(([d]) => d);
+      const insieme = nelMese(a).filter((d) => b.giorni.has(d) && lav(b.giorni.get(d)) > 0).sort();
+      if (!nelMese(a).length || !nelMese(b).length) continue; // in uno dei due c'è solo la riga vuota: non conta
+      richieste.push({
+        chiave: `${p.mese}|${a.station}|STD+SIC|${chi}|DOPPIO|${p.mese}`, mese: p.mese, station: a.station, pop: "STD+SIC", driver: a.nome, tipo: "DOPPIO", rif: da, periodo: p.mese.split("-").reverse().join("/"),
+        testo: `risulta sia nel tracking STD sia in quello SIC (${perche})${insieme.length ? `, con ore in tutti e due il ${insieme.map(ddmm).join(", ")}` : ", in giorni diversi"}: in quale dei due va tenuto?`,
+      });
+    }
+  }
 
   for (const x of persone) {
     const cop = coperti.get(`${x.station}|${x.pop}`) ?? new Set<string>();
