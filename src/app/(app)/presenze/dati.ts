@@ -17,13 +17,15 @@ export async function configPresenze() {
     ]);
     return {
       giustificativi: g.map((x) => x.codice),
-      dispatcher: d.map((x) => `${x.cognome} ${x.nome}`),
+      dispatcher: d.filter((x) => x.ruolo !== "MEZZI").map((x) => `${x.cognome} ${x.nome}`),
+      mezzi: d.filter((x) => x.ruolo === "MEZZI").map((x) => `${x.cognome} ${x.nome}`),
       referenti: Object.fromEntries(r.filter((x) => x.nome.trim()).map((x) => [x.station, x.nome.trim()])) as Record<string, string>,
     };
   } catch {
     return {
       giustificativi: GIUSTIFICATIVI_DEFAULT.map((g) => g.codice),
       dispatcher: DISPATCHER_DEFAULT,
+      mezzi: [] as string[],
       referenti: {} as Record<string, string>,
     };
   }

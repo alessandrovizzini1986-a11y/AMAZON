@@ -17,7 +17,7 @@ export default async function VerificaPage() {
         title="Verifica tracking: Amazon, CCNL e Accordo"
         subtitle="Un solo controllo: chi ha lavorato davvero, i 6 giorni, le ore nella riga giusta. Ne esce l'elenco delle richieste per gli Operation Supervisor: quelle già chiuse non tornano."
       />
-      <VerificaClient utente={user.name} giustificativi={cfg.giustificativi} dispatcher={cfg.dispatcher} referenti={cfg.referenti} canRun={can(user, "presenze.run")} />
+      <VerificaClient utente={user.name} giustificativi={cfg.giustificativi} dispatcher={cfg.dispatcher} mezzi={cfg.mezzi} referenti={cfg.referenti} canRun={can(user, "presenze.run")} />
     </div>
   );
 }

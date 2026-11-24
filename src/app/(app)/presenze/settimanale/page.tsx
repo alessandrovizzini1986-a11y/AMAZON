@@ -18,7 +18,7 @@ export default async function SettimanalePage() {
         title="Controllo settimanale: tracking vs Amazon"
         subtitle="Usa i file caricati nell'archivio di questo PC. Scegli periodo e station, esegui il controllo, copia i messaggi per gli Ops e salva l'esecuzione."
       />
-      <SettimanaleClient utente={user.name} giustificativi={cfg.giustificativi} dispatcher={cfg.dispatcher} referenti={cfg.referenti} runs={runs} canRun={can(user, "presenze.run")} mog={mog} />
+      <SettimanaleClient utente={user.name} giustificativi={cfg.giustificativi} dispatcher={cfg.dispatcher} mezzi={cfg.mezzi} referenti={cfg.referenti} runs={runs} canRun={can(user, "presenze.run")} mog={mog} />
     </div>
   );
 }
