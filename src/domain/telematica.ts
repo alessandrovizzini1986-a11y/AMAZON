@@ -41,8 +41,7 @@ export function giornoDaTarga(risposta: unknown): GiornoMezzo {
     const guida = s.reportType !== "INACTIVITY";
     return { t: guida ? "G" as const : "S" as const, da: oraRoma(s.dateBegin!), a: oraRoma(s.dateEnd!), km: r1(n(s.mileage)), dove: corto(guida ? s.formattedAddressEnd : s.formattedAddressBegin) };
   });
-  const guide = tappe.map((t, i) => (t.t === "G" ? i : -1)).filter((i) => i >= 0);
-  const soste = guide.length ? tappe.slice(guide[0], guide[guide.length - 1]).filter((t) => t.t === "S").length : 0;
+  const soste = giornataMezzo(tappe).soste; // soste di almeno 3 minuti tra la prima partenza e l'ultimo arrivo
   const posizioni = seg.flatMap((s) => s.positions ?? []);
   const rif = posizioni.map((p) => n(p.refuel?.refueledLiters)).filter((l) => l > 0);
   const contatori = posizioni.map((p) => n(p.mileage)).filter((k) => k > 0);
@@ -99,3 +98,92 @@ export function riepilogoMese(righe: RigaGiorno[], stationDi: (targa: string) =>
     };
   }).sort((a, b) => (a.station ?? "ZZ").localeCompare(b.station ?? "ZZ") || a.targa.localeCompare(b.targa));
 }
+
+// ───────────────────────── Giornata di consegna: cosa ha fatto un furgone, letto dalle sue tappe ─────────────────────────
+
+const min = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+export const durataMin = (t: { da: string; a: string }) => Math.max(0, min(t.a) - min(t.da));
+/** Targa spezza la giornata in tanti pezzi e chiama "uso" anche le fermate: una tappa senza km è una sosta. Pezzi uguali di fila si uniscono. */
+export function tappeDelGiorno(tappe: Tappa[] | null | undefined): Tappa[] {
+  const out: Tappa[] = [];
+  for (const x of tappe ?? []) {
+    const t: Tappa = { ...x, t: x.t === "S" || x.km < 0.05 ? "S" : "G" };
+    const u = out[out.length - 1];
+    if (u && u.t === t.t) { u.a = t.a; u.km = r1(u.km + t.km); if (t.t === "G") u.dove = t.dove ?? u.dove; else u.dove = u.dove ?? t.dove; }
+    else out.push(t);
+  }
+  return out.filter((t) => t.t === "G" || durataMin(t) > 0 || t.dove);
+}
+
+/** Il posto senza numero civico: "Via Del Salice, Santarcangelo Di Romagna". Serve a capire se due soste sono nello stesso luogo. */
+export function luogo(dove: string | null | undefined): string | null {
+  if (!dove) return null;
+  const parti = dove.replace(/…$/, "").split(",").map((p) => p.trim()).filter((p) => p && !/^\d+[a-z]?(\/\w+)?$/i.test(p));
+  return parti.length ? parti.slice(0, 2).join(", ") : null;
+}
+
+/** Le basi di una station: i luoghi da cui parte almeno 1 furgone su 10 (il piazzale e, se c'è, il parcheggio accanto). */
+export function basi(partenze: (string | null)[]): string[] {
+  const n = new Map<string, number>();
+  for (const p of partenze) if (p) n.set(p, (n.get(p) ?? 0) + 1);
+  const tot = [...n.values()].reduce((a, b) => a + b, 0);
+  return [...n.entries()].filter(([, c]) => tot > 0 && c / tot >= 0.1).sort((a, b) => b[1] - a[1]).map(([l]) => l);
+}
+
+export type Avviso = { codice: "FUORI_BASE_SERA" | "FUORI_BASE_MATTINA" | "RIPARTE" | "VELOCITA" | "KM_ALTI" | "NOTTE" | "FERMO_ACCESO"; testo: string };
+export type GiornataMezzo = {
+  tappe: Tappa[]; partenza: string | null; rientro: string | null; fuoriMin: number; soste: number; sosteMin: number; sostaLunga: { min: number; dove: string | null; da: string } | null;
+  parteDa: string | null; finisceA: string | null; riparte: { ora: string; km: number } | null;
+};
+
+/** Sosta "vera" in mezzo al giro: almeno 3 minuti. Le fermate più corte sono consegne al volo o semafori. */
+export const SOSTA_MIN = 3;
+/** sopra questa velocità il furgone va segnalato (130 è il limite in autostrada: un picco appena sopra non è una notizia) */
+export const VEL_MAX_AVVISO = 140;
+
+export function giornataMezzo(tappeGrezze: Tappa[] | null | undefined, basiStation: string[] = []): GiornataMezzo {
+  const tappe = tappeDelGiorno(tappeGrezze);
+  const ig = tappe.map((t, i) => (t.t === "G" ? i : -1)).filter((i) => i >= 0);
+  if (!ig.length) return { tappe, partenza: null, rientro: null, fuoriMin: 0, soste: 0, sosteMin: 0, sostaLunga: null, parteDa: luogo(tappe[0]?.dove), finisceA: luogo(tappe[tappe.length - 1]?.dove), riparte: null };
+  const primo = ig[0], ultimo = ig[ig.length - 1];
+  const inMezzo = tappe.slice(primo, ultimo).filter((t) => t.t === "S" && durataMin(t) >= SOSTA_MIN);
+  const lunga = [...inMezzo].sort((a, b) => durataMin(b) - durataMin(a))[0];
+  // riparte dopo il rientro: è tornato alla base, è stato fermo almeno 45 minuti, poi ha fatto altri km
+  let riparte: GiornataMezzo["riparte"] = null;
+  let kmFatti = 0;
+  for (let i = primo; i < ultimo; i++) {
+    const t = tappe[i];
+    if (t.t === "G") { kmFatti += t.km; continue; }
+    const l = luogo(t.dove);
+    if (kmFatti >= 20 && durataMin(t) >= 45 && l && basiStation.includes(l)) {
+      const dopo = tappe.slice(i + 1).filter((x) => x.t === "G");
+      const km = r1(dopo.reduce((a, x) => a + x.km, 0));
+      if (km >= 5) { riparte = { ora: dopo[0].da, km }; break; }
+    }
+  }
+  return {
+    tappe, partenza: tappe[primo].da, rientro: tappe[ultimo].a, fuoriMin: Math.max(0, min(tappe[ultimo].a) - min(tappe[primo].da)), soste: inMezzo.length, sosteMin: inMezzo.reduce((a, t) => a + durataMin(t), 0),
+    sostaLunga: lunga ? { min: durataMin(lunga), dove: lunga.dove, da: lunga.da } : null,
+    parteDa: luogo(primo > 0 ? tappe[primo - 1].dove : tappe[primo].dove), finisceA: luogo(ultimo < tappe.length - 1 ? tappe[ultimo + 1].dove ?? tappe[ultimo].dove : tappe[ultimo].dove), riparte,
+  };
+}
+
+const hm = (m: number) => `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`;
+export const oreMinuti = hm;
+
+/** Le cose da guardare su un furgone in un giorno. `medianaKm` = km tipici dei furgoni della station quel giorno. */
+export function avvisiMezzo(x: { km: number; velMax: number | null; fermoMotoreAccSec: number }, g: GiornataMezzo, basiStation: string[], medianaKm: number): Avviso[] {
+  const a: Avviso[] = [];
+  if (x.km < 1 || !g.partenza) return a;
+  const conBasi = basiStation.length > 0;
+  if (conBasi && g.finisceA && !basiStation.includes(g.finisceA)) a.push({ codice: "FUORI_BASE_SERA", testo: `La sera non è alla base: è fermo in ${g.finisceA}` });
+  if (conBasi && g.parteDa && !basiStation.includes(g.parteDa)) a.push({ codice: "FUORI_BASE_MATTINA", testo: `Non parte dalla base: parte da ${g.parteDa}` });
+  if (g.riparte) a.push({ codice: "RIPARTE", testo: `Dopo il rientro alla base riparte alle ${g.riparte.ora} e fa altri ${g.riparte.km.toLocaleString("it-IT")} km` });
+  if ((x.velMax ?? 0) > VEL_MAX_AVVISO) a.push({ codice: "VELOCITA", testo: `Velocità massima ${x.velMax} km/h` });
+  if (medianaKm >= 30 && x.km > medianaKm * 1.8 && x.km - medianaKm >= 60) a.push({ codice: "KM_ALTI", testo: `${Math.round(x.km)} km: quasi il doppio dei ${Math.round(medianaKm)} km tipici della giornata` });
+  if (g.rientro && (min(g.rientro) >= 22 * 60 || min(g.partenza) < 4 * 60)) a.push({ codice: "NOTTE", testo: `In movimento di notte (dalle ${g.partenza} alle ${g.rientro})` });
+  if (x.fermoMotoreAccSec >= 3600) a.push({ codice: "FERMO_ACCESO", testo: `Fermo a motore acceso per ${hm(Math.round(x.fermoMotoreAccSec / 60))}` });
+  return a;
+}
+
+export const mediana = (v: number[]) => { const s = [...v].sort((a, b) => a - b); return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : 0; };
