@@ -365,7 +365,7 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
 | Cosa vedi | Perché è sbagliato |
 |---|---|
 | Straordinario segnato prima di arrivare a 39 ore | Lo Straordinario parte solo dopo le 39 ore ordinarie. La riga Accordo non compilata, invece, non si chiede |
-| Standard più alto delle ore di contratto | Le ore in più sono Supplementare (part time) o Accordo |
+| Standard più alto delle ore di contratto | Le ore in più sono Supplementare (part time) o Straordinario (full time): fatte le 39 ore, il resto va tutto in Straordinario |
 | Supplementare su un full time | Il Supplementare è solo per i part time |
 | Più di 3 ore nella riga Accordo in una settimana | Le ore assorbite sono al massimo 3 (da 39 a 42) |
 | Un'assenza e ore di lavoro nello stesso giorno | O era assente, o ha lavorato: una delle due è sbagliata |
@@ -512,8 +512,8 @@ Ripasso veloce delle regole:
       esercizi: [
         g("a", riparto("CTI FT", "Un full time", 47, false), riparto("CTI FT", "Un full time", 44, false), riparto("CTI FT", "Un full time", 49, false)),
         g("b", riparto("CTI PT 32H", "Un part time da 32 ore", 43, true), riparto("CTI PT 24H", "Un part time da 24 ore", 45, true), riparto("CTI PT 20H", "Un part time da 20 ore", 42, true)),
-        g("c", scelta("Un full time ha lavorato 40 ore: Standard 40, Accordo 0. Cosa chiedi all'OS?", ["Niente, è giusto", "Di spostare 1 ora dallo Standard all'Accordo", "Di spostare 1 ora nello Straordinario"], 1, "Lo Standard di un full time si ferma a 39: l'ora da 39 a 40 va nell'Accordo."),
-          scelta("Un full time ha lavorato 41 ore: Standard 41, Accordo 0. Cosa chiedi all'OS?", ["Di spostare 2 ore dallo Standard all'Accordo", "Niente, è giusto", "Di spostare 2 ore nello Straordinario"], 0, "Lo Standard di un full time si ferma a 39: le ore da 39 a 41 vanno nell'Accordo.")),
+        g("c", scelta("Un full time ha lavorato 40 ore: Standard 40, Straordinario 0. Cosa chiedi all'OS?", ["Niente, è giusto", "Di spostare 1 ora dallo Standard allo Straordinario", "Di togliere 1 ora"], 1, "Lo Standard di un full time si ferma a 39: l'ora in più va nello Straordinario."),
+          scelta("Un full time ha 39 ore di Standard da lunedì a sabato e poi lavora la domenica 8 ore, scritte in Standard. Cosa chiedi all'OS?", ["Di spostare tutte le 8 ore della domenica nello Straordinario", "Niente, è giusto", "Di mettere 3 ore in Accordo e 5 in Straordinario"], 0, "Fatte le 39 ore di Standard, il resto va tutto in Straordinario: le 8 ore della domenica non si dividono con l'Accordo.")),
         g("d", scelta("Un driver lavora dal 30 novembre al 6 dicembre compresi. Cosa fai?", ["Niente: in ogni mese sono pochi giorni", "È una violazione (7 giorni di fila): avviso Alessandro e chiedo all'OS", "Lo metto nell'elenco «6° giorno di domenica»"], 1, "30 novembre + dall'1 al 6 dicembre = 7 giorni di fila. La fila si conta anche a cavallo del mese.")),
         g("e", scelta("Amazon vede un driver con 120 pacchi il 12 del mese. Nel tracking il 12 ha 8 ore di MALATTIA e nessuna ora di lavoro. Cosa succede?", ["È un −1 da chiedere all'OS", "Non si segnala: malattia batte lavorato", "Si toglie la malattia"], 1, "Se il tracking dice malattia e Amazon lo vede in rotta, non è un errore di compilazione: non si segnala in questo controllo.")),
         g("f", scelta("Un somministrato (STD) ha 3 ore nella riga Accordo di domenica. Che simbolo compare e perché?", ["+1, perché manca la rotta", "ACC, perché la domenica è già pagata con maggiorazione e quella cella va tolta", "ORE, perché ha lavorato troppo"], 1, "ACC: per i somministrati la domenica non va nella riga Accordo.")),
