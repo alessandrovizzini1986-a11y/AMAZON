@@ -1275,3 +1275,16 @@ model TelematicaScarico {
   definitivo Boolean @default(false)
   finitoIl  DateTime @default(now())
 }
+
+// Posti conosciuti dove un furgone può passare la notte senza che sia un'anomalia:
+// PARCHEGGIO = parcheggio della station (vale come la base), OFFICINA = officina o carrozzeria.
+model TelematicaLuogo {
+  id       String   @id @default(cuid())
+  station  String
+  luogo    String // via e comune, senza numero civico (come lo calcola il sito)
+  tipo     String // PARCHEGGIO | OFFICINA
+  creatoDa String
+  creatoIl DateTime @default(now())
+
+  @@unique([station, luogo])
+}

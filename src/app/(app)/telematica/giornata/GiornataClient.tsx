@@ -6,6 +6,7 @@ import { durataMin, oreMinuti, piuGiorni } from "@/domain/telematica";
 import type { Giornata, RigaGiornata } from "@/lib/telematica/giornata";
 import type { FlexRow } from "@/domain/presenze/flex";
 import { tuttiIFile } from "@/lib/presenze/archivioLocale";
+import { segnaLuogoTelematica } from "../actions";
 
 const data = (g: string) => new Date(`${g}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 const n0 = (x: number) => Math.round(x).toLocaleString("it-IT");
@@ -34,10 +35,13 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
     return () => { vivo = false; };
   }, [dati.station, dati.giorno]);
 
-  const usati = dati.righe.filter((r) => r.km >= 1), conAvvisi = dati.righe.filter((r) => r.avvisi.length);
+  const usati = dati.righe.filter((r) => r.km >= 1), conAvvisi = dati.righe.filter((r) => r.avvisi.some((a) => !a.info));
+  const noti = new Set([...dati.basi, ...dati.luoghi.map((l) => l.luogo)]);
+  const segna = async (luogo: string, tipo: "PARCHEGGIO" | "OFFICINA" | "NESSUNO") => { await segnaLuogoTelematica({ station: dati.station, luogo, tipo }); router.refresh(); };
   const righe = useMemo(() => {
-    const f = filtro === "AVVISI" ? dati.righe.filter((r) => r.avvisi.length) : filtro === "USATI" ? dati.righe.filter((r) => r.km >= 1) : filtro === "FERMI" ? dati.righe.filter((r) => r.km < 1) : dati.righe;
-    return [...f].sort((a, b) => b.avvisi.length - a.avvisi.length || (a.partenza ?? "99").localeCompare(b.partenza ?? "99") || a.targa.localeCompare(b.targa));
+    const f = filtro === "AVVISI" ? dati.righe.filter((r) => r.avvisi.some((a) => !a.info)) : filtro === "USATI" ? dati.righe.filter((r) => r.km >= 1) : filtro === "FERMI" ? dati.righe.filter((r) => r.km < 1) : dati.righe;
+    const gravi = (r: RigaGiornata) => r.avvisi.filter((a) => !a.info).length;
+    return [...f].sort((a, b) => gravi(b) - gravi(a) || (a.partenza ?? "99").localeCompare(b.partenza ?? "99") || a.targa.localeCompare(b.targa));
   }, [dati.righe, filtro]);
   const rotte = amazon?.filter((r) => r.pacchi > PACCHI_ROTTA) ?? [];
   const km = usati.reduce((a, r) => a + r.km, 0);
@@ -66,7 +70,7 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
             <Dato titolo="Km del giorno" valore={n0(km)} nota={usati.length ? `${n0(km / usati.length)} a furgone` : undefined} />
             <Dato titolo="Rotte Amazon fatte" valore={amazon === null ? "…" : amazon.length ? String(rotte.length) : "—"} nota={amazon?.length === 0 ? "CSV del giorno non in archivio" : "driver con più di 20 pacchi"} />
             <Dato titolo="Rotte previste" valore={dati.rottePreviste === null ? "—" : String(dati.rottePreviste)} nota="dall'ultimo forecast" />
-            <Dato titolo="Furgoni da guardare" valore={String(conAvvisi.length)} nota={`${conAvvisi.reduce((a, r) => a + r.avvisi.length, 0)} segnalazioni`} />
+            <Dato titolo="Furgoni da guardare" valore={String(conAvvisi.length)} nota={`${conAvvisi.reduce((a, r) => a + r.avvisi.filter((x) => !x.info).length, 0)} segnalazioni`} />
           </div>
           {dati.conTelematica < dati.inFlotta && <p className="text-xs text-slate-500">Solo {dati.conTelematica} dei {dati.inFlotta} furgoni di {dati.station} hanno la telematica: i furgoni usati qui sotto non sono tutti quelli usciti, quindi il confronto con le rotte è indicativo.</p>}
           {dati.basi.length > 0 && <p className="text-xs text-slate-500">Base di {dati.station} (ricavata da dove partono i furgoni nel mese): {dati.basi.join(" · ")}.</p>}
@@ -94,15 +98,25 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
                       <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.soste ? `${r.soste} · ${oreMinuti(r.sosteMin)}` : "—"}</td>
                       <td className="px-2 py-1.5">{r.sostaLunga ? <>{oreMinuti(r.sostaLunga.min)} <span className="text-slate-500">alle {r.sostaLunga.da}</span></> : "—"}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{r.velMax ?? "—"}</td>
-                      <td className="px-2 py-1.5">{r.avvisi.length ? <ul className="flex flex-col gap-0.5">{r.avvisi.map((a) => <li key={a.codice} className="text-amber-800">{a.testo}</li>)}</ul> : r.km >= 1 ? <span className="text-emerald-700">Niente</span> : <span className="text-slate-400">Fermo</span>}</td>
+                      <td className="px-2 py-1.5">{r.avvisi.length ? <ul className="flex flex-col gap-0.5">{r.avvisi.map((a) => <li key={a.codice} className={a.info ? "text-slate-600" : "text-amber-800"}>{a.testo}</li>)}</ul> : r.km >= 1 ? <span className="text-emerald-700">Niente</span> : <span className="text-slate-400">Fermo</span>}</td>
                     </tr>
-                    {aperta === r.targa && <tr className="border-t border-slate-100 bg-slate-50"><td colSpan={9} className="px-3 py-3"><Dettaglio r={r} /></td></tr>}
+                    {aperta === r.targa && <tr className="border-t border-slate-100 bg-slate-50"><td colSpan={9} className="px-3 py-3"><Dettaglio r={r} noti={noti} segna={segna} /></td></tr>}
                   </Fragment>
                 ))}
                 {righe.length === 0 && <tr><td colSpan={9} className="px-3 py-4 text-slate-500">Nessun furgone in questo elenco.</td></tr>}
               </tbody>
             </table>
           </div>
+
+          {dati.luoghi.length > 0 && (
+            <section className="card flex flex-col gap-2 p-4">
+              <h2 className="text-base font-semibold">Posti conosciuti di {dati.station}</h2>
+              <p className="text-sm text-slate-600">Un furgone fermo per la notte in un parcheggio non viene segnalato; in officina compare come «in officina».</p>
+              <ul className="flex flex-col gap-1 text-sm">
+                {dati.luoghi.map((l) => <li key={l.luogo} className="flex flex-wrap items-center gap-2"><span className="w-24 text-slate-500">{l.tipo === "OFFICINA" ? "Officina" : "Parcheggio"}</span><span>{l.luogo}</span><button className="text-xs text-slate-500 underline" onClick={() => segna(l.luogo, "NESSUNO")}>togli</button></li>)}
+              </ul>
+            </section>
+          )}
 
           <section className="card flex flex-col gap-2 p-4">
             <h2 className="text-base font-semibold">Rotte Amazon del giorno</h2>
@@ -121,7 +135,8 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
   );
 }
 
-function Dettaglio({ r }: { r: RigaGiornata }) {
+function Dettaglio({ r, noti, segna }: { r: RigaGiornata; noti: Set<string>; segna: (luogo: string, tipo: "PARCHEGGIO" | "OFFICINA") => void }) {
+  const ignoti = [...new Set([r.finisceA, r.parteDa].filter((l): l is string => !!l && !noti.has(l)))];
   if (!r.tappe.length) return <p className="text-sm text-slate-600">Per questo furgone il portale non dà il dettaglio di guide e soste{r.km >= 1 ? "" : ": è rimasto fermo"}.</p>;
   return (
     <div className="flex flex-col gap-2 text-sm">
@@ -130,6 +145,13 @@ function Dettaglio({ r }: { r: RigaGiornata }) {
         {r.rifornimenti > 0 && <span>Rifornimento: <b>{r.litri.toLocaleString("it-IT")} litri</b></span>}
         {r.parteDa && <span>Parte da: <b>{r.parteDa}</b></span>}{r.finisceA && <span>La sera è in: <b>{r.finisceA}</b></span>}
       </div>
+      {ignoti.map((l) => (
+        <div key={l} className="flex flex-wrap items-center gap-2 text-slate-700">
+          <span>Conosci <b>{l}</b>?</span>
+          <button className="btn-secondary py-0.5 px-2 text-xs" onClick={() => segna(l, "PARCHEGGIO")}>È un nostro parcheggio</button>
+          <button className="btn-secondary py-0.5 px-2 text-xs" onClick={() => segna(l, "OFFICINA")}>È un&apos;officina</button>
+        </div>
+      ))}
       <ol className="flex flex-col">
         {r.tappe.map((t, i) => (
           <li key={i} className="flex gap-3 border-l-2 py-0.5 pl-3" style={{ borderColor: t.t === "G" ? "#059669" : "#cbd5e1" }}>
