@@ -60,6 +60,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/telefoni", label: "Telefoni e SIM", icon: "settings", perm: "telefoni.view", descr: "a chi sono assegnati, PIN e PUK" },
       { href: "/carburante-telepass/anagrafiche", label: "Fuel card e Telepass", icon: "fuel", perm: "telepass.view", descr: "station, targa e PIN di ogni carta" },
       { href: "/spedizioni-gls", label: "Spedizioni GLS", icon: "orders", perm: "spedizioni.view", descr: "portale GLS e bollettino in PDF" },
+      { href: "/telematica", label: "Telematica furgoni", icon: "settings", perm: "users.manage", descr: "collegamento a Targa e FlottaWeb" },
       { href: "/portali", label: "Portali fornitori", icon: "settings", perm: "users.manage", descr: "indirizzi e accessi di noleggiatori, Telepass, Q8" },
       { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" },
     ],

@@ -1218,3 +1218,20 @@ model GlsBollettino {
 
   @@index([creatoIl])
 }
+
+// Prova del collegamento ai portali di telematica (Targa, FlottaWeb): esito dell'ultima prova di ogni lettura
+// e un campione della risposta (pochi elementi), per vedere come sono fatti i dati.
+model TelematicaProva {
+  id         String   @id @default(cuid())
+  fonte      String // TARGA | FLOTTAWEB
+  chiamata   String // "login" o il percorso letto
+  cosa       String
+  ok         Boolean
+  stato      Int?
+  elementi   Int?
+  errore     String?
+  risposta   Json?
+  eseguitaIl DateTime @default(now())
+
+  @@unique([fonte, chiamata])
+}
