@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { provaFonte } from "@/lib/telematica/prova";
 import { scaricaGiorno } from "@/lib/telematica/scarico";
@@ -25,4 +26,15 @@ export async function scaricaGiornoTelematica(giorno: string) {
   const esito = await scaricaGiorno(g);
   await audit({ userId: user.id, action: "telematica.scarica", entity: "TelematicaGiorno", meta: { giorno: g, mezzi: esito.mezzi, errori: esito.errori } });
   return esito;
+}
+
+/** Segna un posto come parcheggio della station o come officina (o toglie il segno): da lì in poi non è più un'anomalia. Solo ADMIN. */
+export async function segnaLuogoTelematica(input: { station: string; luogo: string; tipo: "PARCHEGGIO" | "OFFICINA" | "NESSUNO" }) {
+  const user = await requireRole("ADMIN");
+  const x = z.object({ station: z.string().min(2).max(10), luogo: z.string().trim().min(3).max(160), tipo: z.enum(["PARCHEGGIO", "OFFICINA", "NESSUNO"]) }).parse(input);
+  const chiave = { station_luogo: { station: x.station, luogo: x.luogo } };
+  if (x.tipo === "NESSUNO") await db.telematicaLuogo.deleteMany({ where: { station: x.station, luogo: x.luogo } });
+  else await db.telematicaLuogo.upsert({ where: chiave, create: { station: x.station, luogo: x.luogo, tipo: x.tipo, creatoDa: user.name }, update: { tipo: x.tipo, creatoDa: user.name } });
+  await audit({ userId: user.id, action: "telematica.luogo", entity: "TelematicaLuogo", meta: x });
+  revalidatePath("/telematica/giornata");
 }

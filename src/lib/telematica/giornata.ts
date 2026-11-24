@@ -8,7 +8,7 @@ export type RigaGiornata = {
   sostaLunga: { min: number; dove: string | null; da: string } | null; fermoAccesoMin: number; velMax: number | null; rifornimenti: number; litri: number; parteDa: string | null; finisceA: string | null; avvisi: Avviso[]; tappe: Tappa[];
 };
 export type Giornata = {
-  station: string; giorno: string; scaricato: boolean; definitivo: boolean; basi: string[]; inFlotta: number; conTelematica: number; rottePreviste: number | null;
+  station: string; giorno: string; scaricato: boolean; definitivo: boolean; basi: string[]; luoghi: { luogo: string; tipo: string }[]; inFlotta: number; conTelematica: number; rottePreviste: number | null;
   righe: RigaGiornata[];
 };
 
@@ -26,7 +26,8 @@ export async function datiGiornata(station: string, giorno: string): Promise<Gio
   const mezzi = await db.vehicle.findMany({ where: { stato: { not: "DISMESSO" }, station: { code: station } }, select: { targa: true } });
   const targhe = mezzi.map((m) => targaPulita(m.targa));
   const mese = giorno.slice(0, 7);
-  const [delGiorno, delMese, scarico, ultimoForecast] = await Promise.all([
+  const [luoghi, delGiorno, delMese, scarico, ultimoForecast] = await Promise.all([
+    db.telematicaLuogo.findMany({ where: { station }, select: { luogo: true, tipo: true }, orderBy: { luogo: "asc" } }),
     db.telematicaGiorno.findMany({ where: { giorno, targa: { in: targhe } }, orderBy: { targa: "asc" } }),
     // le basi si ricavano da dove partono i furgoni della station in tutto il mese: un giorno solo è troppo poco
     db.telematicaGiorno.findMany({ where: { giorno: { startsWith: mese }, targa: { in: targhe }, km: { gte: 1 } }, select: { tappe: true } }),
@@ -35,15 +36,17 @@ export async function datiGiornata(station: string, giorno: string): Promise<Gio
   ]);
   const previste = ultimoForecast ? await db.forecastRoute.aggregate({ where: { station, data: new Date(`${giorno}T00:00:00Z`), fileId: ultimoForecast.fileId }, _sum: { routes: true } }) : null;
   const partenze = delMese.map((r) => { const t = tappeDelGiorno(r.tappe as Tappa[] | null); const i = t.findIndex((x) => x.t === "G"); return i < 0 ? null : luogo(i > 0 ? t[i - 1].dove : t[i].dove); });
-  const basiStation = basi(partenze);
+  // base = dove partono i furgoni nel mese + i parcheggi segnati a mano; le officine sono a parte
+  const officine = luoghi.filter((l) => l.tipo === "OFFICINA").map((l) => l.luogo);
+  const basiStation = [...new Set([...basi(partenze).filter((b) => !officine.includes(b)), ...luoghi.filter((l) => l.tipo === "PARCHEGGIO").map((l) => l.luogo)])];
   const medianaKm = mediana(delGiorno.filter((r) => r.km >= 1).map((r) => r.km));
   const righe: RigaGiornata[] = delGiorno.map((r) => {
     const g = giornataMezzo(r.tappe as Tappa[] | null, basiStation);
     return {
       targa: r.targa, fonte: r.fonte, km: r.km, partenza: g.partenza, rientro: g.rientro, fuoriMin: g.fuoriMin, guidaMin: Math.round(r.guidaSec / 60), soste: g.soste, sosteMin: g.sosteMin, sostaLunga: g.sostaLunga,
       fermoAccesoMin: Math.round(r.fermoMotoreAccSec / 60), velMax: r.velMax, rifornimenti: r.rifornimenti, litri: r.litri, parteDa: g.parteDa, finisceA: g.finisceA,
-      avvisi: avvisiMezzo({ km: r.km, velMax: r.velMax, fermoMotoreAccSec: r.fermoMotoreAccSec }, g, basiStation, medianaKm), tappe: r.km >= 1 ? g.tappe : [],
+      avvisi: avvisiMezzo({ km: r.km, velMax: r.velMax, fermoMotoreAccSec: r.fermoMotoreAccSec }, g, basiStation, medianaKm, officine), tappe: r.km >= 1 ? g.tappe : [],
     };
   });
-  return { station, giorno, scaricato: !!scarico, definitivo: scarico?.definitivo ?? false, basi: basiStation, inFlotta: mezzi.length, conTelematica: delGiorno.length, rottePreviste: previste?._sum.routes ?? null, righe };
+  return { station, giorno, scaricato: !!scarico, definitivo: scarico?.definitivo ?? false, basi: basiStation, luoghi, inFlotta: mezzi.length, conTelematica: delGiorno.length, rottePreviste: previste?._sum.routes ?? null, righe };
 }

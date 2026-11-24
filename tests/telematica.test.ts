@@ -144,3 +144,14 @@ describe("giornata di consegna", () => {
     expect(avvisiMezzo({ km: 0, velMax: null, fermoMotoreAccSec: 0 }, giornataMezzo([t("S", "00:00", "23:59", 0, CASA)], [luogo(BASE)!]), [luogo(BASE)!], 95)).toEqual([]);
   });
 });
+
+describe("posti conosciuti", () => {
+  const BASE = "Via Del Salice, Santarcangelo Di Romagna", OFF = "Via Pietà, Savignano Sul Rubicone", PARK = "Via Padre Tosi, Santarcangelo Di Romagna";
+  const giro = (sera: string): Tappa[] => [{ t: "S", da: "00:00", a: "09:00", km: 0, dove: `Via Del Salice, 5, Santarcangelo Di Romagna, Rn` }, { t: "G", da: "09:00", a: "17:00", km: 90, dove: sera }, { t: "S", da: "17:00", a: "23:59", km: 0, dove: sera }];
+  const x = { km: 90, velMax: 100, fermoMotoreAccSec: 0 };
+  it("in officina non è un'anomalia ma si vede; in un parcheggio non si segnala; altrove sì", () => {
+    expect(avvisiMezzo(x, giornataMezzo(giro("Via Pietà, 30, Savignano Sul Rubicone, Fc"), [BASE]), [BASE], 90, [OFF])).toEqual([{ codice: "OFFICINA", testo: `La sera è in officina (${OFF})`, info: true }]);
+    expect(avvisiMezzo(x, giornataMezzo(giro("Via Padre Tosi, 3, Santarcangelo Di Romagna, Rn"), [BASE, PARK]), [BASE, PARK], 90, [OFF])).toEqual([]);
+    expect(avvisiMezzo(x, giornataMezzo(giro("Via Roma, 1, Cesena, Fc"), [BASE, PARK]), [BASE, PARK], 90, [OFF]).map((a) => a.codice)).toEqual(["FUORI_BASE_SERA"]);
+  });
+});
