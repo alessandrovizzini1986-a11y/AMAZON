@@ -31,7 +31,14 @@ export function MappaClient() {
       setDati(await r.json()); setErrore(null);
     } catch { setErrore("Non riesco a leggere le posizioni. Riprovo tra un minuto."); }
   }, []);
-  useEffect(() => { carica(); const t = setInterval(carica, 60000); return () => clearInterval(t); }, [carica]);
+  // si aggiorna solo mentre la scheda è in vista: una mappa dimenticata aperta non consuma niente
+  useEffect(() => {
+    carica();
+    const t = setInterval(() => { if (document.visibilityState === "visible") carica(); }, 60000);
+    const torna = () => { if (document.visibilityState === "visible") carica(); };
+    document.addEventListener("visibilitychange", torna);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", torna); };
+  }, [carica]);
 
   const stations = useMemo(() => [...new Set((dati?.posizioni ?? []).map((p) => p.station ?? "Senza station"))].sort(), [dati]);
   const visibili = useMemo(() => {

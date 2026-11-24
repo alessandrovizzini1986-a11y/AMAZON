@@ -13,7 +13,7 @@ const COLONNE: Colonna[] = [
   { k: "guidaOre", nome: "Ore guida", dec: 1 }, { k: "fermoMotoreAccOre", nome: "Fermo a motore acceso (h)", dec: 1 }, { k: "velMax", nome: "Vel. max" }, { k: "rifornimenti", nome: "Rifornimenti" }, { k: "litri", nome: "Litri", dec: 1 }, { k: "litri100km", nome: "L/100 km", dec: 1 },
 ];
 
-export function MeseClient({ mese, riepilogo, calendario }: { mese: string; riepilogo: RiepilogoTarga[]; calendario: Giorno[] }) {
+export function MeseClient({ mese, riepilogo, calendario, spazioMb }: { mese: string; riepilogo: RiepilogoTarga[]; calendario: Giorno[]; spazioMb: number }) {
   const router = useRouter();
   const [station, setStation] = useState("TUTTE");
   const [ordine, setOrdine] = useState<{ k: keyof RiepilogoTarga; su: boolean }>({ k: "station", su: true });
@@ -56,7 +56,7 @@ export function MeseClient({ mese, riepilogo, calendario }: { mese: string; riep
               className={`inline-flex h-7 w-7 items-center justify-center rounded text-xs ${g.definitivo ? "bg-emerald-100 text-emerald-800" : g.scaricato ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-500"}`}>{Number(g.giorno.slice(8))}</span>
           ))}
         </div>
-        <p className="text-xs text-slate-500">Verde: giorno scaricato. Giallo: scaricato prima che la giornata finisse, o con errori. Grigio: da scaricare. Ogni notte il sito scarica da solo il giorno prima.</p>
+        <p className="text-xs text-slate-500">Verde: giorno scaricato. Giallo: scaricato prima che la giornata finisse, o con errori. Grigio: da scaricare. Ogni notte il sito scarica da solo il giorno prima. Spazio usato nel database da tutta la telematica: {spazioMb.toLocaleString("it-IT")} MB su 500 disponibili; il dettaglio di guide e soste si cancella da solo dopo 120 giorni, i numeri restano.</p>
         {avvisi.map((a) => <p key={a} className="text-sm text-amber-700">{a}</p>)}
       </div>
 
