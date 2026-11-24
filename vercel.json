@@ -5,5 +5,15 @@
       "main": true,
       "claude/**": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/telematica/cron",
+      "schedule": "15 2 * * *"
+    },
+    {
+      "path": "/api/telematica/cron",
+      "schedule": "45 2 * * *"
+    }
+  ]
 }
