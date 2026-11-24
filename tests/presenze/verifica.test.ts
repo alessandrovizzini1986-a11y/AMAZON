@@ -49,7 +49,7 @@ describe("verifica delle settimane", () => {
     // 38 ore: Standard 32 e Straordinario 6 → errore sul driver
     const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), null, g(0, { str: 6 }), null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
-    expect(e.richieste[0].testo).toContain("Straordinario 6 → al massimo 0");
+    expect(e.richieste[0].testo).toContain("6 h da Straordinario a Standard: Straordinario 6 → 0, Standard 32 → 38");
     expect(e.richieste[0].chiave).toBe(`2026-11|DER1|SIC|CF1|STR_PRIMA|${LUN}`);
     // part time 24 ore che ne lavora 40: Standard 24, Supplementare 15, Straordinario 1 al posto dell'Accordo → va bene
     expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), g(0, { sup: 8 }), g(0, { sup: 7, str: 1 }), null, null])).richieste).toEqual([]);
@@ -117,5 +117,12 @@ describe("gruppi per il menu dei filtri", () => {
     expect(new Set(tutti).size).toBe(tutti.length);
     expect(GRUPPI_TIPO.length).toBe(4);
     expect([gruppoDi("+1"), gruppoDi("STR_PRIMA"), gruppoDi("ACC"), gruppoDi("7GG"), gruppoDi("STD_OLTRE")]).toEqual(["GIORNI", "ORE", "ACCORDO", "RIPOSI", "ORE"]);
+  });
+});
+
+describe("quale file leggere per un mese", () => {
+  it("il mese in testa al nome del file", async () => {
+    const { prefissoMese } = await import("@/lib/presenze/carica");
+    expect([prefissoMese("11_Tracking_DER1.xlsm"), prefissoMese("08_Tracking.xlsx"), prefissoMese("Tracking_DER1.xlsx"), prefissoMese("13_x.xlsx"), prefissoMese("2026_x.xlsx")]).toEqual([11, 8, null, null, null]);
   });
 });
