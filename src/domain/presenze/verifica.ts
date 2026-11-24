@@ -234,11 +234,13 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
           const maxAcc = tetto - ORE_FT, maxStd = pt && c.ore !== null ? c.ore : ORE_FT;
           // La riga Accordo può anche non essere compilata (deciso da Alessandro il 24/11/2026): dopo le 39 ore ordinarie
           // le ore possono andare a Straordinario. È un errore solo lo Straordinario segnato PRIMA di arrivare a 39 ore.
-          const strMax = Math.max(ripartoAtteso(tot, s.ass, c, ORE_FT).str, ripartoAtteso(tot, 0, c, ORE_FT).str);
+          // Le 39 ore si contano su Standard (e Supplementare per i part time): l'Accordo già scritto resta dov'è e non conta
+          // (deciso da Alessandro il 24/11/2026: "standard fino a 39 e il resto in straordinario"). Le assenze retribuite, se servono, contano.
+          const strMax = Math.max(0, tot - s.acc - Math.max(ORE_FT - s.ass, 0));
           const strTroppo = s.str > strMax + TOLLERANZA, strPoco = s.str < atteso.str - TOLLERANZA;
           const supNonPt = !pt && s.sup > TOLLERANZA, stdOltre = s.std > maxStd + TOLLERANZA, accOltre = s.acc > maxAcc + TOLLERANZA;
           // proposta coerente: le ore che mancano per arrivare a 39 ordinarie (Standard, Supplementare e Accordo già scritto) passano dallo Straordinario allo Standard
-          if (strTroppo) { const sposta = s.str - strMax; diff.push(`${it(sposta)} h da Straordinario a ${pt ? "Supplementare" : "Standard"}: Straordinario ${it(s.str)} → ${it(strMax)}, ${pt ? "Standard e Supplementare" : "Standard"} ${it(s.std + s.sup)} → ${it(s.std + s.sup + sposta)}${s.acc ? ` (con le ${it(s.acc)} h di Accordo fanno ${it(Math.min(tot, ORE_FT))} ordinarie)` : ""}`); }
+          if (strTroppo) { const sposta = s.str - strMax; diff.push(`${it(sposta)} h da Straordinario a ${pt ? "Supplementare" : "Standard"}: Straordinario ${it(s.str)} → ${it(strMax)}, ${pt ? "Standard e Supplementare" : "Standard"} ${it(s.std + s.sup)} → ${it(s.std + s.sup + sposta)}`); }
           else if (strPoco) diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`);
           if (supNonPt) diff.push(`Supplementare ${it(s.sup)} → 0`);
           if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(maxStd)}${pt ? " (il resto in Supplementare)" : " (il resto in Accordo)"}`);
@@ -247,7 +249,7 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
             esito = diff.join(" · ");
             const altro: [TipoRichiesta, string] | null =
               supNonPt ? ["SUP", "il Supplementare è solo per i part time"]
-              : strTroppo ? ["STR_PRIMA", `lo Straordinario parte solo dopo le ${ORE_FT} ore ordinarie della settimana`]
+              : strTroppo ? ["STR_PRIMA", `lo Straordinario parte solo dopo ${ORE_FT} ore di ${pt ? "Standard e Supplementare" : "Standard"} nella settimana`]
               : stdOltre ? ["STD_OLTRE", "nella riga Standard vanno solo le ore di contratto"]
               : accOltre ? ["RIPARTO", `nella riga Accordo vanno al massimo ${it(maxAcc)} ore a settimana`]
               : strPoco ? ["RIPARTO", `oltre le ${tetto} ore della settimana le ore sono Straordinario`]

@@ -51,6 +51,10 @@ describe("verifica delle settimane", () => {
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
     expect(e.richieste[0].testo).toContain("6 h da Straordinario a Standard: Straordinario 6 → 0, Standard 32 → 38");
     expect(e.richieste[0].chiave).toBe(`2026-11|DER1|SIC|CF1|STR_PRIMA|${LUN}`);
+    // 44,5 ore: Standard 35,5, Accordo 1, Straordinario 8 → Standard fino a 39, il resto Straordinario (l'Accordo non conta nelle 39)
+    const m = run(persona("CTI FT", [g(4), g(8), g(7.5), null, g(8, { acc: 0.5 }), g(8, { acc: 0.5 }), g(0, { str: 8 })]));
+    expect(m.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+    expect(m.richieste[0].testo).toContain("3,5 h da Straordinario a Standard: Straordinario 8 → 4,5, Standard 35,5 → 39");
     // part time 24 ore che ne lavora 40: Standard 24, Supplementare 15, Straordinario 1 al posto dell'Accordo → va bene
     expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), g(0, { sup: 8 }), g(0, { sup: 7, str: 1 }), null, null])).richieste).toEqual([]);
   });
