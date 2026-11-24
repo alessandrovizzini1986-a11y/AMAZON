@@ -30,6 +30,14 @@ export const GIUSTIFICATIVI_DEFAULT: { codice: string; descrizione: string }[] =
   { codice: "FORMAZIONE", descrizione: "formazione" },
   { codice: "RESCUE", descrizione: "rescue (trasferta dovuta)" },
   { codice: "VM", descrizione: "visita medica" },
+  // sigle di turno che dicono già cosa ha fatto il driver (decise da Alessandro il 24/11/2026): nessuna anomalia
+  { codice: "SWA", descrizione: "Ship with Amazon" },
+  { codice: "4H", descrizione: "turno da 4 ore" },
+  { codice: "8H", descrizione: "turno da 8 ore" },
+  { codice: "L1", descrizione: "turno L1" },
+  { codice: "L2", descrizione: "turno L2" },
+  { codice: "L3", descrizione: "turno L3" },
+  { codice: "L4", descrizione: "turno L4" },
   { codice: "DVN5", descrizione: "prestito altra station" },
   { codice: "DVN6", descrizione: "prestito altra station" },
   ...STATIONS.map((s) => ({ codice: s, descrizione: "prestito altra station" })),
@@ -37,7 +45,7 @@ export const GIUSTIFICATIVI_DEFAULT: { codice: string; descrizione: string }[] =
 ];
 
 /** Codici che NON sono giustificativi (turni/riposi), riportati in nota. */
-export const NON_GIUSTIFICATIVI = ["SB", "L1", "R", "C1", "D", "F", "P"];
+export const NON_GIUSTIFICATIVI = ["SB", "R", "C1", "D", "F", "P"];
 
 /**
  * Regole dello script v2 (base del test golden): mansioni non di guida e
