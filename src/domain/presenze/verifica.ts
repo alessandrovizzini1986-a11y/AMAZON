@@ -214,14 +214,14 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
     for (let i = 0; i < lavorati.length;) {
       let j = i; while (j + 1 < lavorati.length && addDays(lavorati[j], 1) === lavorati[j + 1]) j++;
       const n = j - i + 1;
-      if (n >= 7 && lavorati[j] >= da) nuova("7GG", lavorati[i], `${ddmm(lavorati[i])}–${ddmm(lavorati[j])}`, `${n} giorni di lavoro di fila dal ${ddmm(lavorati[i])} al ${ddmm(lavorati[j])}: il massimo è 6. Verificare il tracking e, se è vero, dare subito il riposo.`);
+      if (n >= 7 && lavorati[j] >= da) nuova("7GG", lavorati[i], `${ddmm(lavorati[i])}–${ddmm(lavorati[j])}`, `ha ${n} giorni di lavoro di fila, dal ${ddmm(lavorati[i])} al ${ddmm(lavorati[j])}: il massimo è 6. Se è giusto serve subito il riposo.`);
       i = j + 1;
     }
 
     // Assenza segnata con la sigla ma senza ore: non è grave, ma senza le ore i conti della settimana non tornano
     for (const [d, sg] of x.sigle ?? []) if (d >= da && d <= p.finoA && assenzaSenzaOre(x, d)) {
       const riga = SIGLE_ASSENZA[sg];
-      nuova("ASS_ORE", d, ddmm(d), `${ddmm(d)}: nella riga RIPOSO c'è «${sg}» ma nella riga ${riga} non ci sono ore. Inserire le ore dell'assenza (${it(ORE_GIORNO_ASSENZA)} per una giornata intera): contano nelle 39 ore della settimana.`);
+      nuova("ASS_ORE", d, ddmm(d), `il ${ddmm(d)} c'è «${sg}» nella riga RIPOSO ma mancano le ore nella riga ${riga}: vanno inserite (${it(ORE_GIORNO_ASSENZA)} per la giornata intera).`);
     }
 
     // Lo Standard oltre 8h24 in un giorno non si segnala più (deciso da Alessandro il 24/11/2026): conta solo che lo
@@ -262,9 +262,13 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
         if (s.ass > 0 && tot + s.ass > tetto + 8) {
           // ore lavorate + assenze ben oltre una settimana piena: prima di spostare le ore va capito quale delle due è sbagliata
           esito = "ore + assenze troppe";
-          nuova("ASSENZE", l, periodo, `Settimana ${periodo}: ${it(tot)} h lavorate + ${it(s.ass)} h di assenze = ${it(tot + s.ass)} h, troppe per una settimana. Verificare se le assenze o le ore sono giuste.`);
+          nuova("ASSENZE", l, periodo, `Settimana ${periodo}: ${it(tot)} h lavorate + ${it(s.ass)} h di assenze fanno ${it(tot + s.ass)} h, troppe per una settimana. Sono giuste le ore o le assenze?`);
         } else {
           const diff: string[] = [];
+          // frasi per l'OS: dirette, con il giorno preciso da toccare (il riepilogo tecnico "diff" resta nel foglio Settimane)
+          const frasi: string[] = [];
+          const hh = (n: number) => `${it(r1(n))} h`;
+          const ordinarie = pt ? "Supplementare" : "Standard";
           // DER2: i part time sono gestiti come MOG, quindi nel tracking Standard e Supplementare non sono distinti in modo affidabile.
           // Lì non si controlla il Supplementare: né lo Standard oltre le ore del part time, né il Supplementare su chi non è part time.
           const senzaSup = STATION_SENZA_SUPPLEMENTARE.has(x.station);
@@ -281,15 +285,27 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
           const strTroppo = s.str > strLecito + TOLLERANZA, strPoco = s.str < atteso.str - TOLLERANZA;
           const supNonPt = !pt && !senzaSup && s.sup > TOLLERANZA, stdOltre = s.std > maxStd + TOLLERANZA, accOltre = s.acc > maxAcc + TOLLERANZA;
           // proposta coerente: le ore che mancano per arrivare a 39 ordinarie (Standard, Supplementare e Accordo già scritto) passano dallo Straordinario allo Standard
-          if (strTroppo) { const sposta = s.str - strLecito; diff.push(`${it(sposta)} h da Straordinario a ${pt ? "Supplementare" : "Standard"}: Straordinario ${it(s.str)} → ${it(strLecito)}, ${pt ? "Standard e Supplementare" : "Standard"} ${it(s.std + s.sup)} → ${it(s.std + s.sup + sposta)}`); }
+          if (strTroppo) { const sposta = s.str - strLecito; diff.push(`${it(sposta)} h da Straordinario a ${pt ? "Supplementare" : "Standard"}: Straordinario ${it(s.str)} → ${it(strLecito)}, ${pt ? "Standard e Supplementare" : "Standard"} ${it(s.std + s.sup)} → ${it(s.std + s.sup + sposta)}`);
+            // lo Straordinario "di troppo" è quello dei primi giorni in cui compare (tolte le ore oltre l'ottava di quel giorno)
+            let resta = sposta; const pezzi: string[] = [];
+            dd.forEach((d, k) => { const o = g[k]; if (!o || resta <= TOLLERANZA) return; const cand = o.str - Math.min(o.str, Math.max(0, lav(o) - ORE_GIORNO_STR)); const w = Math.min(cand, resta); if (w <= TOLLERANZA) return; resta -= w;
+              pezzi.push(w >= o.str - TOLLERANZA ? `il ${ddmm(d)} ci sono ${hh(o.str)} in Straordinario, ma secondo me sono ${ordinarie}` : `il ${ddmm(d)} ci sono ${hh(o.str)} in Straordinario, ma secondo me ${hh(w)} ${Math.abs(w - 1) < TOLLERANZA ? "è" : "sono"} ${ordinarie}`); });
+            frasi.push(`${pezzi.join("; ")} (lo Straordinario parte dopo ${ORE_FT} ore di ${pt ? "Standard e Supplementare" : "Standard"})`);
+          }
           // Standard oltre le 39 ore di un non part time: le ore in più vanno TUTTE in Straordinario, non divise con l'Accordo
           // (deciso da Alessandro il 24/11/2026: "se ha fatto le 39 ore, la domenica va tutta in straordinario").
           else if (stdOltre && !pt) { /* la riga qui sotto dice già tutto */ }
-          else if (strPoco) diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`);
-          if (supNonPt) diff.push(`Supplementare ${it(s.sup)} → 0`);
+          else if (strPoco) { diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`); frasi.push(`oltre le ${tetto} ore della settimana mi aspetto ${hh(atteso.str)} in Straordinario, ne vedo ${hh(s.str)}`); }
+          if (supNonPt) { diff.push(`Supplementare ${it(s.sup)} → 0`); frasi.push(`${dd.flatMap((d, k) => (g[k]?.sup ? [`il ${ddmm(d)} ci sono ${hh(g[k]!.sup)} in Supplementare`] : [])).join("; ")}, ma non è un part time: secondo me sono Standard`); }
           if (stdOltre && !pt) { const inPiu = s.std - maxStd; diff.push(`${it(inPiu)} h da Standard a Straordinario: Standard ${it(s.std)} → ${it(maxStd)}, Straordinario ${it(s.str)} → ${it(s.str + inPiu)}`); }
           else if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(maxStd)} (il resto in Supplementare)`);
-          if (accOltre) diff.push(`Accordo ${it(s.acc)} → al massimo ${it(maxAcc)}`);
+          if (stdOltre) {
+            const dove = pt ? "Supplementare" : "Straordinario"; let cum = 0; const pezzi: string[] = [];
+            dd.forEach((d, k) => { const o = g[k]; if (!o?.std) return; const prima = cum; cum += o.std; const w = Math.max(0, cum - Math.max(maxStd, prima)); if (w <= TOLLERANZA) return;
+              pezzi.push(w >= o.std - TOLLERANZA ? `le ${hh(o.std)} di Standard del ${ddmm(d)} secondo me vanno in ${dove}` : `il ${ddmm(d)} ci sono ${hh(o.std)} in Standard, ma secondo me ${hh(w)} ${Math.abs(w - 1) < TOLLERANZA ? "va" : "vanno"} in ${dove}`); });
+            frasi.push(`${pezzi.join("; ")} (lo Standard si ferma a ${it(maxStd)} ore a settimana)`);
+          }
+          if (accOltre) { diff.push(`Accordo ${it(s.acc)} → al massimo ${it(maxAcc)}`); frasi.push(`nella riga Accordo ci sono ${hh(s.acc)}, ma il massimo è ${hh(maxAcc)} a settimana`); }
           if (diff.length) {
             esito = diff.join(" · ");
             const altro: [TipoRichiesta, string] | null =
@@ -299,10 +315,11 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
               : accOltre ? ["RIPARTO", `nella riga Accordo vanno al massimo ${it(maxAcc)} ore a settimana`]
               : strPoco ? ["RIPARTO", `oltre le ${tetto} ore della settimana le ore sono Straordinario`]
               : null;
-            if (altro) nuova(altro[0], l, periodo, `Settimana ${periodo}: lavorate ${it(tot)} h${s.ass ? ` + ${it(s.ass)} h di assenze` : ""} (${x.contratto || "contratto non indicato"}). Da correggere: ${diff.join("; ")}. Motivo: ${altro[1]}.`);
+            const frase = frasi.join(". ");
+            if (altro) nuova(altro[0], l, periodo, `Settimana ${periodo}, lavorate ${it(tot)} h${s.ass ? ` + ${it(s.ass)} h di assenze` : ""} (${x.contratto || "contratto non indicato"}): ${frase.charAt(0).toLowerCase() + frase.slice(1)}.`);
           }
         }
-        if (s.str > STR_MAX_SETT + 0.01) nuova("STR_SETT", l, periodo, `Settimana ${periodo}: ${it(s.str)} h di Straordinario, oltre il massimo di ${STR_MAX_SETT} h a settimana. Verificare.`);
+        if (s.str > STR_MAX_SETT + 0.01) nuova("STR_SETT", l, periodo, `Settimana ${periodo}: ci sono ${it(s.str)} h di Straordinario, sopra il massimo di ${STR_MAX_SETT} h a settimana. È giusto?`);
       }
       settimane.push({ station: x.station, pop: x.pop, driver: x.nome, contratto: x.contratto, lunedi: l, periodo, giorniLavorati: gg, std: r1(s.std), sup: r1(s.sup), acc: r1(s.acc), str: r1(s.str), ass: r1(s.ass), tot: r1(tot), atteso, esito });
     }
@@ -311,10 +328,10 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
 }
 
 const CHIEDI: Record<"+1" | "-1" | "H" | "A", string> = {
-  "+1": "Trasferta nel tracking ma Amazon non lo vede in rotta: cosa ha fatto? Se mezzi, ufficio, corso o altra station scriverlo nella riga RIPOSO.",
-  "-1": "Amazon lo vede in rotta ma nel tracking ha 0 ore: inserire la giornata.",
-  H: "Ore nel tracking ma assente su Amazon, senza trasferta né giustificativo: cosa ha fatto?",
-  A: "In rotta su Amazon ma non è nei tracking della station: è un prestito, un nuovo assunto o un errore?",
+  "+1": "ha la trasferta ma Amazon non lo vede in rotta: cosa ha fatto? Se mezzi, ufficio, corso o altra station basta scriverlo nella riga RIPOSO",
+  "-1": "Amazon lo vede in rotta ma nel tracking ha 0 ore: manca la giornata",
+  H: "ha ore nel tracking ma non è su Amazon, senza trasferta né giustificativo: cosa ha fatto?",
+  A: "è in rotta su Amazon ma non lo trovo nei tracking della station: è un prestito, un nuovo assunto o un errore?",
 };
 
 /** Le anomalie del controllo tracking vs Amazon (+1, −1, H, A, ORE, ACC) come richieste, una per driver e giorno. */
@@ -329,10 +346,11 @@ export function richiesteDaAmazon(e: EsitoSettimanale, mese: string): Richiesta[
       const nota = tipo === "ORE" ? r.extra.find((x) => x.cat === tipo)?.nota ?? "" : r.nota;
       const base = tipo === "+1" || tipo === "-1" || tipo === "H" ? CHIEDI[tipo] : "";
       out.push({ chiave: `${mese}|${e.station}|${r.tipo}|${chi}|${tipo}|${r.data}`, mese, station: e.station, pop: r.tipo, driver: r.driver, tipo, rif: r.data, periodo: ddmm(r.data),
-        testo: [`${ddmm(r.data)}: ${base}`.trim(), `Tracking ${it(r.ore)} h, trasferta ${r.trasferta}, pacchi Amazon ${r.pacchi ?? "—"}.`, nota].filter(Boolean).join(" ") });
+        // +1, −1, H: frase diretta con i numeri tra parentesi; ORE: la nota del controllo (ore del giorno o valore anomalo)
+        testo: base ? `il ${ddmm(r.data)} ${base} (tracking ${it(r.ore)} h${r.pacchi !== null && r.pacchi !== undefined ? `, Amazon ${r.pacchi} pacchi` : ""}).` : `il ${ddmm(r.data)}: ${nota}` });
     }
   }
-  for (const n of e.nonInTracking) if (n.categoria === "A") out.push({ chiave: `${mese}|${e.station}|AMAZON|${n.driverId}|A|${n.data}`, mese, station: e.station, pop: "AMAZON", driver: n.driver, tipo: "A", rif: n.data, periodo: ddmm(n.data), testo: [`${ddmm(n.data)}: ${CHIEDI.A}`, `Pacchi ${n.pacchi}.`, n.nota].filter(Boolean).join(" ") });
+  for (const n of e.nonInTracking) if (n.categoria === "A") out.push({ chiave: `${mese}|${e.station}|AMAZON|${n.driverId}|A|${n.data}`, mese, station: e.station, pop: "AMAZON", driver: n.driver, tipo: "A", rif: n.data, periodo: ddmm(n.data), testo: `il ${ddmm(n.data)} ${CHIEDI.A} (Amazon ${n.pacchi} pacchi).` });
   return out;
 }
 
