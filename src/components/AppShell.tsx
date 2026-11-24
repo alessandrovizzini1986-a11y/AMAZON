@@ -27,9 +27,9 @@ function initials(name: string): string {
  * + barra in basso con i primi 4 gruppi e "Menu". Gestione (solo admin) a destra, separata.
  */
 export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
-  const gruppi = menuPer(user.role);
+  const gruppi = menuPer(user.role, user.nascosti);
   const operativi = gruppi.filter((g) => g.id !== "gestione"), gestione = gruppi.filter((g) => g.id === "gestione");
-  const { barra } = vociBarra(user.role);
+  const { barra } = vociBarra(user.role, 4, user.nascosti);
   const gruppiBarra = operativi.filter((g) => barra.some((b) => b.gruppo === g.id));
   // tablet: i primi 4 gruppi in vista, gli altri (e la gestione) in "Altro"
   const tabletVista = operativi.slice(0, 4), tabletAltro = [...operativi.slice(4), ...gestione];

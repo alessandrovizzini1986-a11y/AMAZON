@@ -1,7 +1,8 @@
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PageHeader, StatusBadge, SourceNote } from "@/components/ui";
-import { createUserAction, toggleUserActiveAction, resetUserPasswordAction, changeUserRoleAction, setUserPasswordAction } from "./actions";
+import { createUserAction, toggleUserActiveAction, resetUserPasswordAction, changeUserRoleAction, setUserPasswordAction, setUserMenuAction } from "./actions";
+import { vociDelRuolo } from "@/components/navModel";
 import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<{ error?: string; created?: string; ok?: string }>;
 }) {
-  await requireRole("ADMIN");
+  const io = await requireRole("ADMIN");
   const params = await searchParams;
 
   const [users, stations] = await Promise.all([
@@ -23,7 +24,7 @@ export default async function UsersPage({
 
   return (
     <div>
-      <PageHeader title="Utenti e permessi" subtitle="Gestione account per i 5 ruoli: puoi cambiare ruolo e impostare una password a scelta. Le password sono salvate cifrate, quindi nessuno può rileggerle: se una persona la dimentica, gliene imposti una nuova." />
+      <PageHeader title="Utenti e permessi" subtitle="Gestione account per i 5 ruoli: puoi cambiare ruolo e impostare una password a scelta. Il super admin decide, con le spunte in «Menu che vede», quali voci vede ogni persona. Le password sono salvate cifrate, quindi nessuno può rileggerle: se una persona la dimentica, gliene imposti una nuova." />
 
       {params.error && <p className="mb-4 text-sm text-danger bg-danger-soft rounded-control px-3 py-2">{params.error}</p>}
       {params.ok && <p className="mb-4 text-sm bg-ok-soft text-ok rounded-control px-3 py-2">{params.ok}</p>}
@@ -57,7 +58,7 @@ export default async function UsersPage({
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
-                <td className="font-semibold">{u.lastName} {u.firstName}</td>
+                <td className="font-semibold">{u.lastName} {u.firstName}{u.superAdmin && <span className="ml-2 rounded bg-brand-soft px-1.5 py-0.5 text-[11px] font-semibold text-brand">Super admin</span>}</td>
                 <td className="text-xs">{u.email}</td>
                 <td colSpan={2}>
                   <form action={changeUserRoleAction.bind(null, u.id)} className="flex flex-wrap items-center gap-2">
@@ -85,6 +86,26 @@ export default async function UsersPage({
                     <input className="input h-9 w-44 py-0 text-xs" name="password" type="text" minLength={8} maxLength={100} required autoComplete="off" placeholder="Nuova password (min 8)" aria-label={`Nuova password per ${u.firstName} ${u.lastName}`} />
                     <button className="btn-secondary py-1 px-2 text-xs whitespace-nowrap">Imposta password</button>
                   </form>
+                  {io.superAdmin && !u.superAdmin && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs font-semibold text-brand">Menu che vede{u.menuNascosti.length ? ` (${u.menuNascosti.length} nascosti)` : " (tutti)"}</summary>
+                      <form action={setUserMenuAction.bind(null, u.id)} className="mt-2 flex flex-col gap-2 rounded-control border border-line p-3">
+                        {vociDelRuolo(u.role).map((g) => (
+                          <fieldset key={g.id}>
+                            <legend className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">{g.label}</legend>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                              {g.items.map((i) => (
+                                <label key={i.href} className="flex items-center gap-1.5 text-xs">
+                                  <input type="checkbox" name="v" value={i.href} defaultChecked={!u.menuNascosti.includes(i.href)} />{i.label}
+                                </label>
+                              ))}
+                            </div>
+                          </fieldset>
+                        ))}
+                        <div><button className="btn-primary py-1 px-3 text-xs">Salva menu</button></div>
+                      </form>
+                    </details>
+                  )}
                 </td>
               </tr>
             ))}

@@ -6,6 +6,9 @@ import { db } from "@/lib/db";
 import { requireRole, verifyCredentials } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { cifra, decifra } from "@/lib/credenziali";
+import { riservato } from "@/lib/telematica/riservato";
+
+const NEGATO = "Gli accessi alla telematica li gestisce solo il super admin.";
 
 const riga = z.object({
   portale: z.string().trim().min(1).max(120), url: z.string().trim().max(500).nullable(), username: z.string().trim().max(200).nullable(),
@@ -16,6 +19,7 @@ const riga = z.object({
 export async function salvaPortali(input: { righe: z.infer<typeof riga>[]; fonte: string }) {
   const user = await requireRole("ADMIN");
   const righe = z.array(riga).min(1).max(100).parse(input.righe);
+  if (!user.superAdmin && righe.some((r) => riservato(r.portale))) throw new Error(NEGATO);
   for (const r of righe) {
     const dati = { url: r.url || null, username: r.username || null, note: r.note || null, aggiornatoDa: user.name, ...(r.password ? { passwordCifrata: cifra(r.password) } : {}) };
     await db.portaleCredenziale.upsert({ where: { portale: r.portale }, create: { portale: r.portale, ...dati }, update: dati });
@@ -32,6 +36,7 @@ export async function mostraPassword(input: { id: string; passwordAdmin: string 
   const x = z.object({ id: z.string().min(1).max(40), passwordAdmin: z.string().min(1).max(200) }).parse(input);
   const ok = await verifyCredentials(user.email, x.passwordAdmin);
   const p = await db.portaleCredenziale.findUnique({ where: { id: x.id } });
+  if (p && riservato(p.portale) && !user.superAdmin) return { errore: NEGATO };
   if (!ok || ok.role !== "ADMIN" || ok.id !== user.id) {
     await audit({ userId: user.id, action: "portali.mostra.negato", entity: "PortaleCredenziale", entityId: x.id, meta: { portale: p?.portale ?? null } });
     await new Promise((r) => setTimeout(r, 1500)); // rallenta i tentativi
@@ -44,6 +49,8 @@ export async function mostraPassword(input: { id: string; passwordAdmin: string 
 
 export async function eliminaPortale(id: string) {
   const user = await requireRole("ADMIN");
+  const prima = await db.portaleCredenziale.findUnique({ where: { id: z.string().min(1).max(40).parse(id) } });
+  if (prima && riservato(prima.portale) && !user.superAdmin) throw new Error(NEGATO);
   const p = await db.portaleCredenziale.delete({ where: { id: z.string().min(1).max(40).parse(id) } });
   await audit({ userId: user.id, action: "portali.elimina", entity: "PortaleCredenziale", entityId: id, meta: { portale: p.portale } });
   revalidatePath("/portali");
