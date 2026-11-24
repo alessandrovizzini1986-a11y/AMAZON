@@ -1191,3 +1191,27 @@ model Telefono {
 
   @@index([station])
 }
+
+// Storico dei bollettini di spedizione GLS: una riga per ogni bollettino scaricato, stampato o inviato.
+// "dati" contiene tutti i campi del modulo, così il PDF si può rifare identico. "impronta" = hash dei dati:
+// scaricare e poi stampare lo stesso bollettino non crea due righe.
+model GlsBollettino {
+  id             String   @id @default(cuid())
+  impronta       String   @unique
+  dataSpedizione String // AAAA-MM-GG scritta sul modulo
+  numero         String   @default("")
+  mittente       String
+  destinatario   String
+  citta          String
+  cap            String
+  colli          String
+  pesoKg         String   @default("")
+  contrassegno   String   @default("")
+  dati           Json
+  azioni         String // scarica, stampa, invia (quelle fatte, separate da virgola)
+  creatoDa       String
+  creatoIl       DateTime @default(now())
+  ultimaAzioneIl DateTime @default(now())
+
+  @@index([creatoIl])
+}
