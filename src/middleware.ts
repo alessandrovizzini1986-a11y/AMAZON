@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/opengraph-image.png",
   "/manifest.webmanifest",
   "/icons/",
+  "/robots.txt", // deve leggersi senza login: è lì che c'è scritto "non entrare"
   // scarico notturno della telematica: lo chiama Vercel senza sessione (vedi la route: fa solo uno scarico che manca)
   "/api/telematica/cron",
 ];
