@@ -11,7 +11,7 @@
  * Tetto (CCNL art. 11 quinquies, Accordo art. 4): 43 h fino al 31/05/2026, 42 h dal 01/06/2026, 41 h dal 01/07/2027.
  */
 import { addDays, weekday } from "./grid";
-import { ASSENZE_RETRIB, leggiLavoratori, type Lavoratore } from "./lavoratori";
+import { ASSENZE_NON_RETRIB, ASSENZE_RETRIB, leggiLavoratori, type Lavoratore } from "./lavoratori";
 import { alertDelGiorno, type EsitoSettimanale, type TrackingInput } from "./controlloSettimanale";
 import { findTrackingSheet } from "./tracking";
 import { normName, type Station } from "./regole";
@@ -58,15 +58,32 @@ export function ripartoAtteso(lavorate: number, assenze: number, c: Contratto, t
   return { std, sup, acc, str: r - acc };
 }
 
-export type OreGiorno = { std: number; sup: number; acc: number; str: number; ass: number };
+/** `nr` = ore di assenza NON retribuita (sciopero, permesso non retribuito, assenza ingiustificata): non si pagano ma contano nelle 39 ore. */
+export type OreGiorno = { std: number; sup: number; acc: number; str: number; ass: number; nr?: number };
 export type Persona = {
   station: Station; pop: "SIC" | "STD"; nome: string; cf: string; driverId: string; contratto: string;
   /** giorno ISO → ore (solo i giorni con qualcosa) */
   giorni: Map<string, OreGiorno>;
+  /** giorno ISO → sigla della riga RIPOSO (solo i giorni del mese con una sigla) */
+  sigle?: Map<string, string>;
 };
+
+/**
+ * Sigle di assenza retribuita nella riga RIPOSO: il giorno conta verso le 39 ore della settimana, quindi le ore vanno scritte
+ * anche nella riga dell'assenza. Se mancano, il conto della settimana si fa lo stesso con una giornata da 7,8 ore.
+ */
+export const SIGLE_ASSENZA: Record<string, string> = { F: "FERIE", FERIE: "FERIE", ROL: "ROL", EXF: "EXF", EX: "EXF", M: "MALATTIA", MAL: "MALATTIA", I: "INFORTUNIO", INF: "INFORTUNIO" };
+/**
+ * Sigle di assenza NON retribuita nella riga RIPOSO: sciopero e permesso non retribuito. Non si pagano, ma il giorno conta
+ * lo stesso verso le 39 ore della settimana (deciso da Alessandro il 24/11/2026), quindi lo Straordinario dopo è lecito.
+ */
+export const SIGLE_NON_RETRIB = new Set(["S", "SC", "SCI", "SCIOP", "SCIOPERO", "PNR", "PNR.", "P.N.R."]);
+export const ORE_GIORNO_ASSENZA = 7.8;
 
 const chiavePersona = (l: Lavoratore) => (l.cf.trim().toUpperCase() || l.matricola || normName(l.nome));
 const lav = (g: OreGiorno | undefined) => (g ? g.std + g.sup + g.acc + g.str : 0);
+/** Il giorno ha una sigla di assenza retribuita nella riga RIPOSO, ma né ore di assenza né ore di lavoro. */
+const assenzaSenzaOre = (x: Persona, d: string) => { const sg = x.sigle?.get(d); const g = x.giorni.get(d); return !!sg && sg in SIGLE_ASSENZA && !(g && (g.ass > 0 || lav(g) > 0)); };
 const r1 = (x: number) => Math.round(x * 100) / 100;
 const it = (x: number) => String(r1(x)).replace(".", ",");
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -119,21 +136,22 @@ export function personeDelMese(tracking: TrackingInput[], mese: string, preceden
       const delMese = Object.fromEntries(Object.entries(l.giorni).filter(([d]) => d.startsWith(mese + "-")));
       for (const src of [sconfino, prima.get(chiavePersona(l))?.giorni ?? {}, delMese]) {
         for (const [d, v] of Object.entries(src)) {
-          const o: OreGiorno = { std: v.Standard ?? 0, sup: v.Supplementare ?? 0, acc: v.Accordo ?? 0, str: v.Straordinario ?? 0, ass: ASSENZE_RETRIB.reduce((s, a) => s + (v[a] ?? 0), 0) };
-          if (o.std + o.sup + o.acc + o.str + o.ass > 0) giorni.set(d, o); else giorni.delete(d);
+          const o: OreGiorno = { std: v.Standard ?? 0, sup: v.Supplementare ?? 0, acc: v.Accordo ?? 0, str: v.Straordinario ?? 0, ass: ASSENZE_RETRIB.reduce((s, a) => s + (v[a] ?? 0), 0), nr: ASSENZE_NON_RETRIB.reduce((s, a) => s + (v[a] ?? 0), 0) };
+          if (o.std + o.sup + o.acc + o.str + o.ass + (o.nr ?? 0) > 0) giorni.set(d, o); else giorni.delete(d);
         }
       }
-      persone.push({ station: t.station, pop: t.tipo, nome: l.nome, cf: l.cf.trim().toUpperCase(), driverId: l.driverId, contratto: l.contratto, giorni });
+      const sigle = new Map(Object.entries(l.riposo ?? {}).filter(([d]) => d.startsWith(mese + "-")));
+      persone.push({ station: t.station, pop: t.tipo, nome: l.nome, cf: l.cf.trim().toUpperCase(), driverId: l.driverId, contratto: l.contratto, giorni, sigle });
     }
   }
   return { persone, coperti, avvisi };
 }
-export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT";
+export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT" | "ASS_ORE";
 export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
   "+1": "Trasferta senza rotta Amazon", "-1": "Rotta Amazon ma zero ore", H: "Ore senza Amazon", A: "Su Amazon, non nel tracking",
   ORE: "Ore del giorno anomale", ACC: "Accordo di domenica (somministrati)", "7GG": "7 o più giorni di fila",
   STR_PRIMA: "Straordinario prima delle 39 ore", STD_OLTRE: "Standard oltre le ore di contratto",
-  SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana",
+  SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana", ASS_ORE: "Assenza segnata senza le ore",
 };
 /**
  * Gruppi per il menu dei filtri: quattro domande al posto di quattordici tipi. Il tipo preciso resta nella colonna Tipo
@@ -141,14 +159,14 @@ export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
  */
 export const GRUPPI_TIPO = [
   { id: "GIORNI", nome: "Ha lavorato davvero? (tracking e Amazon non coincidono)", tipi: ["-1", "+1", "H", "A"] },
-  { id: "ORE", nome: "Ore nella riga sbagliata", tipi: ["STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "ORE"] },
+  { id: "ORE", nome: "Ore nella riga sbagliata", tipi: ["STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "ORE", "ASS_ORE"] },
   { id: "ACCORDO", nome: "Accordo di domenica", tipi: ["ACC"] },
   { id: "RIPOSI", nome: "Riposi: 7 o più giorni di fila", tipi: ["7GG"] },
 ] as const satisfies readonly { id: string; nome: string; tipi: readonly TipoRichiesta[] }[];
 export const gruppoDi = (t: string) => GRUPPI_TIPO.find((g) => (g.tipi as readonly string[]).includes(t))?.id ?? "ORE";
 
 /** Ordine nel messaggio e nelle tabelle: prima le violazioni. */
-export const ORDINE_TIPO: TipoRichiesta[] = ["7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC"];
+export const ORDINE_TIPO: TipoRichiesta[] = ["7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC", "ASS_ORE"];
 
 export type Richiesta = {
   /** mese|station|pop|persona|tipo|riferimento: non contiene numeri che cambiano, così lo stato resta */
@@ -196,6 +214,12 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
       i = j + 1;
     }
 
+    // Assenza segnata con la sigla ma senza ore: non è grave, ma senza le ore i conti della settimana non tornano
+    for (const [d, sg] of x.sigle ?? []) if (d >= da && d <= p.finoA && assenzaSenzaOre(x, d)) {
+      const riga = SIGLE_ASSENZA[sg];
+      nuova("ASS_ORE", d, ddmm(d), `${ddmm(d)}: nella riga RIPOSO c'è «${sg}» ma nella riga ${riga} non ci sono ore. Inserire le ore dell'assenza (${it(ORE_GIORNO_ASSENZA)} per una giornata intera): contano nelle 39 ore della settimana.`);
+    }
+
     // Standard oltre 8h24 in un giorno
     for (const [d, g] of x.giorni) if (d >= da && d <= p.finoA && g.std > STD_MAX_GIORNO + 0.01 && !dispatcher) nuova("STD_GIORNO", d, ddmm(d), `Standard ${it(g.std)} h il ${ddmm(d)}: oltre 8h24 al giorno le ore non vanno nella riga Standard.`);
 
@@ -206,6 +230,12 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
       const g = dd.map((d) => x.giorni.get(d));
       const s: OreGiorno = { std: 0, sup: 0, acc: 0, str: 0, ass: 0 };
       for (const o of g) if (o) { s.std += o.std; s.sup += o.sup; s.acc += o.acc; s.str += o.str; s.ass += o.ass; }
+      // assenza scritta solo come sigla nella riga RIPOSO (es. F) senza ore: per il conto della settimana vale una giornata
+      // (solo per decidere se lo Straordinario è lecito: non entra nel controllo "ore + assenze troppe" né nei totali mostrati)
+      // Contano verso le 39 anche le assenze non retribuite: le ore scritte nelle loro righe e le sigle (sciopero, PNR) senza ore.
+      const assSigle = dd.filter((d) => assenzaSenzaOre(x, d)).length * ORE_GIORNO_ASSENZA
+        + g.reduce((a, o) => a + (o?.nr ?? 0), 0)
+        + dd.filter((d) => { const sg = x.sigle?.get(d), o = x.giorni.get(d); return !!sg && SIGLE_NON_RETRIB.has(sg) && !(o && ((o.nr ?? 0) > 0 || lav(o) > 0)); }).length * ORE_GIORNO_ASSENZA;
       const tot = s.std + s.sup + s.acc + s.str, gg = g.filter((o) => lav(o) > 0).length;
       if (tot + s.ass === 0) continue;
 
@@ -236,7 +266,7 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
           // le ore possono andare a Straordinario. È un errore solo lo Straordinario segnato PRIMA di arrivare a 39 ore.
           // Le 39 ore si contano su Standard (e Supplementare per i part time): l'Accordo già scritto resta dov'è e non conta
           // (deciso da Alessandro il 24/11/2026: "standard fino a 39 e il resto in straordinario"). Le assenze retribuite, se servono, contano.
-          const strMax = Math.max(0, tot - s.acc - Math.max(ORE_FT - s.ass, 0));
+          const strMax = Math.max(0, tot - s.acc - Math.max(ORE_FT - s.ass - assSigle, 0));
           const strTroppo = s.str > strMax + TOLLERANZA, strPoco = s.str < atteso.str - TOLLERANZA;
           const supNonPt = !pt && s.sup > TOLLERANZA, stdOltre = s.std > maxStd + TOLLERANZA, accOltre = s.acc > maxAcc + TOLLERANZA;
           // proposta coerente: le ore che mancano per arrivare a 39 ordinarie (Standard, Supplementare e Accordo già scritto) passano dallo Straordinario allo Standard

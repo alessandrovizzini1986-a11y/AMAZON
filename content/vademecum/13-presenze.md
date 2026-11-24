@@ -33,11 +33,14 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 |---|---|
 | 7 o più giorni di fila | Violazione: il massimo è 6. Si vede anche a cavallo del mese se c'è il tracking del mese prima. Avvisa subito Alessandro |
 | Straordinario prima delle 39 ore | Lo Straordinario parte solo dopo 39 ore di Standard nella settimana (Standard e Supplementare per i part time): le ore scritte nella riga Accordo non contano per arrivare a 39. La riga Accordo **non compilata non è un errore**: se lo Standard è a 39, le ore dopo possono stare nello Straordinario (deciso il 24/11/2026). Resta un errore l'Accordo di domenica |
+| Assenza segnata senza le ore | Nella riga RIPOSO c'è la sigla di un'assenza retribuita (F, ROL, EXF, M, I) ma nella riga dell'assenza non ci sono ore. Non è grave, ma le ore vanno scritte: contano nelle 39 della settimana. Finché mancano, il sito conta quel giorno come 7,8 ore, così non segnala a torto lo Straordinario |
 | Standard oltre le ore di contratto | Full time oltre 39 ore, o part time oltre le sue ore, nella riga Standard |
 | Supplementare su un non part time | Il Supplementare è solo per i part time |
 | Ore e assenze: troppe nella settimana | Ore lavorate più assenze ben oltre una settimana piena: una delle due è sbagliata |
 | Straordinario oltre 12 h in settimana · Standard oltre 8h24 nel giorno | Limiti del CCNL e dell'Accordo |
 | +1, −1, H, A, ORE, ACC | Gli stessi del controllo con Amazon (tabella dei simboli più sotto) |
+
+Nel conto delle 39 ore entrano anche le **assenze non retribuite** (sciopero, permesso non retribuito, assenza ingiustificata): non si pagano, ma il giorno conta. Per questo, in una settimana con ferie o sciopero, il sabato lavorato può stare in Straordinario.
 
 **6° giorno di domenica**: chi ha lavorato 5 giorni più la domenica, quindi 6 in tutto nella settimana (non 7). È dentro la regola ma al limite: l'elenco è sempre in fondo alla pagina e nel foglio dell'Excel, già pronto per la chiusura del mese.
 

@@ -118,6 +118,7 @@ describe("gruppi per il menu dei filtri", () => {
     const { GRUPPI_TIPO, ORDINE_TIPO, gruppoDi } = await import("@/domain/presenze/verifica");
     const tutti = GRUPPI_TIPO.flatMap((g) => [...g.tipi]);
     expect([...tutti].sort()).toEqual([...ORDINE_TIPO].sort());
+    expect(gruppoDi("ASS_ORE")).toBe("ORE");
     expect(new Set(tutti).size).toBe(tutti.length);
     expect(GRUPPI_TIPO.length).toBe(4);
     expect([gruppoDi("+1"), gruppoDi("STR_PRIMA"), gruppoDi("ACC"), gruppoDi("7GG"), gruppoDi("STD_OLTRE")]).toEqual(["GIORNI", "ORE", "ACCORDO", "RIPOSI", "ORE"]);
@@ -128,5 +129,42 @@ describe("quale file leggere per un mese", () => {
   it("il mese in testa al nome del file", async () => {
     const { prefissoMese } = await import("@/lib/presenze/carica");
     expect([prefissoMese("11_Tracking_DER1.xlsm"), prefissoMese("08_Tracking.xlsx"), prefissoMese("Tracking_DER1.xlsx"), prefissoMese("13_x.xlsx"), prefissoMese("2026_x.xlsx")]).toEqual([11, 8, null, null, null]);
+  });
+});
+
+describe("assenza segnata con la sigla ma senza ore", () => {
+  // come nel tracking vero: part time 60%, 39 ore lavorate in 5 giorni, giovedì «F» nella riga RIPOSO senza ore di ferie, sabato in Straordinario
+  const sett = [g(0, { sup: 7.8 }), g(7.8), g(7.8), null, g(0, { sup: 7.8 }), g(0, { str: 7.8 }), null];
+  it("le ferie senza ore contano lo stesso nelle 39: lo Straordinario del sabato non è un errore, si chiede solo di scrivere le ore", () => {
+    const p = { ...persona("STD PT 60", sett, LUN, "STD"), sigle: new Map([[addDays(LUN, 3), "F"], [addDays(LUN, 0), "L1"]]) };
+    const e = run(p);
+    expect(e.richieste.map((r) => r.tipo)).toEqual(["ASS_ORE"]);
+    expect(e.richieste[0].rif).toBe(addDays(LUN, 3));
+    expect(e.richieste[0].testo).toContain("«F»");
+    expect(e.richieste[0].testo).toContain("riga FERIE");
+  });
+  it("senza la sigla lo stesso Straordinario resta un errore", () => {
+    expect(run(persona("STD PT 60", sett, LUN, "STD")).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+  });
+  it("se le ore di ferie ci sono, o la sigla non è un'assenza, nessuna richiesta in più", () => {
+    const conOre = [...sett]; conOre[3] = g(0, { ass: 7.8 });
+    expect(run({ ...persona("STD PT 60", conOre, LUN, "STD"), sigle: new Map([[addDays(LUN, 3), "F"]]) }).richieste).toEqual([]);
+    expect(run({ ...persona("STD PT 60", sett, LUN, "STD"), sigle: new Map([[addDays(LUN, 3), "R"]]) }).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+  });
+});
+
+describe("le assenze non retribuite contano nelle 39 ore", () => {
+  // full time lun–ven: martedì ferie, venerdì sciopero, sabato lavorato in Straordinario
+  const base = [g(8), g(0, { ass: 8 }), g(8), g(8), null, g(0, { str: 8 }), null];
+  it("sciopero scritto come ore non retribuite: lo Straordinario del sabato è lecito", () => {
+    const sett = [...base]; sett[4] = g(0, { nr: 8 });
+    expect(run(persona("CTI FT", sett)).richieste).toEqual([]);
+  });
+  it("sciopero scritto solo come sigla nella riga RIPOSO: uguale, e non si chiede niente", () => {
+    expect(run({ ...persona("CTI FT", base), sigle: new Map([[addDays(LUN, 4), "SCIOPERO"]]) }).richieste).toEqual([]);
+    expect(run({ ...persona("CTI FT", base), sigle: new Map([[addDays(LUN, 4), "PNR"]]) }).richieste).toEqual([]);
+  });
+  it("senza lo sciopero segnato, lo stesso sabato in Straordinario resta da correggere", () => {
+    expect(run(persona("CTI FT", base)).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
   });
 });
