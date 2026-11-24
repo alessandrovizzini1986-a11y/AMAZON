@@ -165,7 +165,8 @@ export function giornataMezzo(tappeGrezze: Tappa[] | null | undefined, basiStati
   return {
     tappe, partenza: tappe[primo].da, rientro: tappe[ultimo].a, fuoriMin: Math.max(0, min(tappe[ultimo].a) - min(tappe[primo].da)), soste: inMezzo.length, sosteMin: inMezzo.reduce((a, t) => a + durataMin(t), 0),
     sostaLunga: lunga ? { min: durataMin(lunga), dove: lunga.dove, da: lunga.da } : null,
-    parteDa: luogo(primo > 0 ? tappe[primo - 1].dove : tappe[primo].dove), finisceA: luogo(ultimo < tappe.length - 1 ? tappe[ultimo + 1].dove ?? tappe[ultimo].dove : tappe[ultimo].dove), riparte,
+    // se la giornata comincia già in movimento non si sa da dove parte: l'indirizzo di una guida è quello di arrivo
+    parteDa: primo > 0 ? luogo(tappe[primo - 1].dove) : null, finisceA: luogo(ultimo < tappe.length - 1 ? tappe[ultimo + 1].dove ?? tappe[ultimo].dove : tappe[ultimo].dove), riparte,
   };
 }
 
