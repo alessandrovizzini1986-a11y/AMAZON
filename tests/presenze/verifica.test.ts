@@ -179,23 +179,22 @@ describe("giustificativi della riga RIPOSO", () => {
   });
 });
 
-describe("la domenica lavorata va tutta in Standard", () => {
-  it("39 ore di Standard da lunedì a sabato più 8 di domenica in Standard: nessuna richiesta", () => {
-    // come nel tracking vero: 5 giorni + la domenica
-    expect(run(persona("CTI FT", [g(8), g(8), g(8), null, g(8), g(7, { acc: 1 }), g(8)])).richieste).toEqual([]);
-    expect(run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7), null, g(8)])).richieste).toEqual([]);
-    // anche con meno di 39 ore negli altri giorni, o per un part time
-    expect(run(persona("CTI FT", [g(8), g(8), g(8), g(8), null, null, g(7)])).richieste).toEqual([]);
-    expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), null, null, null, g(6)])).richieste).toEqual([]);
-  });
-  it("lo Standard oltre le 39 ore negli altri giorni resta un errore, e la domenica non viene contata", () => {
-    const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(8.5), null, g(8)]));
+describe("fatte le 39 ore di Standard, il resto va tutto in Straordinario", () => {
+  it("39 ore da lunedì a sabato e 8 di domenica scritte in Standard: le 8 ore vanno tutte in Straordinario", () => {
+    // come nel tracking vero: 5 giorni + la domenica, con 1 ora di Accordo già scritta
+    const e = run(persona("CTI FT", [g(8), g(8), g(8), null, g(8), g(7, { acc: 1 }), g(8)]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
-    expect(e.richieste[0].testo).toContain("di cui 8 di domenica in Standard");
-    expect(e.richieste[0].testo).toContain("Standard 40,5 → 39");
+    expect(e.richieste[0].testo).toContain("8 h da Standard a Straordinario: Standard 47 → 39, Straordinario 0 → 8");
+    expect(e.richieste[0].testo).not.toContain("Accordo insieme");
+    expect(e.richieste[0].testo).not.toContain("il resto in Accordo");
   });
-  it("la domenica in Straordinario segue la regola delle 39 ore", () => {
-    expect(run(persona("CTI FT", [g(4), g(8), g(7.5), null, g(8), g(8), g(0, { str: 8 })])).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+  it("se la domenica è già in Straordinario non si chiede niente", () => {
+    expect(run(persona("CTI FT", [g(8), g(8), g(8), null, g(8), g(7, { acc: 1 }), g(0, { str: 8 })])).richieste).toEqual([]);
+  });
+  it("part time: lo Standard oltre le sue ore va in Supplementare", () => {
+    const e = run(persona("CTI PT 24H", [g(8), g(8), g(8), g(6), null, null, null]));
+    expect(e.richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
+    expect(e.richieste[0].testo).toContain("Standard 30 → 24 (il resto in Supplementare)");
   });
 });
 
@@ -212,5 +211,23 @@ describe("straordinario di giornata", () => {
     const e = run(persona("CTI PT 24H", [g(8), g(8), null, null, null, g(4, { str: 3 }), null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
     expect(e.richieste[0].testo).toContain("Straordinario 3 → 0");
+  });
+});
+
+describe("DER2: i part time sono trattati come MOG", () => {
+  const cop = new Map([["DER2|SIC", new Set(Array.from({ length: 30 }, (_, i) => addDays("2026-10-26", i)))]]);
+  const aDer2 = (p: Persona) => verificaOre([{ ...p, station: "DER2" }], cop, { mese: "2026-11", finoA: "2026-11-22" });
+  it("part time da 24 ore con 39 ore tutte in Standard: a DER2 non si chiede il Supplementare, altrove sì", () => {
+    const sett = [g(8), g(8), g(8), g(8), g(7), null, null];
+    expect(run(persona("CTI PT 24H", sett)).richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
+    expect(aDer2(persona("CTI PT 24H", sett)).richieste).toEqual([]);
+  });
+  it("Supplementare su un contratto non part time: a DER2 non si segnala, altrove sì", () => {
+    const sett = [g(8), g(8), g(8), g(8), g(0, { sup: 7 }), null, null];
+    expect(run(persona("CTI FT", sett)).richieste.map((r) => r.tipo)).toEqual(["SUP"]);
+    expect(aDer2(persona("CTI FT", sett)).richieste).toEqual([]);
+  });
+  it("anche a DER2 lo Straordinario prima delle 39 ore resta un errore", () => {
+    expect(aDer2(persona("CTI PT 24H", [g(8), g(8), g(8), null, null, g(4, { str: 3 }), null])).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
   });
 });
