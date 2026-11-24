@@ -237,7 +237,8 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
           const strMax = Math.max(ripartoAtteso(tot, s.ass, c, ORE_FT).str, ripartoAtteso(tot, 0, c, ORE_FT).str);
           const strTroppo = s.str > strMax + TOLLERANZA, strPoco = s.str < atteso.str - TOLLERANZA;
           const supNonPt = !pt && s.sup > TOLLERANZA, stdOltre = s.std > maxStd + TOLLERANZA, accOltre = s.acc > maxAcc + TOLLERANZA;
-          if (strTroppo) diff.push(`Straordinario ${it(s.str)} → al massimo ${it(strMax)}`, `Standard${pt ? " e Supplementare" : ""} ${it(s.std + s.sup)} → ${it(Math.min(tot, ORE_FT))} prima di passare allo Straordinario`);
+          // proposta coerente: le ore che mancano per arrivare a 39 ordinarie (Standard, Supplementare e Accordo già scritto) passano dallo Straordinario allo Standard
+          if (strTroppo) { const sposta = s.str - strMax; diff.push(`${it(sposta)} h da Straordinario a ${pt ? "Supplementare" : "Standard"}: Straordinario ${it(s.str)} → ${it(strMax)}, ${pt ? "Standard e Supplementare" : "Standard"} ${it(s.std + s.sup)} → ${it(s.std + s.sup + sposta)}${s.acc ? ` (con le ${it(s.acc)} h di Accordo fanno ${it(Math.min(tot, ORE_FT))} ordinarie)` : ""}`); }
           else if (strPoco) diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`);
           if (supNonPt) diff.push(`Supplementare ${it(s.sup)} → 0`);
           if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(maxStd)}${pt ? " (il resto in Supplementare)" : " (il resto in Accordo)"}`);

@@ -75,7 +75,9 @@ function mesiTracking(sheets: SheetGrid[], fileName: string): string[] {
     const tent: { anno: number; mese: number }[] = [];
     if (hint) tent.push(hint, vicino(hint, 1), vicino(hint, -1));
     if (prefMese) tent.push({ anno: hint?.anno ?? anno, mese: prefMese });
-    tent.push({ anno, mese: oggi.getMonth() + 1 });
+    // Il mese di oggi si prova solo se né il nome del foglio né quello del file dicono un mese: altrimenti un foglio di
+    // servizio con 30 colonne (es. "Foglio2" nel tracking di ottobre) viene preso per il mese in corso.
+    if (!hint && !prefMese) tent.push({ anno, mese: oggi.getMonth() + 1 });
     const esatti: string[] = [];
     let fallback: string | null = null;
     for (const t of tent) {
