@@ -471,7 +471,8 @@ function giustificativo(riposo: string, noteCelle: string, codici: Set<string>):
   if (rip && codici.has(rip)) return rip;
   // commenti di cella: valgono se contengono un codice (es. "mezzi", "DLO4")
   const up = noteCelle.toUpperCase();
-  for (const c of codici) if (c.length >= 3 && new RegExp(`(^|[^A-Z0-9])${c}([^A-Z0-9]|$)`).test(up)) return c;
+  // le sigle di turno (C1+, L1…) valgono solo nella riga RIPOSO: nei commenti si cercano solo le parole di almeno 3 lettere o cifre
+  for (const c of codici) if (/^[A-Z0-9]{3,}$/.test(c) && new RegExp(`(^|[^A-Z0-9])${c}([^A-Z0-9]|$)`).test(up)) return c;
   return null;
 }
 
