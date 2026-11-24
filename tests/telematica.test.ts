@@ -56,7 +56,7 @@ describe("telematica: giorno e mese", () => {
         seg("INACTIVITY", "2026-11-23T11:00:00+01:00", "2026-11-23T11:20:00+01:00", 0), seg("USAGE", "2026-11-23T11:20:00+01:00", "2026-11-23T18:03:59+01:00", 33, { positions: [{ mileage: 14265.9, refuel: null }] }), seg("INACTIVITY", "2026-11-23T18:03:59+01:00", "2026-11-23T23:59:59+01:00", 0)],
     });
     expect(g).toMatchObject({ km: 63, guidaSec: 14635, fermoMotoreAccSec: 2455, velMax: 133, soste: 1, rifornimenti: 1, litri: 41.5, kmContatore: 14265.9 });
-    expect(g.tappe).toHaveLength(5); expect(g.tappe[1]).toMatchObject({ t: "G", km: 30, dove: "Via B" });
+    expect(g.tappe).toHaveLength(5); expect(g.tappe[1]).toEqual({ t: "G", da: "09:41", a: "11:00", km: 30, dove: "Via B" });
   });
   it("Targa: mezzo fermo tutto il giorno → 0 km, nessun orario", () => {
     const g = giornoDaTarga({ totalMileage: 0, dateUsageBegin: "2026-11-23T00:00:00+01:00", usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T23:59:59+01:00", 0)] });

@@ -4,7 +4,7 @@
  */
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { fusoRoma, giornoDaFlottaweb, giornoDaTarga, giornoRoma, piuGiorni, type GiornoMezzo } from "@/domain/telematica";
+import { GIORNI_TAPPE, fusoRoma, giornoDaFlottaweb, giornoDaTarga, giornoRoma, piuGiorni, type GiornoMezzo } from "@/domain/telematica";
 import type { Fonte } from "./comune";
 import { accediFlottaweb, leggiFlottaweb } from "./flottaweb";
 import { targaPulita } from "./posizioni";
@@ -65,6 +65,8 @@ export async function scaricaGiorno(giorno: string): Promise<EsitoScarico> {
 /** Scarico automatico della notte: il primo degli ultimi 3 giorni non ancora definitivo. Se sono tutti a posto non fa niente. */
 export async function scaricoNotturno(): Promise<EsitoScarico | { fatto: false }> {
   const oggi = giornoRoma(new Date());
+  // per non far crescere il database: delle giornate vecchie restano i numeri, le tappe si cancellano
+  await db.telematicaGiorno.updateMany({ where: { giorno: { lt: piuGiorni(oggi, -GIORNI_TAPPE) }, tappe: { not: Prisma.DbNull } }, data: { tappe: Prisma.DbNull } });
   const giorni = [3, 2, 1].map((k) => piuGiorni(oggi, -k));
   const fatti = new Set((await db.telematicaScarico.findMany({ where: { giorno: { in: giorni }, definitivo: true }, select: { giorno: true } })).map((s) => s.giorno));
   const manca = giorni.find((g) => !fatti.has(g));

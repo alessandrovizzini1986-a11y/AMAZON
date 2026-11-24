@@ -2,7 +2,11 @@
  * Telematica: dalla risposta "percorso del giorno" dei portali alla riga del giorno (km, orari, tempi, soste, rifornimenti)
  * e dalle righe dei giorni al riepilogo del mese per targa. Solo calcoli, niente rete né database.
  */
+/** una guida (G) o una sosta (S) della giornata. Per occupare poco spazio: orari "HH:MM" italiani e indirizzo tagliato a 60 caratteri */
 export type Tappa = { t: "G" | "S"; da: string; a: string; km: number; dove: string | null };
+export const GIORNI_TAPPE = 120; // dopo questi giorni le tappe si cancellano, restano i numeri del giorno
+const oraRoma = (iso: string) => new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+const corto = (x: string | null | undefined) => (x ? (x.length > 60 ? x.slice(0, 59) + "…" : x) : null);
 export type GiornoMezzo = {
   km: number; inizio: string | null; fine: string | null; guidaSec: number; motoreSec: number; fermoMotoreAccSec: number;
   velMax: number | null; punteggioSicurezza: number | null; soste: number; rifornimenti: number; litri: number; kmContatore: number | null; autista: string | null; tappe: Tappa[];
@@ -35,7 +39,7 @@ export function giornoDaTarga(risposta: unknown): GiornoMezzo {
   const seg = Array.isArray(r.usageSegments) ? r.usageSegments : [];
   const tappe: Tappa[] = seg.filter((s) => s.dateBegin && s.dateEnd).map((s) => {
     const guida = s.reportType !== "INACTIVITY";
-    return { t: guida ? "G" as const : "S" as const, da: s.dateBegin!, a: s.dateEnd!, km: r1(n(s.mileage)), dove: (guida ? s.formattedAddressEnd : s.formattedAddressBegin) ?? null };
+    return { t: guida ? "G" as const : "S" as const, da: oraRoma(s.dateBegin!), a: oraRoma(s.dateEnd!), km: r1(n(s.mileage)), dove: corto(guida ? s.formattedAddressEnd : s.formattedAddressBegin) };
   });
   const guide = tappe.map((t, i) => (t.t === "G" ? i : -1)).filter((i) => i >= 0);
   const soste = guide.length ? tappe.slice(guide[0], guide[guide.length - 1]).filter((t) => t.t === "S").length : 0;
