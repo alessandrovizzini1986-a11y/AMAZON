@@ -87,16 +87,16 @@ import { bloccato, menuPer, paginaIniziale } from "@/components/navModel";
 import { riservato } from "@/lib/telematica/riservato";
 
 describe("menu per utente (flag del super admin)", () => {
-  const TELE = ["/telematica", "/telematica/mappa", "/telematica/mese"];
+  const TELE = ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata"];
   it("le voci nascoste spariscono dal menu, le altre restano", () => {
     const tutte = menuPer("ADMIN").flatMap((g) => g.items.map((i) => i.href));
     const sue = menuPer("ADMIN", TELE).flatMap((g) => g.items.map((i) => i.href));
     expect(tutte).toEqual(expect.arrayContaining(TELE));
     expect(sue.filter((h) => h.startsWith("/telematica"))).toEqual([]);
-    expect(sue).toContain("/portali"); expect(sue.length).toBe(tutte.length - 3);
+    expect(sue).toContain("/portali"); expect(sue.length).toBe(tutte.length - 4);
   });
   it("le pagine nascoste e le loro chiamate non si aprono", () => {
-    for (const p of ["/telematica", "/telematica/mappa", "/telematica/mese", "/api/telematica/posizioni", "/api/telematica/mese"]) expect(bloccato(p, TELE)).toBe(true);
+    for (const p of ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata", "/api/telematica/posizioni", "/api/telematica/mese"]) expect(bloccato(p, TELE)).toBe(true);
     for (const p of ["/home", "/portali", "/presenze/verifica", "/account", "/"]) expect(bloccato(p, TELE)).toBe(false);
   });
   it("vale la voce più precisa: nascondere una sezione non nasconde la sua sorella", () => {
@@ -109,5 +109,38 @@ describe("menu per utente (flag del super admin)", () => {
   });
   it("gli accessi alla telematica sono riservati", () => {
     expect(riservato("Targa Telematics")).toBe(true); expect(riservato("Flotta Web")).toBe(true); expect(riservato("Telepass")).toBe(false);
+  });
+});
+
+import { avvisiMezzo, basi, giornataMezzo, luogo, tappeDelGiorno, type Tappa } from "@/domain/telematica";
+
+describe("giornata di consegna", () => {
+  const BASE = "Via Del Salice, 5, Santarcangelo Di Romagna, Rn, Emilia-rom…", CASA = "Via Roma, 27, Cesena, Fc, Emilia-romagna, Italia";
+  const t = (tipo: "G" | "S", da: string, a: string, km: number, dove: string | null = null): Tappa => ({ t: tipo, da, a, km, dove });
+  // come arrivano da Targa: le fermate sono "guide" da 0 km
+  const giro: Tappa[] = [t("S", "00:00", "09:23", 0, BASE), t("G", "09:23", "09:32", 0.4, BASE), t("G", "09:32", "10:12", 0, BASE), t("G", "10:12", "13:08", 63.1, "Via A, 1, Cesena, Fc"), t("G", "13:08", "13:10", 0, "Via A, 1, Cesena, Fc"),
+    t("G", "13:10", "18:09", 80, BASE), t("G", "18:09", "20:19", 0, BASE), t("G", "20:19", "20:51", 31.7, CASA), t("G", "20:51", "22:28", 0, CASA), t("S", "22:28", "23:59", 0, CASA)];
+  it("le fermate da 0 km sono soste e i pezzi uguali si uniscono", () => {
+    const x = tappeDelGiorno(giro);
+    expect(x.map((y) => y.t).join("")).toBe("SGSGSGSGS");
+    expect(x[x.length - 1]).toMatchObject({ t: "S", da: "20:51", a: "23:59" });
+  });
+  it("il posto senza civico e le basi della station", () => {
+    expect(luogo(BASE)).toBe("Via Del Salice, Santarcangelo Di Romagna"); expect(luogo("Via Del Salice, 9, Santarcangelo Di Romagna, Rn")).toBe(luogo(BASE)); expect(luogo(null)).toBeNull();
+    expect(basi([...Array(18).fill("A"), ...Array(3).fill("B"), "C"])).toEqual(["A", "B"]);
+  });
+  it("partenza, rientro, soste e ripartenza dopo il rientro", () => {
+    const g = giornataMezzo(giro, [luogo(BASE)!]);
+    expect(g).toMatchObject({ partenza: "09:23", rientro: "20:51", soste: 2, parteDa: luogo(BASE), finisceA: "Via Roma, Cesena", riparte: { ora: "20:19", km: 31.7 } });
+    expect(g.sostaLunga).toMatchObject({ min: 130, da: "18:09" });
+    const codici = avvisiMezzo({ km: 150, velMax: 146, fermoMotoreAccSec: 600 }, g, [luogo(BASE)!], 90).map((a) => a.codice);
+    expect(codici).toEqual(["FUORI_BASE_SERA", "RIPARTE", "VELOCITA"]);
+  });
+  it("giro normale: nessun avviso; furgone fermo: nessun avviso", () => {
+    const ok = [t("S", "00:00", "08:00", 0, BASE), t("G", "08:00", "12:00", 60, "Via B, Rimini"), t("G", "12:00", "12:20", 0, "Via B, Rimini"), t("G", "12:20", "16:00", 40, BASE), t("S", "16:00", "23:59", 0, BASE)];
+    const g = giornataMezzo(ok, [luogo(BASE)!]);
+    expect(avvisiMezzo({ km: 100, velMax: 110, fermoMotoreAccSec: 0 }, g, [luogo(BASE)!], 95)).toEqual([]);
+    expect(g).toMatchObject({ soste: 1, sosteMin: 20, fuoriMin: 480 });
+    expect(avvisiMezzo({ km: 0, velMax: null, fermoMotoreAccSec: 0 }, giornataMezzo([t("S", "00:00", "23:59", 0, CASA)], [luogo(BASE)!]), [luogo(BASE)!], 95)).toEqual([]);
   });
 });
