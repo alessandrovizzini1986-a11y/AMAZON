@@ -38,6 +38,9 @@ export const GIUSTIFICATIVI_DEFAULT: { codice: string; descrizione: string }[] =
   { codice: "L2", descrizione: "turno L2" },
   { codice: "L3", descrizione: "turno L3" },
   { codice: "L4", descrizione: "turno L4" },
+  { codice: "C1", descrizione: "turno C1" },
+  { codice: "C1+", descrizione: "turno C1+" },
+  { codice: "N", descrizione: "turno N" },
   { codice: "DVN5", descrizione: "prestito altra station" },
   { codice: "DVN6", descrizione: "prestito altra station" },
   ...STATIONS.map((s) => ({ codice: s, descrizione: "prestito altra station" })),
@@ -45,7 +48,7 @@ export const GIUSTIFICATIVI_DEFAULT: { codice: string; descrizione: string }[] =
 ];
 
 /** Codici che NON sono giustificativi (turni/riposi), riportati in nota. */
-export const NON_GIUSTIFICATIVI = ["SB", "R", "C1", "D", "F", "P"];
+export const NON_GIUSTIFICATIVI = ["SB", "R", "D", "F", "P"];
 
 /**
  * Regole dello script v2 (base del test golden): mansioni non di guida e

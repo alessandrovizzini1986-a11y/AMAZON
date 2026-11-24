@@ -170,10 +170,10 @@ describe("le assenze non retribuite contano nelle 39 ore", () => {
 });
 
 describe("giustificativi della riga RIPOSO", () => {
-  it("SWA, 4H, 8H e i turni L1–L4 chiudono il giorno senza anomalie", async () => {
+  it("SWA, 4H, 8H e i turni L1–L4, C1, C1+ e N chiudono il giorno senza anomalie", async () => {
     const { GIUSTIFICATIVI_DEFAULT, NON_GIUSTIFICATIVI } = await import("@/domain/presenze/regole");
     const codici = new Set(GIUSTIFICATIVI_DEFAULT.map((g) => g.codice));
-    for (const c of ["SWA", "4H", "8H", "L1", "L2", "L3", "L4", "MEZZI", "UFF"]) expect(codici.has(c), c).toBe(true);
+    for (const c of ["SWA", "4H", "8H", "L1", "L2", "L3", "L4", "C1", "C1+", "N", "MEZZI", "UFF"]) expect(codici.has(c), c).toBe(true);
     for (const c of NON_GIUSTIFICATIVI) expect(codici.has(c), c).toBe(false);
   });
 });
