@@ -27,13 +27,13 @@ export async function salvaReferenti(formData: FormData) {
   revalidatePath(PATH);
 }
 
-const disp = z.object({ cognome: z.string().min(2).max(60), nome: z.string().min(2).max(60), station: z.enum(STATIONS).nullable() });
+const disp = z.object({ cognome: z.string().min(2).max(60), nome: z.string().min(2).max(60), station: z.enum(STATIONS).nullable(), ruolo: z.enum(["DISPATCHER", "MEZZI"]) });
 
 export async function aggiungiDispatcher(formData: FormData) {
   const user = await admin();
   const st = String(formData.get("station") ?? "");
-  const d = disp.parse({ cognome: up(formData.get("cognome")), nome: up(formData.get("nome")), station: st || null });
-  await db.presenzeDispatcher.upsert({ where: { cognome_nome: { cognome: d.cognome, nome: d.nome } }, create: d, update: { station: d.station, attivo: true } });
+  const d = disp.parse({ cognome: up(formData.get("cognome")), nome: up(formData.get("nome")), station: st || null, ruolo: String(formData.get("ruolo") ?? "") === "MEZZI" ? "MEZZI" : "DISPATCHER" });
+  await db.presenzeDispatcher.upsert({ where: { cognome_nome: { cognome: d.cognome, nome: d.nome } }, create: d, update: { station: d.station, ruolo: d.ruolo, attivo: true } });
   await audit({ userId: user.id, action: "presenze.dispatcher.add", entity: "PresenzeDispatcher", meta: d });
   revalidatePath(PATH);
 }

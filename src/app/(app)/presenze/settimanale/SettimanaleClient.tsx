@@ -42,8 +42,8 @@ function periodoDefault() {
   return { da: a.slice(0, 8) + "01", a };
 }
 
-export function SettimanaleClient({ utente, giustificativi, dispatcher, referenti, runs, canRun, mog }: {
-  utente: string; giustificativi: string[]; dispatcher: string[]; referenti: Record<string, string>; runs: RunSalvata[]; canRun: boolean; mog: DatiMogClient;
+export function SettimanaleClient({ utente, giustificativi, dispatcher, mezzi, referenti, runs, canRun, mog }: {
+  utente: string; giustificativi: string[]; dispatcher: string[]; mezzi: string[]; referenti: Record<string, string>; runs: RunSalvata[]; canRun: boolean; mog: DatiMogClient;
 }) {
   const router = useRouter();
   const [p, setP] = useState(periodoDefault);
@@ -78,7 +78,7 @@ export function SettimanaleClient({ utente, giustificativi, dispatcher, referent
         const mancano = (["SIC", "STD"] as const).filter((t) => !dati.tracking.some((x) => x.station === st && x.tipo === t));
         if (mancano.length) { err.push(`${st}: manca il tracking ${mancano.join(" e ")} del mese`); continue; }
         try {
-          out.push(controlloSettimanale(dati.tracking.filter((t) => t.station === st), dati.flex, { station: st, da: p.da, a: p.a, giustificativi, dispatcher, senzaAccordoDomenica: true }, dati.tracking));
+          out.push(controlloSettimanale(dati.tracking.filter((t) => t.station === st), dati.flex, { station: st, da: p.da, a: p.a, giustificativi, dispatcher, addettiMezzi: mezzi, senzaAccordoDomenica: true }, dati.tracking));
           doms.push(...domenicheStation(st, dati.tracking, p.da, p.a));
         } catch (e) {
           err.push(`${st}: ${e instanceof Error ? e.message : "errore"}`);

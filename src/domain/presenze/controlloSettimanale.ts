@@ -48,6 +48,7 @@ type Rec = {
   ore_mal?: number; // malattia + infortunio (R1)
   ore_acc?: number; // riga Accordo (R4)
   anomalo?: string[]; // valori > 24 h nelle righe di lavoro (R3)
+  doppio?: [number, number]; // ore lavorate nel tracking STD e in quello SIC nello stesso giorno
 };
 
 type Info = { nome: string; cf: string; contratto: string; tipo: string; riga: number; id: string };
@@ -86,6 +87,8 @@ export type RisultatoGiorno = {
   oreMalattia: number;
   oreAccordo: number;
   valoreAnomalo: string;
+  /** ore del giorno nei due tracking [STD, SIC] quando il driver compare in entrambi (le ore totali sono la somma) */
+  oreDoppie?: [number, number] | null;
   /** alert R2–R4 del giorno (anche se il simbolo mostrato è +1/−1/H) */
   extra: AlertExtra[];
 };
@@ -100,6 +103,8 @@ export type ParametriSettimanale = {
   giustificativi?: string[];
   /** dispatcher (cognome nome, ordine indifferente): esclusi da ogni alert */
   dispatcher?: string[];
+  /** addetti allo spostamento mezzi (cognome nome): lavorano senza rotta Amazon, quindi niente +1 né H; gli altri controlli restano */
+  addettiMezzi?: string[];
   /** true = l'Accordo di domenica dei somministrati (ACC) non si segnala: lo guarda il responsabile (deciso il 24/11/2026) */
   senzaAccordoDomenica?: boolean;
 };
@@ -298,6 +303,8 @@ export function controlloSettimanale(
         ore_mal: sum("ore_mal"),
         ore_acc: ra.ore_acc ?? 0, // R4 vale solo per la parte STD
         anomalo: [...(ra.anomalo ?? []), ...(rb.anomalo ?? [])],
+        // lo stesso driver (stesso ID o stesso nome) ha ore in tutti e due i tracking nello stesso giorno: le ore qui sono la somma
+        doppio: (ra.ore_lav ?? 0) > 0 && (rb.ore_lav ?? 0) > 0 ? [ra.ore_lav ?? 0, rb.ore_lav ?? 0] : undefined,
       });
     }
     allRows.set(`STD|${d}`, a);
@@ -390,7 +397,7 @@ export function controlloSettimanale(
         station: st, tipo: inf.tipo, driver: inf.nome, driverId: did, contratto: inf.contratto, data: d, giorno: GG[(new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7],
         ore, oreAssenza: ass, trasferta: tFile, trasfRicalcolata: tCalc, pacchi, match: via, riposo: rip, inRotta: flexIn,
         esitoBase: esito, categoriaBase: cat, notaBase: nota, categoria: "", nota: "", noteCelle: (rec.note ?? []).join(" | "),
-        oreMalattia: rec.ore_mal ?? 0, oreAccordo: rec.ore_acc ?? 0, valoreAnomalo: (rec.anomalo ?? []).join(", "), extra: [],
+        oreMalattia: rec.ore_mal ?? 0, oreAccordo: rec.ore_acc ?? 0, valoreAnomalo: (rec.anomalo ?? []).join(", "), oreDoppie: rec.doppio ?? null, extra: [],
       });
     }
   }
@@ -504,6 +511,7 @@ function applicaRegoleNuove(x: {
     }
   }
 
+  const mezzi = new Set((x.p.addettiMezzi ?? []).map(normName));
   for (const r of x.dettaglio) {
     if (isDispatcher(r.contratto, r.driver, dispatcher)) {
       r.categoria = "";
@@ -514,7 +522,7 @@ function applicaRegoleNuove(x: {
     if (r.valoreAnomalo || r.ore > SOGLIA_ORE_GIORNO) {
       const parti = [
         ...(r.valoreAnomalo ? [`Valore anomalo: ${r.valoreAnomalo} (non usato per trasferta/rotta)`] : []),
-        ...(r.ore > SOGLIA_ORE_GIORNO ? [`Ore giornaliere oltre 10: ${g(r.ore)} h lavorate`] : []),
+        ...(r.ore > SOGLIA_ORE_GIORNO ? [r.oreDoppie ? `risultano ${g(r.ore)} h perché è in tutti e due i tracking: ${g(r.oreDoppie[0])} h nel tracking STD e ${g(r.oreDoppie[1])} h nel tracking SIC (stesso ID driver o stesso nome). In uno dei due va tolto` : `Ore giornaliere oltre 10: ${g(r.ore)} h lavorate`] : []),
       ];
       r.extra.push({ cat: "ORE", nota: parti.join(" | ") + ": verificare e correggere il tracking" });
     }
@@ -527,7 +535,8 @@ function applicaRegoleNuove(x: {
       promuoviExtra(r);
       continue;
     }
-    const giust = giustificativo(r.riposo, r.noteCelle, codici);
+    // addetto ai mezzi: vale come se avesse sempre il giustificativo MEZZI
+    const giust = giustificativo(r.riposo, r.noteCelle, codici) ?? (mezzi.has(normName(r.driver)) ? "MEZZI (addetto allo spostamento mezzi)" : null);
     const altrove = rottaAltrove.get(`${r.driverId}|${r.data}`) ?? rottaAltrove.get(`${normName(r.driver)}|${r.data}`);
     const noteCella = r.noteCelle && !r.riposo ? ` (commento di cella: ${r.noteCelle})` : "";
     if (r.esitoBase === "ALERT +1" || (r.esitoBase === "CHECK formula" && r.categoriaBase.startsWith("E."))) {

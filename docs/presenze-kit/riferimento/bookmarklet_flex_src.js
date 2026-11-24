@@ -3,6 +3,8 @@
   const iso = d => d.toISOString().slice(0, 10);
   const ieri = iso(new Date(Date.now() - 86400000));
   const TUTTE = ['DER1','DER2','DLO2','DLO4','DLO5','DLZ2','DVN1'];
+  // station "figlie": le loro rotte finiscono nel file della station madre (DVN5 e DVN6 in DVN1, DLZ3 in DLZ2)
+  const FIGLIE = { DVN1: ['DVN5','DVN6'], DLZ2: ['DLZ3'] };
   const KEY = 'flexcsv_ultimo_giorno';
   let ultimo = ''; try { ultimo = localStorage.getItem(KEY) || ''; } catch (e) {}
   let daDef = ieri;
@@ -15,7 +17,7 @@
       <div style="font-size:16px;font-weight:600;margin-bottom:4px">Scarica CSV Addetti alla consegna</div><div style="color:#666;margin-bottom:10px">${ultimo ? 'Ultimo giorno già scaricato: ' + fmt(ultimo) + ' → ti propongo di ripartire dal ' + fmt(daDef) : 'Primo utilizzo: scegli le date'}</div>
       <label style="display:block;margin:6px 0">Dal giorno <input type="date" id="bmDa" value="${daDef}" max="${ieri}" style="margin-left:8px;padding:4px"></label>
       <label style="display:block;margin:6px 0">Al giorno &nbsp;<input type="date" id="bmA" value="${ieri}" max="${ieri}" style="margin-left:8px;padding:4px"></label>
-      <div style="margin:10px 0 4px">Station</div>
+      <div style="margin:10px 0 4px">Station <span style="color:#666">(DVN1 comprende DVN5 e DVN6, DLZ2 comprende DLZ3)</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px 10px">${TUTTE.map(x => `<label><input type="checkbox" class="bmSt" value="${x}" checked> ${x}</label>`).join('')}</div>
       <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end"><button id="bmNo" style="padding:6px 12px">Annulla</button><button id="bmOk" style="padding:6px 14px;background:#1d4ed8;color:#fff;border:0;border-radius:6px;font-weight:600">Scarica</button></div>
       <div id="bmErr" style="color:#b00;margin-top:8px"></div></div>`;
@@ -47,29 +49,49 @@
   const num = v => (v == null) ? '' : String(v);
   const q = s => (s == null) ? '' : (/[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s);
   async function csv(st, d) {
-    const qual = await get('da_dsp_station_daily_supplemental_quality', st, d);
-    if (!qual.length) return null;
-    const rts = await get('da_dsp_daily_rts', st, d), psb = await get('da_dsp_daily_psb', st, d);
-    const by = new Map();
-    for (const o of qual) by.set(o.da_id || o.transporter_id, { ...o });
-    for (const o of rts) { const id = o.transporter_id; if (!by.has(id)) by.set(id, { da_id: id, da_name: '' }); by.get(id).rts_csv = o.rts_all; }
-    for (const o of psb) { const id = o.transporter_id; if (!by.has(id)) by.set(id, { da_id: id, da_name: '' }); }
+    const by = new Map(); let n = 0; const aggiunte = [];
+    for (const s of [st, ...(FIGLIE[st] || [])]) {
+      const qual = await get('da_dsp_station_daily_supplemental_quality', s, d);
+      if (!qual.length) continue;
+      n += qual.length; if (s !== st) aggiunte.push(s);
+      const rts = await get('da_dsp_daily_rts', s, d), psb = await get('da_dsp_daily_psb', s, d);
+      const loc = new Map();
+      for (const o of qual) { const id = o.da_id || o.transporter_id; loc.set(id, { ...o, da_id: id }); }
+      for (const o of rts) { const id = o.transporter_id; if (!loc.has(id)) loc.set(id, { da_id: id, da_name: '' }); loc.get(id).rts_csv = o.rts_all; }
+      for (const o of psb) { const id = o.transporter_id; if (!loc.has(id)) loc.set(id, { da_id: id, da_name: '' }); }
+      for (const [id, o] of loc) {
+        const p = by.get(id);
+        if (!p) { by.set(id, o); continue; }
+        // stesso driver sulla madre e su una figlia nello stesso giorno: una riga sola, con i pacchi sommati
+        for (const k of ['delivered', 'dispatched', 'dnr', 'rts_csv']) p[k] = (Number(p[k]) || 0) + (Number(o[k]) || 0);
+        p.da_name = p.da_name || o.da_name;
+        p.delivery_success = p.dispatched ? p.delivered / p.dispatched : 0;
+        p.rts_all_percent = p.dispatched ? p.rts_csv / p.dispatched : 0;
+        p.dnr_dpmo = p.delivered ? Math.round(p.dnr / p.delivered * 1e6) : 0;
+        p.rts_dpmo = p.dispatched ? Math.round(p.rts_csv / p.dispatched * 1e6) : 0;
+      }
+    }
+    if (!by.size) return null;
     const lines = [H];
     for (const o of by.values()) lines.push([d, q(o.da_name || ''), o.da_id, num(o.delivered), num(o.dispatched), pct(o.delivery_success ?? 0, 2), num(o.rts_csv ?? 0), num(o.dnr), num(o.dnr_dpmo), pct(o.rts_all_percent ?? 0, 2), num(o.rts_dpmo)].join(','));
-    return { testo: lines.join('\r\n'), n: qual.length };
+    return { testo: lines.join('\r\n'), n, aggiunte };
   }
-  const files = [], vuoti = [], errori = []; let ultimoOk = ''; const tot = STATIONS.length * giorni.length; let k = 0, stop = false;
+  const files = [], vuoti = [], errori = [], tutti = [], figlie = {}; let ultimoOk = ''; const tot = STATIONS.length * giorni.length; let k = 0, stop = false;
   for (const st of STATIONS) { if (stop) break; for (const d of giorni) {
     const [y, m, g] = d.split('-'); const nome = `${st}_${g}_${m}_${y.slice(2)}.csv`;
     say(`Scarico ${++k}/${tot}: ${nome}`);
     try {
       const r = await csv(st, d);
       if (!r) { vuoti.push(nome); continue; }
+      for (const s of r.aggiunte) figlie[s] = (figlie[s] || 0) + 1;
       files.push({ name: nome, data: new TextEncoder().encode('﻿' + r.testo) });
+      tutti.push(...r.testo.split('\r\n').slice(1).map(l => st + ',' + l));
+      if (d > ultimoOk) ultimoOk = d;
     } catch (e) { if (e.message === 'SESSIONE') { say('Sessione scaduta: rifai il login e rilancia'); stop = true; break; } errori.push(nome + ' (' + e.message + ')'); }
     await new Promise(r => setTimeout(r, 300));
   } }
   if (!files.length) { say('Nessun file scaricato.' + (vuoti.length ? '\nGiorni non ancora pubblicati: ' + vuoti.length : '') + (errori.length ? '\nErrori: ' + errori.join(', ') : '')); return; }
+  files.unshift({ name: `TUTTI_${da.replace(/-/g, '')}_${a_.replace(/-/g, '')}.csv`, data: new TextEncoder().encode('﻿' + ['Station,' + H, ...tutti].join('\r\n')) });
   // --- zip (store) ---
   const crcT = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let j = 0; j < 8; j++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crcT[n] = c >>> 0; }
   const crc32 = d => { let c = 0xFFFFFFFF; for (let i = 0; i < d.length; i++) c = crcT[(c ^ d[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
@@ -89,5 +111,5 @@
   a.download = `flex_${da.replace(/-/g, '')}_${a_.replace(/-/g, '')}.zip`;
   document.body.appendChild(a); a.click(); a.remove();
   try { if (ultimoOk && ultimoOk > ultimo) localStorage.setItem(KEY, ultimoOk); } catch (e) {}
-  say(`Fatto: ${files.length} CSV nello zip ${a.download}` + (vuoti.length ? `\nNon ancora pubblicati (${vuoti.length}): ${vuoti.join(', ')}` : '') + (errori.length ? `\nErrori: ${errori.join(', ')}` : '') + `\nProssima volta ti proporrò di partire dal ${fmt((()=>{const n=new Date(ultimoOk||ultimo);n.setDate(n.getDate()+1);return iso(n);})())}.\nChiudi questo riquadro ricaricando la pagina.`);
+  say(`Fatto: ${files.length - 1} CSV + TUTTI (da incollare nel file Excel) nello zip ${a.download}` + (Object.keys(figlie).length ? `\nDentro DVN1 e DLZ2 ci sono anche: ${Object.entries(figlie).map(([s, n]) => s + ' (' + n + ' giorni)').join(', ')}` : '') + (vuoti.length ? `\nNon ancora pubblicati (${vuoti.length}): ${vuoti.join(', ')}` : '') + (errori.length ? `\nErrori: ${errori.join(', ')}` : '') + `\nProssima volta ti proporrò di partire dal ${fmt((()=>{const n=new Date(ultimoOk||ultimo);n.setDate(n.getDate()+1);return iso(n);})())}.\nChiudi questo riquadro ricaricando la pagina.`);
 })();

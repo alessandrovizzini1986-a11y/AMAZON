@@ -606,6 +606,9 @@ model PresenzeDispatcher {
   nome      String
   station   String? // null = qualsiasi station
   attivo    Boolean  @default(true)
+  // DISPATCHER = escluso da ogni alert; MEZZI = addetto allo spostamento mezzi: non è in rotta su Amazon per mestiere,
+  // quindi non si chiede "cosa ha fatto?" (+1 e H) ma gli altri controlli restano
+  ruolo     String   @default("DISPATCHER")
   createdAt DateTime @default(now())
 
   @@unique([cognome, nome])

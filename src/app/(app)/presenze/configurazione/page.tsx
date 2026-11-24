@@ -44,8 +44,8 @@ export default async function ConfigurazionePresenzePage() {
       </section>
 
       <section className="card p-4 md:p-5">
-        <h2 className="mb-1 text-[19px] font-semibold">Dispatcher ({dispatcher.filter((d) => d.attivo).length} attivi)</h2>
-        <p className="mb-3 text-sm text-ink-muted">Esclusi da ogni alert del controllo settimanale (nessuna trasferta dovuta). Riconosciuti per nome e cognome, in qualsiasi ordine e senza accenti, in tutte le station (la station qui è solo un promemoria).</p>
+        <h2 className="mb-1 text-[19px] font-semibold">Dispatcher e addetti ai mezzi ({dispatcher.filter((d) => d.attivo).length} attivi)</h2>
+        <p className="mb-3 text-sm text-ink-muted"><b>Dispatcher</b>: esclusi da ogni alert del controllo con Amazon (nessuna trasferta dovuta). <b>Addetto ai mezzi</b>: sposta i furgoni, quindi Amazon non lo vede in rotta per mestiere: non si chiede più «cosa ha fatto?» (+1 e H), gli altri controlli restano. Riconosciuti per nome e cognome, in qualsiasi ordine e senza accenti, in tutte le station (la station qui è solo un promemoria).</p>
         <form action={aggiungiDispatcher} className="mb-4 flex flex-wrap items-end gap-3">
           <input className="input h-10 w-48" name="cognome" placeholder="Cognome *" required minLength={2} />
           <input className="input h-10 w-48" name="nome" placeholder="Nome *" required minLength={2} />
@@ -53,15 +53,19 @@ export default async function ConfigurazionePresenzePage() {
             <option value="">Station (facoltativa)</option>
             {STATIONS.map((s) => <option key={s}>{s}</option>)}
           </select>
+          <select className="input h-10 w-48" name="ruolo" defaultValue="DISPATCHER" aria-label="Ruolo">
+            <option value="DISPATCHER">Dispatcher</option>
+            <option value="MEZZI">Addetto ai mezzi</option>
+          </select>
           <button className="btn-primary h-10">Aggiungi</button> <Aiuto k="presenze.config.lista" />
         </form>
         <div className="overflow-x-auto">
           <table className="table-base text-sm">
-            <thead><tr><th>Cognome</th><th>Nome</th><th>Station</th><th>Stato</th><th></th></tr></thead>
+            <thead><tr><th>Cognome</th><th>Nome</th><th>Ruolo</th><th>Station</th><th>Stato</th><th></th></tr></thead>
             <tbody>
               {dispatcher.map((d) => (
                 <tr key={d.id}>
-                  <td className="font-semibold">{d.cognome}</td><td>{d.nome}</td><td>{d.station ?? "—"}</td>
+                  <td className="font-semibold">{d.cognome}</td><td>{d.nome}</td><td>{d.ruolo === "MEZZI" ? "Addetto ai mezzi" : "Dispatcher"}</td><td>{d.station ?? "—"}</td>
                   <td><StatusBadge tone={d.attivo ? "ok" : "neutral"}>{d.attivo ? "attivo" : "disattivato"}</StatusBadge></td>
                   <td>
                     <div className="flex gap-2">

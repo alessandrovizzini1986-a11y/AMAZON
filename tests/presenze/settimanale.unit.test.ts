@@ -95,6 +95,21 @@ describe("controllo settimanale: categorie per gli Ops", () => {
     expect(cat("Rossi Mario", "2026-10-07")).toBe("+1");
     expect(["2026-10-05", "2026-10-06", "2026-10-07"].map((d) => cat("Verdi Anna", d))).toEqual(["", "", ""]);
   });
+  it("addetto ai mezzi: niente +1 né H, anche senza sigla; il −1 resta", () => {
+    const m = controlloSettimanale(trk, flex, { station: "DLO4", da: "2026-10-05", a: "2026-10-07", giustificativi: ["MEZZI"], dispatcher: [], addettiMezzi: ["ROSSI MARIO", "Luca Bianchi"] });
+    const c = (nome: string, d: string) => m.dettaglio.find((r) => r.driver === nome && r.data === d)!;
+    expect(c("Rossi Mario", "2026-10-07").categoria).toBe(""); // era +1
+    expect(c("Rossi Mario", "2026-10-07").nota).toMatch(/addetto allo spostamento mezzi/);
+    expect(c("Bianchi Luca", "2026-10-06").categoria).toBe(""); // era H
+    expect(c("Bianchi Luca", "2026-10-05").categoria).toBe("-1"); // Amazon lo vede in rotta: la giornata manca comunque
+  });
+  it("lo stesso driver in tutti e due i tracking: le ore si sommano e il messaggio lo dice", () => {
+    const stdDoppio = grid("10.26", [hdr, ...blocco("Rossi Mario", "ID1", [8, 0, 0], [1, 0, 0])]);
+    const d = controlloSettimanale([trk[0], { station: "DLO4", tipo: "STD", fileName: "STD_DLO4.xlsx", sheets: [stdDoppio] }], flex, { station: "DLO4", da: "2026-10-05", a: "2026-10-07", giustificativi: ["MEZZI"], dispatcher: [] });
+    const r = d.dettaglio.find((x) => x.driver === "Rossi Mario" && x.data === "2026-10-05")!;
+    expect(r.ore).toBe(16);
+    expect(r.extra.find((x) => x.cat === "ORE")!.nota).toMatch(/8 h nel tracking STD e 8 h nel tracking SIC/);
+  });
   it("trasferta 0 scritta a mano con rotta: voluta, nessun alert", () => {
     const e3 = controlloSettimanale(trk.map((t) => t.tipo === "SIC" ? { ...t, sheets: [{ ...sic, formulas: new Set<string>() }] } : t), flex, { station: "DLO4", da: "2026-10-05", a: "2026-10-07" });
     const r = e3.dettaglio.find((x) => x.driver === "Bianchi Luca" && x.data === "2026-10-05")!;

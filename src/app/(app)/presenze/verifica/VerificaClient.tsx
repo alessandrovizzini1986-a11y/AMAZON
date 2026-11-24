@@ -29,7 +29,7 @@ const COLORE: Record<Stato, string> = { DA_FARE: "bg-danger-soft text-danger", R
 const etTipo = (t: string) => ETICHETTA_TIPO[t as TipoRichiesta] ?? t;
 type StatoFile = { station: Station; sic: boolean; std: boolean; prima: boolean; csv: number; senzaCsv: string[] };
 
-export function VerificaClient({ utente, giustificativi, dispatcher, referenti, canRun }: { utente: string; giustificativi: string[]; dispatcher: string[]; referenti: Record<string, string>; canRun: boolean }) {
+export function VerificaClient({ utente, giustificativi, dispatcher, mezzi, referenti, canRun }: { utente: string; giustificativi: string[]; dispatcher: string[]; mezzi: string[]; referenti: Record<string, string>; canRun: boolean }) {
   const [p, setP] = useState(periodoDefault);
   const [righe, setRighe] = useState<RichiestaVista[]>([]);
   const [verifica, setVerifica] = useState<EsitoVerifica | null>(null);
@@ -64,7 +64,7 @@ export function VerificaClient({ utente, giustificativi, dispatcher, referenti, 
         const sic = trk.some((t) => t.tipo === "SIC"), std = trk.some((t) => t.tipo === "STD");
         let e: EsitoSettimanale | null = null;
         if (sic && std && dati.flex.length) {
-          try { e = controlloSettimanale(trk, dati.flex, { station: st, da, a, giustificativi, dispatcher, senzaAccordoDomenica: true }, dati.tracking); trovate.push(...richiesteDaAmazon(e, p.mese)); }
+          try { e = controlloSettimanale(trk, dati.flex, { station: st, da, a, giustificativi, dispatcher, addettiMezzi: mezzi, senzaAccordoDomenica: true }, dati.tracking); trovate.push(...richiesteDaAmazon(e, p.mese)); }
           catch (x) { err.push(`${st}: ${x instanceof Error ? x.message : "errore nel controllo con Amazon"}`); }
         } else if (!(sic && std)) err.push(`${st}: manca il tracking ${[!sic && "SIC", !std && "STD"].filter(Boolean).join(" e ")}: controllo con Amazon saltato per questa station`);
         stato.push({ station: st, sic, std, prima: prima.tracking.some((t) => t.station === st), csv: e?.giorniCsv.length ?? 0, senzaCsv: e?.giorniSenzaCsv ?? [] });
