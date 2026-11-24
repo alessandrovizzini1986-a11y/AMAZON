@@ -153,5 +153,7 @@ describe("posti conosciuti", () => {
     expect(avvisiMezzo(x, giornataMezzo(giro("Via Pietà, 30, Savignano Sul Rubicone, Fc"), [BASE]), [BASE], 90, [OFF])).toEqual([{ codice: "OFFICINA", testo: `La sera è in officina (${OFF})`, info: true }]);
     expect(avvisiMezzo(x, giornataMezzo(giro("Via Padre Tosi, 3, Santarcangelo Di Romagna, Rn"), [BASE, PARK]), [BASE, PARK], 90, [OFF])).toEqual([]);
     expect(avvisiMezzo(x, giornataMezzo(giro("Via Roma, 1, Cesena, Fc"), [BASE, PARK]), [BASE, PARK], 90, [OFF]).map((a) => a.codice)).toEqual(["FUORI_BASE_SERA"]);
+    const casa = avvisiMezzo(x, giornataMezzo(giro("Via Roma, 1, Cesena, Fc"), [BASE]), [BASE], 90, [OFF], { "Via Roma, Cesena": "Rossi" });
+    expect(casa).toEqual([{ codice: "CASA_DRIVER", testo: "La sera è a casa di un driver (Rossi): Via Roma, Cesena" }]);
   });
 });

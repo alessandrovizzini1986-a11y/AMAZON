@@ -131,7 +131,7 @@ export function basi(partenze: (string | null)[]): string[] {
 }
 
 /** `info` = da sapere ma non da controllare (per esempio il furgone è in officina) */
-export type Avviso = { codice: "FUORI_BASE_SERA" | "FUORI_BASE_MATTINA" | "RIPARTE" | "VELOCITA" | "KM_ALTI" | "NOTTE" | "FERMO_ACCESO" | "OFFICINA"; testo: string; info?: boolean };
+export type Avviso = { codice: "FUORI_BASE_SERA" | "FUORI_BASE_MATTINA" | "RIPARTE" | "VELOCITA" | "KM_ALTI" | "NOTTE" | "FERMO_ACCESO" | "OFFICINA" | "CASA_DRIVER"; testo: string; info?: boolean };
 export type GiornataMezzo = {
   tappe: Tappa[]; partenza: string | null; rientro: string | null; fuoriMin: number; soste: number; sosteMin: number; sostaLunga: { min: number; dove: string | null; da: string } | null;
   parteDa: string | null; finisceA: string | null; riparte: { ora: string; km: number } | null;
@@ -173,13 +173,15 @@ const hm = (m: number) => `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, 
 export const oreMinuti = hm;
 
 /** Le cose da guardare su un furgone in un giorno. `medianaKm` = km tipici dei furgoni della station quel giorno. */
-export function avvisiMezzo(x: { km: number; velMax: number | null; fermoMotoreAccSec: number }, g: GiornataMezzo, basiStation: string[], medianaKm: number, officine: string[] = []): Avviso[] {
+export function avvisiMezzo(x: { km: number; velMax: number | null; fermoMotoreAccSec: number }, g: GiornataMezzo, basiStation: string[], medianaKm: number, officine: string[] = [], case_: Record<string, string> = {}): Avviso[] {
   const a: Avviso[] = [];
   if (x.km < 1 || !g.partenza) return a;
   const conBasi = basiStation.length > 0;
-  if (g.finisceA && officine.includes(g.finisceA)) a.push({ codice: "OFFICINA", testo: `La sera è in officina (${g.finisceA})`, info: true });
+  const diChi = (l: string) => (case_[l] ? ` (${case_[l]})` : "");
+  if (g.finisceA && g.finisceA in case_) a.push({ codice: "CASA_DRIVER", testo: `La sera è a casa di un driver${diChi(g.finisceA)}: ${g.finisceA}` });
+  else if (g.finisceA && officine.includes(g.finisceA)) a.push({ codice: "OFFICINA", testo: `La sera è in officina (${g.finisceA})`, info: true });
   else if (conBasi && g.finisceA && !basiStation.includes(g.finisceA)) a.push({ codice: "FUORI_BASE_SERA", testo: `La sera non è alla base: è fermo in ${g.finisceA}` });
-  if (conBasi && g.parteDa && !basiStation.includes(g.parteDa) && !officine.includes(g.parteDa)) a.push({ codice: "FUORI_BASE_MATTINA", testo: `Non parte dalla base: parte da ${g.parteDa}` });
+  if (conBasi && g.parteDa && !basiStation.includes(g.parteDa) && !officine.includes(g.parteDa)) a.push({ codice: "FUORI_BASE_MATTINA", testo: g.parteDa in case_ ? `Parte da casa di un driver${diChi(g.parteDa)}: ${g.parteDa}` : `Non parte dalla base: parte da ${g.parteDa}` });
   if (g.riparte) a.push({ codice: "RIPARTE", testo: `Dopo il rientro alla base riparte alle ${g.riparte.ora} e fa altri ${g.riparte.km.toLocaleString("it-IT")} km` });
   if ((x.velMax ?? 0) > VEL_MAX_AVVISO) a.push({ codice: "VELOCITA", testo: `Velocità massima ${x.velMax} km/h` });
   if (medianaKm >= 30 && x.km > medianaKm * 1.8 && x.km - medianaKm >= 60) a.push({ codice: "KM_ALTI", testo: `${Math.round(x.km)} km: quasi il doppio dei ${Math.round(medianaKm)} km tipici della giornata` });

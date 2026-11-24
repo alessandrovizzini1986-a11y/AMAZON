@@ -29,12 +29,12 @@ export async function scaricaGiornoTelematica(giorno: string) {
 }
 
 /** Segna un posto come parcheggio della station o come officina (o toglie il segno): da lì in poi non è più un'anomalia. Solo ADMIN. */
-export async function segnaLuogoTelematica(input: { station: string; luogo: string; tipo: "PARCHEGGIO" | "OFFICINA" | "NESSUNO" }) {
+export async function segnaLuogoTelematica(input: { station: string; luogo: string; tipo: "PARCHEGGIO" | "OFFICINA" | "CASA" | "NESSUNO"; nota?: string }) {
   const user = await requireRole("ADMIN");
-  const x = z.object({ station: z.string().min(2).max(10), luogo: z.string().trim().min(3).max(160), tipo: z.enum(["PARCHEGGIO", "OFFICINA", "NESSUNO"]) }).parse(input);
+  const x = z.object({ station: z.string().min(2).max(10), luogo: z.string().trim().min(3).max(160), tipo: z.enum(["PARCHEGGIO", "OFFICINA", "CASA", "NESSUNO"]), nota: z.string().trim().max(120).optional() }).parse(input);
   const chiave = { station_luogo: { station: x.station, luogo: x.luogo } };
   if (x.tipo === "NESSUNO") await db.telematicaLuogo.deleteMany({ where: { station: x.station, luogo: x.luogo } });
-  else await db.telematicaLuogo.upsert({ where: chiave, create: { station: x.station, luogo: x.luogo, tipo: x.tipo, creatoDa: user.name }, update: { tipo: x.tipo, creatoDa: user.name } });
-  await audit({ userId: user.id, action: "telematica.luogo", entity: "TelematicaLuogo", meta: x });
+  else await db.telematicaLuogo.upsert({ where: chiave, create: { station: x.station, luogo: x.luogo, tipo: x.tipo, nota: x.nota || null, creatoDa: user.name }, update: { tipo: x.tipo, nota: x.nota || null, creatoDa: user.name } });
+  await audit({ userId: user.id, action: "telematica.luogo", entity: "TelematicaLuogo", meta: { station: x.station, luogo: x.luogo, tipo: x.tipo } });
   revalidatePath("/telematica/giornata");
 }

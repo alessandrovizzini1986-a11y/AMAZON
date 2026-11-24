@@ -1282,7 +1282,8 @@ model TelematicaLuogo {
   id       String   @id @default(cuid())
   station  String
   luogo    String // via e comune, senza numero civico (come lo calcola il sito)
-  tipo     String // PARCHEGGIO | OFFICINA
+  tipo     String // PARCHEGGIO | OFFICINA | CASA (casa di un driver: resta una segnalazione, ma con il nome)
+  nota     String? // per CASA: chi ci abita
   creatoDa String
   creatoIl DateTime @default(now())
 
