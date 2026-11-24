@@ -196,7 +196,8 @@ describe("fatte le 39 ore di Standard, il resto va tutto in Straordinario", () =
   it("part time: lo Standard oltre le sue ore va in Supplementare", () => {
     const e = run(persona("CTI PT 24H", [g(8), g(8), g(8), g(6), null, null, null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
-    expect(e.richieste[0].testo).toContain("le 6 h di Standard del 05/11 secondo me vanno in Supplementare (lo Standard si ferma a 24 ore a settimana)");
+    expect(e.richieste[0].testo).toContain("le 6 h di Standard del 05/11 secondo me vanno in Supplementare.");
+    expect(e.richieste[0].testo).not.toMatch(/si ferma|parte dopo|massimo/);
   });
 });
 
