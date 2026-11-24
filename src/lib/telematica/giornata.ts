@@ -35,7 +35,7 @@ export async function datiGiornata(station: string, giorno: string): Promise<Gio
     db.forecastRoute.findFirst({ where: { station, data: new Date(`${giorno}T00:00:00Z`) }, orderBy: { file: { caricatoIl: "desc" } }, select: { fileId: true } }),
   ]);
   const previste = ultimoForecast ? await db.forecastRoute.aggregate({ where: { station, data: new Date(`${giorno}T00:00:00Z`), fileId: ultimoForecast.fileId }, _sum: { routes: true } }) : null;
-  const partenze = delMese.map((r) => { const t = tappeDelGiorno(r.tappe as Tappa[] | null); const i = t.findIndex((x) => x.t === "G"); return i < 0 ? null : luogo(i > 0 ? t[i - 1].dove : t[i].dove); });
+  const partenze = delMese.map((r) => { const t = tappeDelGiorno(r.tappe as Tappa[] | null); const i = t.findIndex((x) => x.t === "G"); return i <= 0 ? null : luogo(t[i - 1].dove); });
   // base = dove partono i furgoni nel mese + i parcheggi segnati a mano; le officine sono a parte
   const officine = luoghi.filter((l) => l.tipo === "OFFICINA").map((l) => l.luogo);
   const case_ = Object.fromEntries(luoghi.filter((l) => l.tipo === "CASA").map((l) => [l.luogo, l.nota ?? ""]));
