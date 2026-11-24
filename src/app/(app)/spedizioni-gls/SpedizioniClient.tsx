@@ -145,6 +145,12 @@ export function SpedizioniClient({ accesso, storico: storicoIniziale }: { access
     return () => { vivo = false; clearTimeout(t); };
   }, [b]);
 
+  /** Destinatari già usati: prima quelli di questo PC, poi quelli dello storico del sito (così ci sono su ogni PC), senza doppioni. */
+  const recenti = useMemo(() => {
+    const visti = new Set<string>(), out: Parte[] = [];
+    for (const r of [...rubrica, ...storico.map((x) => x.dati.destinatario)]) { const k = `${r.nome.trim().toLowerCase()}|${r.cap.trim()}`; if (!r.nome.trim() || visti.has(k)) continue; visti.add(k); out.push(r); }
+    return out.slice(0, 60);
+  }, [rubrica, storico]);
   const errori = useMemo(() => controlla(b), [b]);
   const set = <K extends keyof Bollettino>(k: K, v: Bollettino[K]) => setB((x) => ({ ...x, [k]: v }));
   const setParte = (chi: "mittente" | "destinatario", k: keyof Parte, v: string) => setB((x) => ({ ...x, [chi]: { ...x[chi], [k]: v } }));
@@ -184,11 +190,11 @@ export function SpedizioniClient({ accesso, storico: storicoIniziale }: { access
   const parte = (chi: "mittente" | "destinatario", titolo: string) => (
     <fieldset className="rounded-control border border-line p-3">
       <legend className="px-1 text-sm font-semibold">{titolo}</legend>
-      {chi === "destinatario" && rubrica.length > 0 && (
-        <label className="mb-2 flex flex-col gap-1 text-xs font-semibold text-ink-muted">Già usati su questo PC
-          <select className="input h-10 font-normal text-ink" value="" onChange={(e) => { const r = rubrica[Number(e.target.value)]; if (r) set("destinatario", { ...r }); }}>
+      {chi === "destinatario" && recenti.length > 0 && (
+        <label className="mb-2 flex flex-col gap-1 text-xs font-semibold text-ink-muted">Destinatari già usati
+          <select className="input h-10 font-normal text-ink" value="" onChange={(e) => { const r = recenti[Number(e.target.value)]; if (r) set("destinatario", { ...r }); }}>
             <option value="">— scegli un destinatario —</option>
-            {rubrica.map((r, i) => <option key={`${r.nome}${r.cap}${i}`} value={i}>{r.nome} · {r.citta}</option>)}
+            {recenti.map((r, i) => <option key={`${r.nome}${r.cap}${i}`} value={i}>{r.nome} · {r.citta}</option>)}
           </select>
         </label>
       )}
@@ -215,6 +221,11 @@ export function SpedizioniClient({ accesso, storico: storicoIniziale }: { access
 
         <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-4">
+            <label className={`flex flex-col gap-1 rounded-control border-2 p-3 text-sm font-semibold ${provato && !b.numero.trim() ? "border-danger bg-danger-soft" : "border-brand bg-brand-light"}`}>
+              Numero del bollettino *
+              <input className="input h-12 max-w-sm text-lg font-bold tracking-wide text-ink" value={b.numero} onChange={(e) => set("numero", e.target.value)} maxLength={20} autoComplete="off" placeholder="es. M1 123456789" />
+              <span className="text-xs font-normal text-ink-muted">È il numero della spedizione: viene stampato in grande in alto sul modulo, accanto a «Bollettino di spedizione N.». Senza numero il PDF non si crea.</span>
+            </label>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">{parte("mittente", "Mittente")}{parte("destinatario", "Destinatario")}</div>
 
             <fieldset className="rounded-control border border-line p-3">
@@ -223,7 +234,6 @@ export function SpedizioniClient({ accesso, storico: storicoIniziale }: { access
                 <Campo className="col-span-3 md:col-span-1" etichetta="N. colli *" valore={b.colli} onChange={(v) => set("colli", v.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" />
                 <Campo className="col-span-3 md:col-span-1" etichetta="Peso kg" valore={b.pesoKg} onChange={(v) => set("pesoKg", v.replace(/[^\d.,]/g, "").slice(0, 7))} inputMode="decimal" />
                 {(["Lato 1 cm", "Lato 2 cm", "Lato 3 cm"] as const).map((e, i) => <Campo key={e} className="col-span-2 md:col-span-1" etichetta={e} valore={b.dimensioni[i]} onChange={(v) => set("dimensioni", b.dimensioni.map((d, k) => (k === i ? v.replace(/[^\d.,]/g, "").slice(0, 5) : d)) as [string, string, string])} inputMode="decimal" />)}
-                <Campo className="col-span-6 md:col-span-1" etichetta="N. bollettino" valore={b.numero} onChange={(v) => set("numero", v)} maxLength={20} />
                 <Campo className="col-span-6" etichetta="Contenuto" valore={b.contenuto} onChange={(v) => set("contenuto", v)} maxLength={45} />
               </div>
             </fieldset>
@@ -287,14 +297,14 @@ export function SpedizioniClient({ accesso, storico: storicoIniziale }: { access
             <h2 id="gls-storico" className="text-[19px] font-semibold">Storico dei bollettini</h2>
             <p className="mt-1 max-w-3xl text-sm text-ink-muted">Ogni bollettino scaricato, stampato o inviato resta qui con tutti i suoi dati, chi l&apos;ha fatto e quando. Con <b>Riapri</b> i dati tornano nel modulo qui sopra e il PDF si rifà identico.</p>
           </div>
-          <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Cerca (destinatario, città, CAP, numero, data…)
+          <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Cerca (numero bollettino, destinatario, città, CAP, data…)
             <input className="input h-10 w-72 max-w-full font-normal text-ink" value={cerca} onChange={(e) => setCerca(e.target.value)} placeholder="es. rossi milano" />
           </label>
         </div>
         {storico.length === 0 ? <p className="mt-3 text-sm text-ink-muted">Ancora nessun bollettino nello storico: il primo che scarichi comparirà qui.</p> : (
           <div className="mt-3 overflow-x-auto">
             <table className="table-base text-sm">
-              <thead><tr><th>Fatto il</th><th>Da</th><th>Data sped.</th><th>Destinatario</th><th>Città</th><th className="text-right">Colli</th><th className="text-right">Kg</th><th className="text-right">Contrassegno €</th><th>N. spedizione</th><th>Cosa</th><th /></tr></thead>
+              <thead><tr><th>Fatto il</th><th>Da</th><th>Data sped.</th><th>Destinatario</th><th>Città</th><th className="text-right">Colli</th><th className="text-right">Kg</th><th className="text-right">Contrassegno €</th><th>N. bollettino</th><th>Cosa</th><th /></tr></thead>
               <tbody>
                 {trovati.slice(0, 100).map((r) => (
                   <tr key={r.id}>

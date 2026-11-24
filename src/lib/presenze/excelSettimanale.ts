@@ -15,16 +15,16 @@ export function excelSettimanale(esiti: EsitoSettimanale[], dom: DomenicaRigaSet
 
   const r = esiti.map(riepilogoStation);
   tabella(wb.addWorksheet("Riepilogo"), "T_Riepilogo",
-    [{ name: "Station" }, { name: "Driver" }, { name: "Trasferte" }, { name: "Rotte Amazon" }, { name: "+1" }, { name: "-1" }, { name: "H" }, { name: "A" }, { name: "ORE" }, { name: "ACC" }, { name: "€ +1", numFmt: '#,##0.00 "€"' }, { name: "Giorni senza CSV", width: 30 }],
-    r.map((x) => [x.station, x.driver, x.trasferte, x.rotte, x.piu1, x.meno1, x.h, x.a, x.ore, x.acc, x.eurPiu1, x.giorniSenzaCsv]));
+    [{ name: "Station" }, { name: "Driver" }, { name: "Trasferte" }, { name: "Rotte Amazon" }, { name: "+1" }, { name: "-1" }, { name: "H" }, { name: "A" }, { name: "ORE" }, { name: "€ +1", numFmt: '#,##0.00 "€"' }, { name: "Giorni senza CSV", width: 30 }],
+    r.map((x) => [x.station, x.driver, x.trasferte, x.rotte, x.piu1, x.meno1, x.h, x.a, x.ore, x.eurPiu1, x.giorniSenzaCsv]));
 
   const righe = esiti.flatMap(righePerDriver);
   tabella(wb.addWorksheet("Risultato"), "T_Risultato",
     [{ name: "Station" }, { name: "Tipo" }, { name: "Driver", width: 30 }, { name: "Driver ID", width: 18 }, { name: "Contratto", width: 14 },
-      { name: "gg lavorati" }, { name: "Trasferte" }, { name: "Rotte" }, { name: "+1" }, { name: "-1" }, { name: "H" }, { name: "A" }, { name: "ORE" }, { name: "ACC" },
+      { name: "gg lavorati" }, { name: "Trasferte" }, { name: "Rotte" }, { name: "+1" }, { name: "-1" }, { name: "H" }, { name: "A" }, { name: "ORE" },
       { name: "Giorni da verificare", width: 28 }, { name: "Nota", width: 60 },
       ...giorni.map((d) => ({ name: `${ddmm(d)} ${GG[weekday(d)]}`, width: 7 }))],
-    righe.map((x) => [x.station, x.tipo, x.driver, x.driverId, x.contratto, x.giorniLavorati, x.trasferte, x.rotte, x.piu1, x.meno1, x.h, x.a, x.ore, x.acc, x.daVerificare, x.nota, ...giorni.map((d) => x.simboli[d] ?? "")]));
+    righe.map((x) => [x.station, x.tipo, x.driver, x.driverId, x.contratto, x.giorniLavorati, x.trasferte, x.rotte, x.piu1, x.meno1, x.h, x.a, x.ore, x.daVerificare, x.nota, ...giorni.map((d) => x.simboli[d] ?? "")]));
 
   tabella(wb.addWorksheet("Alert"), "T_Alert",
     [{ name: "Station" }, { name: "Tipo" }, { name: "Driver", width: 30 }, { name: "Driver ID", width: 18 }, { name: "Data", date: true }, { name: "Esito" }, { name: "Ore" }, { name: "Trasferta" }, { name: "Pacchi" }, { name: "Riposo" }, { name: "Nota", width: 70 }],
@@ -58,8 +58,8 @@ export function excelSettimanale(esiti: EsitoSettimanale[], dom: DomenicaRigaSet
     ["Dispatcher esclusi", par.dispatcher],
     ["Eseguito da", par.utente],
     ["Eseguito il", new Date().toLocaleString("it-IT", { timeZone: "Europe/Rome" })],
-    ["Legenda", "+1 trasferta senza rotta Amazon · -1 rotta Amazon senza ore · H ore senza Amazon né trasferta · A in Amazon ma non nei tracking · ORE oltre 10 h o valore > 24 · ACC Accordo di domenica (STD) · ok coincidono · ? CSV mancante"],
-    ["Regole addendum 3/11", "R1 malattia/infortunio battono il lavorato (nessun -1) · R2 ore > 10 → ORE · R3 valore > 24 → ORE (non usato per trasferta/rotta) · R4 STD domenica con Accordo → ACC"],
+    ["Legenda", "+1 trasferta senza rotta Amazon · -1 rotta Amazon senza ore · H ore senza Amazon né trasferta · A in Amazon ma non nei tracking · ORE oltre 10 h o valore > 24 · ok coincidono · ? CSV mancante"],
+    ["Regole addendum 3/11", "R1 malattia/infortunio battono il lavorato (nessun -1) · R2 ore > 10 → ORE · R3 valore > 24 → ORE (non usato per trasferta/rotta) · l'Accordo di domenica degli STD non si segnala più"],
   ]);
   p.getColumn(1).font = { bold: true };
   return wb;
