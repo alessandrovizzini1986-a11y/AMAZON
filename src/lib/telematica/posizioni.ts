@@ -30,11 +30,36 @@ export function daFlottaweb(risposta: unknown): Omit<Posizione, "station">[] {
   }));
 }
 
+type PuntoFw = { lat?: number; lon?: number; speed?: number; dateTime?: string; status?: string; autista?: string };
+/** FlottaWeb: l'ultimo punto di un percorso → posizione del mezzo (l'ora è italiana, senza fuso) */
+export function ultimoPuntoFw(risposta: unknown, targa: string): Omit<Posizione, "station"> | null {
+  const r = (risposta ?? {}) as { message?: PuntoFw[]; markers?: PuntoFw[] };
+  const punti = (Array.isArray(r.message) && r.message.length ? r.message : r.markers ?? []).filter((p) => num(p.lat) !== 0 && p.dateTime);
+  const u = punti.sort((a, b) => a.dateTime!.localeCompare(b.dateTime!)).at(-1);
+  if (!u) return null;
+  return { fonte: "FLOTTAWEB", targa, nome: targa, lat: num(u.lat), lon: num(u.lon), velocita: num(u.speed), quando: u.dateTime!.replace(" ", "T"), stato: String(u.status ?? ""), autista: u.autista && u.autista !== "-" ? u.autista : null };
+}
+
+/** FlottaWeb: l'elenco mezzi spesso non porta le coordinate; per chi non le ha prendo l'ultimo punto degli ultimi 3 giorni */
+async function flottaweb(forza: boolean): Promise<Omit<Posizione, "station">[]> {
+  const token = await accediFlottaweb(forza);
+  const elenco = await leggiFlottaweb(token, "/unit/list");
+  const conPosizione = daFlottaweb(elenco);
+  const viste = new Set(conPosizione.map((p) => p.targa));
+  const altri = (((elenco as { units?: { unitid?: number; vrn?: string; name?: string }[] })?.units ?? [])).filter((u) => u.unitid && !viste.has(targaPulita(u.vrn || u.name)));
+  const giorno = (k: number) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Rome" }).format(new Date(Date.now() - k * 86400000));
+  const trovati = await Promise.all(altri.map(async (u) => {
+    try { return ultimoPuntoFw(await leggiFlottaweb(token, "/gps/getpositions", { unitid: String(u.unitid), da: `${giorno(3)} 00:00:00`, a: `${giorno(0)} 23:59:59` }), targaPulita(u.vrn || u.name)); }
+    catch (e) { if (e instanceof ErroreTelematica && (e.stato === 401 || e.stato === 403)) throw e; return null; }
+  }));
+  return [...conPosizione, ...trovati.filter((p): p is Omit<Posizione, "station"> => p !== null)];
+}
+
 /** legge una fonte; se il gettone in memoria è scaduto (401/403) rifà il login una volta */
 async function leggi(fonte: Fonte): Promise<Omit<Posizione, "station">[]> {
   const una = async (forza: boolean) => fonte === "TARGA"
     ? daTarga(await leggiTarga(await accediTarga(forza), "/realtime/units/positions", { showOperativeStatus: "true", timezone: "Europe/Rome", background: "false", inactive: "false" }))
-    : daFlottaweb(await leggiFlottaweb(await accediFlottaweb(forza), "/unit/list"));
+    : flottaweb(forza);
   try { return await una(false); }
   catch (e) { if (e instanceof ErroreTelematica && (e.stato === 401 || e.stato === 403)) return una(true); throw e; }
 }

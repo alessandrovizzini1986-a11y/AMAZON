@@ -1235,3 +1235,41 @@ model TelematicaProva {
 
   @@unique([fonte, chiamata])
 }
+
+// Telematica: cosa ha fatto ogni mezzo in ogni giorno (scaricato dai portali, una riga per mezzo e giorno).
+// "tappe" = elenco compatto di guide e soste della giornata (orari, km, indirizzo), per la pagina del giorno.
+model TelematicaGiorno {
+  id                 String    @id @default(cuid())
+  fonte              String // TARGA | FLOTTAWEB
+  targa              String // senza spazi, maiuscola
+  idMezzo            String
+  giorno             String // AAAA-MM-GG (giorno italiano)
+  km                 Float     @default(0)
+  inizio             DateTime? // prima partenza
+  fine               DateTime? // ultimo arrivo
+  guidaSec           Int       @default(0)
+  motoreSec          Int       @default(0)
+  fermoMotoreAccSec  Int       @default(0) // fermo con il motore acceso
+  velMax             Int?
+  punteggioSicurezza Float?
+  soste              Int       @default(0)
+  rifornimenti       Int       @default(0)
+  litri              Float     @default(0)
+  kmContatore        Float? // contachilometri a fine giornata
+  autista            String?
+  tappe              Json?
+  scaricatoIl        DateTime  @default(now())
+
+  @@unique([fonte, targa, giorno])
+  @@index([giorno])
+  @@index([targa, giorno])
+}
+
+// Un giorno risulta "scaricato" quando lo scarico è finito dopo la fine di quel giorno.
+model TelematicaScarico {
+  giorno    String   @id // AAAA-MM-GG
+  mezzi     Int
+  errori    Int
+  definitivo Boolean @default(false)
+  finitoIl  DateTime @default(now())
+}

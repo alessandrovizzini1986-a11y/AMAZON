@@ -11,6 +11,8 @@ const PUBLIC_PATHS = [
   "/opengraph-image.png",
   "/manifest.webmanifest",
   "/icons/",
+  // scarico notturno della telematica: lo chiama Vercel senza sessione (vedi la route: fa solo uno scarico che manca)
+  "/api/telematica/cron",
 ];
 
 export async function middleware(req: NextRequest) {

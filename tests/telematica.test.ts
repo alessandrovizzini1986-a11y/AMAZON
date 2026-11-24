@@ -43,3 +43,42 @@ describe("telematica: posizioni", () => {
     expect(c.userinfo.api_key).toBe("(nascosto)"); expect(c.userinfo.name).toBe("x"); expect(c.videoserver).toBe("(nascosto)");
   });
 });
+
+import { fusoRoma, giorniDelMese, giornoDaFlottaweb, giornoDaTarga, riepilogoMese, type RigaGiorno } from "@/domain/telematica";
+import { ultimoPuntoFw } from "@/lib/telematica/posizioni";
+
+describe("telematica: giorno e mese", () => {
+  const seg = (reportType: string, dateBegin: string, dateEnd: string, mileage: number, extra = {}) => ({ reportType, dateBegin, dateEnd, mileage, formattedAddressBegin: "Via A", formattedAddressEnd: "Via B", positions: [], ...extra });
+  it("Targa: km, orari, soste in mezzo alla giornata e rifornimenti", () => {
+    const g = giornoDaTarga({
+      totalMileage: 63.017, dateUsageBegin: "2026-11-23T09:41:45.000+01:00", dateUsageEnd: "2026-11-23T18:03:59.000+01:00", totalDriveTime: 14635, totalEngineOnTime: 17090, totalParkEngineOnTime: 2455, dailyMaximumSpeed: 133, drivingScore: { safety: { score: 5.9 } },
+      usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T09:41:45+01:00", 0), seg("USAGE", "2026-11-23T09:41:45+01:00", "2026-11-23T11:00:00+01:00", 30, { positions: [{ mileage: 14230, refuel: { refueledLiters: 41.5 } }] }),
+        seg("INACTIVITY", "2026-11-23T11:00:00+01:00", "2026-11-23T11:20:00+01:00", 0), seg("USAGE", "2026-11-23T11:20:00+01:00", "2026-11-23T18:03:59+01:00", 33, { positions: [{ mileage: 14265.9, refuel: null }] }), seg("INACTIVITY", "2026-11-23T18:03:59+01:00", "2026-11-23T23:59:59+01:00", 0)],
+    });
+    expect(g).toMatchObject({ km: 63, guidaSec: 14635, fermoMotoreAccSec: 2455, velMax: 133, soste: 1, rifornimenti: 1, litri: 41.5, kmContatore: 14265.9 });
+    expect(g.tappe).toHaveLength(5); expect(g.tappe[1]).toMatchObject({ t: "G", km: 30, dove: "Via B" });
+  });
+  it("Targa: mezzo fermo tutto il giorno → 0 km, nessun orario", () => {
+    const g = giornoDaTarga({ totalMileage: 0, dateUsageBegin: "2026-11-23T00:00:00+01:00", usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T23:59:59+01:00", 0)] });
+    expect(g).toMatchObject({ km: 0, inizio: null, fine: null, soste: 0 });
+    expect(giornoDaTarga(null).km).toBe(0);
+  });
+  it("FlottaWeb: km dal contachilometri, orari dai punti in movimento", () => {
+    const g = giornoDaFlottaweb({ tot_km: 0, message: [{ dateTime: "2026-07-10 08:00:00", speed: 0, cronotachigrafo: 2700 }, { dateTime: "2026-07-10 08:30:00", speed: 30, cronotachigrafo: 2705 }, { dateTime: "2026-07-10 09:10:00", speed: 22, cronotachigrafo: 2714.2 }] }, "2026-07-10");
+    expect(g.km).toBe(14.2); expect(g.inizio).toBe("2026-07-10T08:30:00+02:00"); expect(g.velMax).toBe(30);
+  });
+  it("fuso italiano e giorni del mese", () => {
+    expect(fusoRoma("2026-11-23")).toBe("+01:00"); expect(fusoRoma("2026-07-10")).toBe("+02:00"); expect(giorniDelMese("2026-02")).toHaveLength(28);
+  });
+  it("riepilogo del mese: medie sui giorni usati e consumo", () => {
+    const r = (targa: string, giorno: string, km: number, litri = 0): RigaGiorno => ({ fonte: "TARGA", targa, giorno, km, inizio: null, fine: null, guidaSec: 3600, motoreSec: 0, fermoMotoreAccSec: 1800, velMax: 90, punteggioSicurezza: 6, soste: 2, rifornimenti: litri ? 1 : 0, litri });
+    const [a, b] = riepilogoMese([r("AA111AA", "2026-11-02", 100, 40), r("AA111AA", "2026-11-03", 0), r("AA111AA", "2026-11-04", 60), r("BB222BB", "2026-11-02", 0)], (t) => (t === "AA111AA" ? "DER1" : null));
+    expect(a).toMatchObject({ targa: "AA111AA", station: "DER1", giorniUsati: 2, km: 160, kmMedi: 80, guidaOre: 3, litri: 40, kmPerLitro: 4, litri100km: 25, primoGiorno: "2026-11-02", ultimoGiorno: "2026-11-04" });
+    expect(b).toMatchObject({ targa: "BB222BB", giorniUsati: 0, kmMedi: 0, kmPerLitro: null });
+  });
+  it("FlottaWeb sulla mappa: l'ultimo punto del percorso", () => {
+    const p = ultimoPuntoFw({ message: [{ lat: 45.41, lon: 9.09, speed: 0, dateTime: "2026-11-24 19:10:00" }, { lat: 45.4, lon: 9.08, speed: 0, dateTime: "2026-11-23 00:09:53" }] }, "XBPPTG");
+    expect(p).toMatchObject({ targa: "XBPPTG", lat: 45.41, quando: "2026-11-24T19:10:00" });
+    expect(ultimoPuntoFw({ message: [] }, "X")).toBeNull();
+  });
+});
