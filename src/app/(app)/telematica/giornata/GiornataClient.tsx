@@ -37,7 +37,11 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
 
   const usati = dati.righe.filter((r) => r.km >= 1), conAvvisi = dati.righe.filter((r) => r.avvisi.some((a) => !a.info));
   const noti = new Set([...dati.basi, ...dati.luoghi.map((l) => l.luogo)]);
-  const segna = async (luogo: string, tipo: "PARCHEGGIO" | "OFFICINA" | "NESSUNO") => { await segnaLuogoTelematica({ station: dati.station, luogo, tipo }); router.refresh(); };
+  const segna = async (luogo: string, tipo: "PARCHEGGIO" | "OFFICINA" | "CASA" | "NESSUNO") => {
+    let nota: string | undefined;
+    if (tipo === "CASA") { const n = window.prompt("Chi abita lì? (nome del driver, facoltativo)"); if (n === null) return; nota = n; }
+    await segnaLuogoTelematica({ station: dati.station, luogo, tipo, nota }); router.refresh();
+  };
   const righe = useMemo(() => {
     const f = filtro === "AVVISI" ? dati.righe.filter((r) => r.avvisi.some((a) => !a.info)) : filtro === "USATI" ? dati.righe.filter((r) => r.km >= 1) : filtro === "FERMI" ? dati.righe.filter((r) => r.km < 1) : dati.righe;
     const gravi = (r: RigaGiornata) => r.avvisi.filter((a) => !a.info).length;
@@ -111,9 +115,9 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
           {dati.luoghi.length > 0 && (
             <section className="card flex flex-col gap-2 p-4">
               <h2 className="text-base font-semibold">Posti conosciuti di {dati.station}</h2>
-              <p className="text-sm text-slate-600">Un furgone fermo per la notte in un parcheggio non viene segnalato; in officina compare come «in officina».</p>
+              <p className="text-sm text-slate-600">Un furgone fermo per la notte in un parcheggio non viene segnalato; in officina compare come «in officina»; a casa di un driver resta segnalato, con il nome.</p>
               <ul className="flex flex-col gap-1 text-sm">
-                {dati.luoghi.map((l) => <li key={l.luogo} className="flex flex-wrap items-center gap-2"><span className="w-24 text-slate-500">{l.tipo === "OFFICINA" ? "Officina" : "Parcheggio"}</span><span>{l.luogo}</span><button className="text-xs text-slate-500 underline" onClick={() => segna(l.luogo, "NESSUNO")}>togli</button></li>)}
+                {dati.luoghi.map((l) => <li key={l.luogo} className="flex flex-wrap items-center gap-2"><span className="w-28 text-slate-500">{l.tipo === "OFFICINA" ? "Officina" : l.tipo === "CASA" ? "Casa di un driver" : "Parcheggio"}</span><span>{l.luogo}{l.nota ? ` · ${l.nota}` : ""}</span><button className="text-xs text-slate-500 underline" onClick={() => segna(l.luogo, "NESSUNO")}>togli</button></li>)}
               </ul>
             </section>
           )}
@@ -135,7 +139,7 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
   );
 }
 
-function Dettaglio({ r, noti, segna }: { r: RigaGiornata; noti: Set<string>; segna: (luogo: string, tipo: "PARCHEGGIO" | "OFFICINA") => void }) {
+function Dettaglio({ r, noti, segna }: { r: RigaGiornata; noti: Set<string>; segna: (luogo: string, tipo: "PARCHEGGIO" | "OFFICINA" | "CASA") => void }) {
   const ignoti = [...new Set([r.finisceA, r.parteDa].filter((l): l is string => !!l && !noti.has(l)))];
   if (!r.tappe.length) return <p className="text-sm text-slate-600">Per questo furgone il portale non dà il dettaglio di guide e soste{r.km >= 1 ? "" : ": è rimasto fermo"}.</p>;
   return (
@@ -150,6 +154,7 @@ function Dettaglio({ r, noti, segna }: { r: RigaGiornata; noti: Set<string>; seg
           <span>Conosci <b>{l}</b>?</span>
           <button className="btn-secondary py-0.5 px-2 text-xs" onClick={() => segna(l, "PARCHEGGIO")}>È un nostro parcheggio</button>
           <button className="btn-secondary py-0.5 px-2 text-xs" onClick={() => segna(l, "OFFICINA")}>È un&apos;officina</button>
+          <button className="btn-secondary py-0.5 px-2 text-xs" onClick={() => segna(l, "CASA")}>È casa di un driver</button>
         </div>
       ))}
       <ol className="flex flex-col">
