@@ -49,12 +49,14 @@ describe("verifica delle settimane", () => {
     // 38 ore: Standard 32 e Straordinario 6 → errore sul driver
     const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), null, g(0, { str: 6 }), null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
-    expect(e.richieste[0].testo).toContain("6 h da Straordinario a Standard: Straordinario 6 → 0, Standard 32 → 38");
+    expect(e.richieste[0].testo).toContain("il 07/11 ci sono 6 h in Straordinario, ma secondo me sono Standard");
+    expect(e.settimane.find((x) => x.lunedi === LUN)!.esito).toContain("Straordinario 6 → 0, Standard 32 → 38");
     expect(e.richieste[0].chiave).toBe(`2026-11|DER1|SIC|CF1|STR_PRIMA|${LUN}`);
     // 44,5 ore: Standard 35,5, Accordo 1, Straordinario 8 → Standard fino a 39, il resto Straordinario (l'Accordo non conta nelle 39)
     const m = run(persona("CTI FT", [g(4), g(8), g(7.5), null, g(8, { acc: 0.5 }), g(8, { acc: 0.5 }), g(0, { str: 8 })]));
     expect(m.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
-    expect(m.richieste[0].testo).toContain("3,5 h da Straordinario a Standard: Straordinario 8 → 4,5, Standard 35,5 → 39");
+    expect(m.richieste[0].testo).toContain("il 08/11 ci sono 8 h in Straordinario, ma secondo me 3,5 h sono Standard");
+    expect(m.settimane.find((x) => x.lunedi === LUN)!.esito).toContain("Straordinario 8 → 4,5, Standard 35,5 → 39");
     // part time 24 ore che ne lavora 40: Standard 24, Supplementare 15, Straordinario 1 al posto dell'Accordo → va bene
     expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), g(0, { sup: 8 }), g(0, { sup: 7, str: 1 }), null, null])).richieste).toEqual([]);
   });
@@ -184,9 +186,9 @@ describe("fatte le 39 ore di Standard, il resto va tutto in Straordinario", () =
     // come nel tracking vero: 5 giorni + la domenica, con 1 ora di Accordo già scritta
     const e = run(persona("CTI FT", [g(8), g(8), g(8), null, g(8), g(7, { acc: 1 }), g(8)]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
-    expect(e.richieste[0].testo).toContain("8 h da Standard a Straordinario: Standard 47 → 39, Straordinario 0 → 8");
-    expect(e.richieste[0].testo).not.toContain("Accordo insieme");
-    expect(e.richieste[0].testo).not.toContain("il resto in Accordo");
+    expect(e.richieste[0].testo).toContain("le 8 h di Standard del 08/11 secondo me vanno in Straordinario");
+    expect(e.richieste[0].testo).not.toContain("Accordo");
+    expect(e.settimane.find((x) => x.lunedi === LUN)!.esito).toContain("Standard 47 → 39, Straordinario 0 → 8");
   });
   it("se la domenica è già in Straordinario non si chiede niente", () => {
     expect(run(persona("CTI FT", [g(8), g(8), g(8), null, g(8), g(7, { acc: 1 }), g(0, { str: 8 })])).richieste).toEqual([]);
@@ -194,7 +196,7 @@ describe("fatte le 39 ore di Standard, il resto va tutto in Straordinario", () =
   it("part time: lo Standard oltre le sue ore va in Supplementare", () => {
     const e = run(persona("CTI PT 24H", [g(8), g(8), g(8), g(6), null, null, null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
-    expect(e.richieste[0].testo).toContain("Standard 30 → 24 (il resto in Supplementare)");
+    expect(e.richieste[0].testo).toContain("le 6 h di Standard del 05/11 secondo me vanno in Supplementare (lo Standard si ferma a 24 ore a settimana)");
   });
 });
 
@@ -210,7 +212,7 @@ describe("straordinario di giornata", () => {
     // sabato 4 ore di Standard + 3 di Straordinario (7 ore in tutto): non c'è nessuna ora oltre l'ottava → errore
     const e = run(persona("CTI PT 24H", [g(8), g(8), null, null, null, g(4, { str: 3 }), null]));
     expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
-    expect(e.richieste[0].testo).toContain("Straordinario 3 → 0");
+    expect(e.richieste[0].testo).toContain("il 07/11 ci sono 3 h in Straordinario, ma secondo me sono Supplementare");
   });
 });
 
@@ -229,5 +231,16 @@ describe("DER2: i part time sono trattati come MOG", () => {
   });
   it("anche a DER2 lo Straordinario prima delle 39 ore resta un errore", () => {
     expect(aDer2(persona("CTI PT 24H", [g(8), g(8), g(8), null, null, g(4, { str: 3 }), null])).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+  });
+});
+
+describe("messaggio per l'OS", () => {
+  it("saluto con il solo nome, frasi dirette e una sola formula finale", async () => {
+    const { componi, TESTI } = await import("@/domain/presenze/messaggi");
+    const m = componi("DER1", TESTI.aperturaVerifica(TESTI.salutoNome("Mario Rossi"), "DER1", "11/2026", "22/11"), [{ titolo: "Straordinario prima delle 39 ore", colonne: ["Driver", "Tipo", "Cosa serve"], righe: [["A", "STD", "x"], ["B", "STD", "y"]] }], TESTI.chiusuraVerifica);
+    expect(m.testo.split("\n")[0]).toBe("Ciao Mario, ti mando le richieste per i controlli dei tracking di DER1 di 11/2026 (fino al 22/11).");
+    expect(m.testo.match(/Puoi verificare e farmi sapere\?/g)!.length).toBe(1);
+    expect(m.testo.trim().endsWith("Puoi verificare e farmi sapere? Grazie!")).toBe(true);
+    expect(TESTI.salutoNome(null)).toBe("Ciao");
   });
 });

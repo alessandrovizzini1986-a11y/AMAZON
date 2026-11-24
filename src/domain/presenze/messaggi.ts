@@ -20,6 +20,10 @@ export const TESTI = {
   aperturaFineMese: (saluto: string, station: string, mese: string, entro: string) =>
     `${saluto}, controllo di fine mese ${station} (${mese}): tracking SIC vs Zucchetti. Ci servono queste verifiche entro ${entro}:`,
   chiusura: "Grazie, rispondete correggendo direttamente il tracking e avvisateci.",
+  /** Verifica tracking: tono diretto, al singolare, con il solo nome di battesimo */
+  salutoNome: (referente: string | null) => (referente ? `Ciao ${referente.trim().split(/\s+/)[0]}` : "Ciao"),
+  aperturaVerifica: (saluto: string, station: string, mese: string, finoA: string) => `${saluto}, ti mando le richieste per i controlli dei tracking di ${station} di ${mese} (fino al ${finoA}).`,
+  chiusuraVerifica: "Puoi verificare e farmi sapere? Grazie!",
   piu1: "TRASFERTA PAGATA SENZA ROTTA AMAZON (+1)",
   meno1: "ROTTA AMAZON MA ZERO ORE NEL TRACKING (-1)",
   h: "ORE NEL TRACKING MA ASSENTE SU AMAZON (H)",
@@ -57,13 +61,13 @@ export function entroGiorniLavorativi(oggiIso: string, n = 2): string {
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Compone il messaggio: apertura, sezioni non vuote, chiusura. */
-export function componi(station: string, apertura: string, sezioni: Sezione[]): Messaggio {
+export function componi(station: string, apertura: string, sezioni: Sezione[], chiusura: string = TESTI.chiusura): Messaggio {
   const piene = sezioni.filter((s) => s.righe.length > 0);
   const testo = [
     apertura,
     "",
     ...piene.flatMap((s) => [s.titolo, s.colonne.join("\t"), ...s.righe.map((r) => "- " + r.join("\t")), ""]),
-    TESTI.chiusura,
+    chiusura,
   ].join("\n");
   const html = [
     `<p>${esc(apertura)}</p>`,
@@ -73,7 +77,7 @@ export function componi(station: string, apertura: string, sezioni: Sezione[]): 
           .map((c) => `<th style="text-align:left">${esc(c)}</th>`)
           .join("")}</tr></thead><tbody>${s.righe.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`,
     ),
-    `<p>${esc(TESTI.chiusura)}</p>`,
+    `<p>${esc(chiusura)}</p>`,
   ].join("");
   return { station, testo, html, nAnomalie: piene.reduce((s, x) => s + x.righe.length, 0) };
 }
