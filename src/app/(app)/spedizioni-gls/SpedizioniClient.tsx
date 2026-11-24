@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Aiuto } from "@/components/Aiuto";
-import { SERVIZI, bollettinoVuoto, compilaBollettino, controlla, nomeFile, parteVuota, type Bollettino, type Parte, type Servizio } from "@/domain/gls/bollettino";
-import { passwordGls, salvaAccessoGls } from "./actions";
+import { AZIONI_GLS, SERVIZI, bollettinoVuoto, cercaStorico, compilaBollettino, controlla, nomeFile, parteVuota, type AzioneGls, type Bollettino, type Parte, type RigaStoricoGls, type Servizio } from "@/domain/gls/bollettino";
+import { passwordGls, registraBollettino, salvaAccessoGls, storicoBollettini } from "./actions";
 
 type Accesso = { url: string; username: string; sede: string; haPassword: boolean };
 const K_MITTENTE = "gls:mittente", K_RUBRICA = "gls:rubrica";
@@ -117,8 +117,19 @@ function Anteprima({ pdf }: { pdf: Uint8Array | null }) {
   return <canvas ref={tela} width={1310} height={948} aria-label="Anteprima del bollettino compilato" className="w-full rounded-control border border-line bg-white" />;
 }
 
-export function SpedizioniClient({ accesso }: { accesso: Accesso }) {
+export function SpedizioniClient({ accesso, storico: storicoIniziale }: { accesso: Accesso; storico: RigaStoricoGls[] }) {
   const [b, setB] = useState<Bollettino>(() => bollettinoVuoto());
+  const [storico, setStorico] = useState(storicoIniziale);
+  const [cerca, setCerca] = useState("");
+  const [nonSalvato, setNonSalvato] = useState(false);
+  const cima = useRef<HTMLElement>(null);
+  /** Dopo ogni PDF: salva il bollettino nello storico del sito. Se non riesce il PDF c'è comunque, ma lo si dice. */
+  const registra = async (azione: AzioneGls) => {
+    try { await registraBollettino({ dati: b, azione }); setNonSalvato(false); setStorico(await storicoBollettini()); }
+    catch { setNonSalvato(true); }
+  };
+  const riapri = (r: RigaStoricoGls) => { setB({ ...bollettinoVuoto(), ...r.dati }); setProvato(false); setMsg({ testo: `Bollettino del ${r.dataSpedizione.split("-").reverse().join("/")} per ${r.destinatario} riaperto: i dati sono quelli salvati, il PDF esce identico.`, ok: true }); cima.current?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  const trovati = useMemo(() => cercaStorico(storico, cerca), [storico, cerca]);
   const [rubrica, setRubrica] = useState<Parte[]>([]);
   const [pdf, setPdf] = useState<Uint8Array | null>(null);
   const [msg, setMsg] = useState<{ testo: string; ok: boolean } | null>(null);
@@ -156,6 +167,7 @@ export function SpedizioniClient({ accesso }: { accesso: Accesso }) {
     try {
       const f = await pronto();
       if (!f) { scheda?.close(); return; }
+      void registra(cosa);
       if (cosa === "scarica") { salvaFile(f); setMsg({ testo: `Scaricato ${f.name}: lo trovi nella cartella Download.`, ok: true }); }
       if (cosa === "stampa") { const u = URL.createObjectURL(f); if (scheda) scheda.location.href = u; else salvaFile(f); setMsg({ testo: scheda ? "Bollettino aperto in una nuova scheda: da lì lo stampi." : "Il browser ha bloccato la nuova scheda: ho scaricato il PDF.", ok: true }); }
       if (cosa === "invia") {
@@ -197,7 +209,7 @@ export function SpedizioniClient({ accesso }: { accesso: Accesso }) {
     <>
       <Accesso accesso={accesso} />
 
-      <section className="card p-4 md:p-5" aria-labelledby="gls-bollettino">
+      <section ref={cima} className="card scroll-mt-24 p-4 md:p-5" aria-labelledby="gls-bollettino">
         <h2 id="gls-bollettino" className="text-[19px] font-semibold">2. Compila il bollettino di spedizione</h2>
         <p className="mt-1 max-w-3xl text-sm text-ink-muted">Scrivi i dati qui: finiscono sul modulo GLS originale (Mod. 04), con le condizioni di trasporto in seconda pagina. Firma e timbro si mettono a mano sulla stampa. Il mittente e i destinatari usati restano su questo PC per la prossima volta.</p>
 
@@ -258,6 +270,7 @@ export function SpedizioniClient({ accesso }: { accesso: Accesso }) {
             <Anteprima pdf={pdf} />
             {provato && errori.length > 0 && <ul className="rounded-control bg-warn-soft px-4 py-3 text-sm text-warn">{errori.map((e) => <li key={e}>• {e}</li>)}</ul>}
             {msg && <p role="status" className={`rounded-control px-3 py-2 text-sm ${msg.ok ? "bg-ok-soft text-ok" : "bg-danger-soft text-danger"}`}>{msg.testo}</p>}
+            {nonSalvato && <p role="alert" className="rounded-control bg-warn-soft px-3 py-2 text-sm text-warn">Il PDF è pronto, ma non sono riuscito a salvarlo nello storico del sito. Riprova con Scarica il PDF.</p>}
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" className="btn-primary" disabled={busy} onClick={() => esegui("scarica")}>Scarica il PDF</button><Aiuto k="gls.scarica" />
               <button type="button" className="btn-secondary" disabled={busy} onClick={() => esegui("stampa")}>Apri per stampare</button>
@@ -266,6 +279,38 @@ export function SpedizioniClient({ accesso }: { accesso: Accesso }) {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="card p-4 md:p-5" aria-labelledby="gls-storico">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="gls-storico" className="text-[19px] font-semibold">Storico dei bollettini</h2>
+            <p className="mt-1 max-w-3xl text-sm text-ink-muted">Ogni bollettino scaricato, stampato o inviato resta qui con tutti i suoi dati, chi l&apos;ha fatto e quando. Con <b>Riapri</b> i dati tornano nel modulo qui sopra e il PDF si rifà identico.</p>
+          </div>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-ink-muted">Cerca (destinatario, città, CAP, numero, data…)
+            <input className="input h-10 w-72 max-w-full font-normal text-ink" value={cerca} onChange={(e) => setCerca(e.target.value)} placeholder="es. rossi milano" />
+          </label>
+        </div>
+        {storico.length === 0 ? <p className="mt-3 text-sm text-ink-muted">Ancora nessun bollettino nello storico: il primo che scarichi comparirà qui.</p> : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="table-base text-sm">
+              <thead><tr><th>Fatto il</th><th>Da</th><th>Data sped.</th><th>Destinatario</th><th>Città</th><th className="text-right">Colli</th><th className="text-right">Kg</th><th className="text-right">Contrassegno €</th><th>N. spedizione</th><th>Cosa</th><th /></tr></thead>
+              <tbody>
+                {trovati.slice(0, 100).map((r) => (
+                  <tr key={r.id}>
+                    <td className="whitespace-nowrap font-mono text-xs">{new Date(r.quando).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                    <td>{r.chi}</td><td className="whitespace-nowrap font-mono text-xs">{r.dataSpedizione.split("-").reverse().join("/")}</td>
+                    <td className="font-medium">{r.destinatario}</td><td>{r.citta} {r.cap}</td>
+                    <td className="text-right">{r.colli}</td><td className="text-right">{r.pesoKg || "—"}</td><td className="text-right">{r.contrassegno || "—"}</td><td>{r.numero || "—"}</td>
+                    <td>{r.azioni.map((a) => AZIONI_GLS[a as AzioneGls] ?? a).join(", ")}</td>
+                    <td><button type="button" className="btn-secondary px-3 py-1 text-xs" onClick={() => riapri(r)}>Riapri</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-ink-muted">{trovati.length === storico.length ? `${storico.length} bollettini` : `${trovati.length} trovati su ${storico.length}`}{trovati.length > 100 ? " (mostro i primi 100: stringi la ricerca)" : ""}.</p>
+          </div>
+        )}
       </section>
     </>
   );

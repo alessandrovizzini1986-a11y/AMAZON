@@ -63,6 +63,27 @@ export function controlla(b: Bollettino): string[] {
   return e;
 }
 
+/** Riga dello storico: quello che serve per ritrovare un bollettino senza aprirlo. */
+export type RigaStoricoGls = { id: string; quando: string; chi: string; azioni: string[]; dataSpedizione: string; numero: string; mittente: string; destinatario: string; citta: string; cap: string; colli: string; pesoKg: string; contrassegno: string; dati: Bollettino };
+export const AZIONI_GLS = { scarica: "scaricato", stampa: "stampato", invia: "inviato" } as const;
+export type AzioneGls = keyof typeof AZIONI_GLS;
+
+/** Testo stabile dei dati (chiavi in ordine, spazi tolti ai bordi): due bollettini uguali danno lo stesso testo. */
+export function testoStabile(b: Bollettino): string {
+  const pulisci = (v: unknown): unknown => typeof v === "string" ? v.trim() : Array.isArray(v) ? v.map(pulisci) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, pulisci((v as Record<string, unknown>)[k])])) : v;
+  return JSON.stringify(pulisci(b));
+}
+
+/** Cerca nello storico: tutte le parole devono comparire in destinatario, città, CAP, numero, mittente, riferimento, contenuto, note o data. */
+export function cercaStorico(righe: RigaStoricoGls[], testo: string): RigaStoricoGls[] {
+  const parole = testo.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!parole.length) return righe;
+  return righe.filter((r) => {
+    const dove = [r.destinatario, r.citta, r.cap, r.numero, r.mittente, r.chi, r.dataSpedizione, r.dataSpedizione.split("-").reverse().join("/"), r.dati.rifMittente, r.dati.contenuto, r.dati.note, r.dati.destinatario.telefono, r.dati.destinatario.via].join(" ").toLowerCase();
+    return parole.every((p) => dove.includes(p));
+  });
+}
+
 export function nomeFile(b: Bollettino): string {
   const chi = b.destinatario.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "spedizione";
   return `Bollettino_GLS_${chi}${b.data ? `_${b.data}` : ""}.pdf`;
