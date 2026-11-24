@@ -11,7 +11,7 @@
  * Tetto (CCNL art. 11 quinquies, Accordo art. 4): 43 h fino al 31/05/2026, 42 h dal 01/06/2026, 41 h dal 01/07/2027.
  */
 import { addDays, weekday } from "./grid";
-import { ASSENZE_RETRIB, leggiLavoratori, type Lavoratore } from "./lavoratori";
+import { ASSENZE_NON_RETRIB, ASSENZE_RETRIB, leggiLavoratori, type Lavoratore } from "./lavoratori";
 import { alertDelGiorno, type EsitoSettimanale, type TrackingInput } from "./controlloSettimanale";
 import { findTrackingSheet } from "./tracking";
 import { normName, type Station } from "./regole";
@@ -58,7 +58,8 @@ export function ripartoAtteso(lavorate: number, assenze: number, c: Contratto, t
   return { std, sup, acc, str: r - acc };
 }
 
-export type OreGiorno = { std: number; sup: number; acc: number; str: number; ass: number };
+/** `nr` = ore di assenza NON retribuita (sciopero, permesso non retribuito, assenza ingiustificata): non si pagano ma contano nelle 39 ore. */
+export type OreGiorno = { std: number; sup: number; acc: number; str: number; ass: number; nr?: number };
 export type Persona = {
   station: Station; pop: "SIC" | "STD"; nome: string; cf: string; driverId: string; contratto: string;
   /** giorno ISO → ore (solo i giorni con qualcosa) */
@@ -72,6 +73,11 @@ export type Persona = {
  * anche nella riga dell'assenza. Se mancano, il conto della settimana si fa lo stesso con una giornata da 7,8 ore.
  */
 export const SIGLE_ASSENZA: Record<string, string> = { F: "FERIE", FERIE: "FERIE", ROL: "ROL", EXF: "EXF", EX: "EXF", M: "MALATTIA", MAL: "MALATTIA", I: "INFORTUNIO", INF: "INFORTUNIO" };
+/**
+ * Sigle di assenza NON retribuita nella riga RIPOSO: sciopero e permesso non retribuito. Non si pagano, ma il giorno conta
+ * lo stesso verso le 39 ore della settimana (deciso da Alessandro il 24/11/2026), quindi lo Straordinario dopo è lecito.
+ */
+export const SIGLE_NON_RETRIB = new Set(["S", "SC", "SCI", "SCIOP", "SCIOPERO", "PNR", "PNR.", "P.N.R."]);
 export const ORE_GIORNO_ASSENZA = 7.8;
 
 const chiavePersona = (l: Lavoratore) => (l.cf.trim().toUpperCase() || l.matricola || normName(l.nome));
@@ -130,8 +136,8 @@ export function personeDelMese(tracking: TrackingInput[], mese: string, preceden
       const delMese = Object.fromEntries(Object.entries(l.giorni).filter(([d]) => d.startsWith(mese + "-")));
       for (const src of [sconfino, prima.get(chiavePersona(l))?.giorni ?? {}, delMese]) {
         for (const [d, v] of Object.entries(src)) {
-          const o: OreGiorno = { std: v.Standard ?? 0, sup: v.Supplementare ?? 0, acc: v.Accordo ?? 0, str: v.Straordinario ?? 0, ass: ASSENZE_RETRIB.reduce((s, a) => s + (v[a] ?? 0), 0) };
-          if (o.std + o.sup + o.acc + o.str + o.ass > 0) giorni.set(d, o); else giorni.delete(d);
+          const o: OreGiorno = { std: v.Standard ?? 0, sup: v.Supplementare ?? 0, acc: v.Accordo ?? 0, str: v.Straordinario ?? 0, ass: ASSENZE_RETRIB.reduce((s, a) => s + (v[a] ?? 0), 0), nr: ASSENZE_NON_RETRIB.reduce((s, a) => s + (v[a] ?? 0), 0) };
+          if (o.std + o.sup + o.acc + o.str + o.ass + (o.nr ?? 0) > 0) giorni.set(d, o); else giorni.delete(d);
         }
       }
       const sigle = new Map(Object.entries(l.riposo ?? {}).filter(([d]) => d.startsWith(mese + "-")));
@@ -226,7 +232,10 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
       for (const o of g) if (o) { s.std += o.std; s.sup += o.sup; s.acc += o.acc; s.str += o.str; s.ass += o.ass; }
       // assenza scritta solo come sigla nella riga RIPOSO (es. F) senza ore: per il conto della settimana vale una giornata
       // (solo per decidere se lo Straordinario è lecito: non entra nel controllo "ore + assenze troppe" né nei totali mostrati)
-      const assSigle = dd.filter((d) => assenzaSenzaOre(x, d)).length * ORE_GIORNO_ASSENZA;
+      // Contano verso le 39 anche le assenze non retribuite: le ore scritte nelle loro righe e le sigle (sciopero, PNR) senza ore.
+      const assSigle = dd.filter((d) => assenzaSenzaOre(x, d)).length * ORE_GIORNO_ASSENZA
+        + g.reduce((a, o) => a + (o?.nr ?? 0), 0)
+        + dd.filter((d) => { const sg = x.sigle?.get(d), o = x.giorni.get(d); return !!sg && SIGLE_NON_RETRIB.has(sg) && !(o && ((o.nr ?? 0) > 0 || lav(o) > 0)); }).length * ORE_GIORNO_ASSENZA;
       const tot = s.std + s.sup + s.acc + s.str, gg = g.filter((o) => lav(o) > 0).length;
       if (tot + s.ass === 0) continue;
 

@@ -152,3 +152,19 @@ describe("assenza segnata con la sigla ma senza ore", () => {
     expect(run({ ...persona("STD PT 60", sett, LUN, "STD"), sigle: new Map([[addDays(LUN, 3), "R"]]) }).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
   });
 });
+
+describe("le assenze non retribuite contano nelle 39 ore", () => {
+  // full time lun–ven: martedì ferie, venerdì sciopero, sabato lavorato in Straordinario
+  const base = [g(8), g(0, { ass: 8 }), g(8), g(8), null, g(0, { str: 8 }), null];
+  it("sciopero scritto come ore non retribuite: lo Straordinario del sabato è lecito", () => {
+    const sett = [...base]; sett[4] = g(0, { nr: 8 });
+    expect(run(persona("CTI FT", sett)).richieste).toEqual([]);
+  });
+  it("sciopero scritto solo come sigla nella riga RIPOSO: uguale, e non si chiede niente", () => {
+    expect(run({ ...persona("CTI FT", base), sigle: new Map([[addDays(LUN, 4), "SCIOPERO"]]) }).richieste).toEqual([]);
+    expect(run({ ...persona("CTI FT", base), sigle: new Map([[addDays(LUN, 4), "PNR"]]) }).richieste).toEqual([]);
+  });
+  it("senza lo sciopero segnato, lo stesso sabato in Straordinario resta da correggere", () => {
+    expect(run(persona("CTI FT", base)).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+  });
+});
