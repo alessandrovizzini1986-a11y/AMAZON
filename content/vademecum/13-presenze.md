@@ -38,7 +38,7 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 | Supplementare su un non part time | Il Supplementare è solo per i part time |
 | Ore e assenze: troppe nella settimana | Ore lavorate più assenze ben oltre una settimana piena: una delle due è sbagliata |
 | Straordinario oltre 12 h in settimana | Limite del CCNL e dell'Accordo. Lo Standard oltre 8h24 in un giorno **non si segnala più** (deciso il 24/11/2026) |
-| +1, −1, H, A, ORE, ACC | Gli stessi del controllo con Amazon (tabella dei simboli più sotto) |
+| +1, −1, H, A, ORE | Gli stessi del controllo con Amazon (tabella dei simboli più sotto). L'**ACC** (Accordo di domenica dei somministrati) nella Verifica tracking non compare più tra le richieste: lo controlla Alessandro (deciso il 24/11/2026) |
 
 Nel conto delle 39 ore entrano anche le **assenze non retribuite** (sciopero, permesso non retribuito, assenza ingiustificata): non si pagano, ma il giorno conta. Per questo, in una settimana con ferie o sciopero, il sabato lavorato può stare in Straordinario.
 

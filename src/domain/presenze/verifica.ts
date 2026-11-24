@@ -160,7 +160,7 @@ export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
 export const GRUPPI_TIPO = [
   { id: "GIORNI", nome: "Ha lavorato davvero? (tracking e Amazon non coincidono)", tipi: ["-1", "+1", "H", "A"] },
   { id: "ORE", nome: "Ore nella riga sbagliata", tipi: ["STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "ORE", "ASS_ORE"] },
-  { id: "ACCORDO", nome: "Accordo di domenica", tipi: ["ACC"] },
+  { id: "ACCORDO", nome: "Accordo di domenica (non più richiesto)", tipi: ["ACC"] },
   { id: "RIPOSI", nome: "Riposi: 7 o più giorni di fila", tipi: ["7GG"] },
 ] as const satisfies readonly { id: string; nome: string; tipi: readonly TipoRichiesta[] }[];
 export const gruppoDi = (t: string) => GRUPPI_TIPO.find((g) => (g.tipi as readonly string[]).includes(t))?.id ?? "ORE";
@@ -309,7 +309,9 @@ export function richiesteDaAmazon(e: EsitoSettimanale, mese: string): Richiesta[
     const chi = r.driverId.startsWith("NOID|") ? normName(r.driver) : r.driverId;
     for (const cat of alertDelGiorno(r)) {
       const tipo = cat as TipoRichiesta;
-      const nota = tipo === "ORE" || tipo === "ACC" ? r.extra.find((x) => x.cat === tipo)?.nota ?? "" : r.nota;
+      // L'Accordo di domenica dei somministrati non diventa una richiesta per gli OS: lo guarda Alessandro (deciso il 24/11/2026).
+      if (tipo === "ACC") continue;
+      const nota = tipo === "ORE" ? r.extra.find((x) => x.cat === tipo)?.nota ?? "" : r.nota;
       const base = tipo === "+1" || tipo === "-1" || tipo === "H" ? CHIEDI[tipo] : "";
       out.push({ chiave: `${mese}|${e.station}|${r.tipo}|${chi}|${tipo}|${r.data}`, mese, station: e.station, pop: r.tipo, driver: r.driver, tipo, rif: r.data, periodo: ddmm(r.data),
         testo: [`${ddmm(r.data)}: ${base}`.trim(), `Tracking ${it(r.ore)} h, trasferta ${r.trasferta}, pacchi Amazon ${r.pacchi ?? "—"}.`, nota].filter(Boolean).join(" ") });
