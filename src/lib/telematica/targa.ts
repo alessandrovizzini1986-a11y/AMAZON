@@ -35,7 +35,7 @@ async function accessoDaBrowser(c: { username: string; password: string }): Prom
   return g.token;
 }
 
-export async function accediTarga(): Promise<string> {
+async function nuovoAccesso(): Promise<string> {
   const c = await credenziali("TARGA");
   const g = await gettone({ grant_type: "password", scope: "openid", username: c.username, password: c.password });
   if (g.token) return g.token;
@@ -49,4 +49,13 @@ export async function leggiTarga(token: string, percorso: string, parametri: Rec
   const r = await conTempo(`${SITO}/t2/api${percorso}${q ? `?${q}` : ""}`, { method: "GET", headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
   if (!r.ok) throw new ErroreTelematica("lettura", `Targa ha risposto ${r.status} a ${percorso}`, r.status);
   return r.json();
+}
+
+/** il gettone si tiene in memoria 4 minuti: la mappa si aggiorna ogni minuto e non deve rifare il login ogni volta */
+let inMemoria: { token: string; fino: number } | null = null;
+export async function accediTarga(forza = false): Promise<string> {
+  if (!forza && inMemoria && inMemoria.fino > Date.now()) return inMemoria.token;
+  const token = await nuovoAccesso();
+  inMemoria = { token, fino: Date.now() + 4 * 60000 };
+  return token;
 }

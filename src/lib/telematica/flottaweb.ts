@@ -6,7 +6,7 @@ const BASE = "https://apils.flottaweb.eu/atlas/platform";
 const FE_API_KEY = "fM3Pd2J42zRjzWDGPBQbkmuuPhPmGP6A3cQbyB7";
 const intestazioni = (token?: string) => ({ "Content-Type": "application/json", Accept: "application/json", "FE-Api-Key": FE_API_KEY, ...(token ? { "X-Auth-Token": token } : {}) });
 
-export async function accediFlottaweb(): Promise<string> {
+async function nuovoAccesso(): Promise<string> {
   const c = await credenziali("FLOTTAWEB");
   const r = await conTempo(`${BASE}/auth`, { method: "POST", headers: intestazioni(), body: JSON.stringify(c) });
   const j = (await r.json().catch(() => null)) as { token?: string } | null;
@@ -20,4 +20,13 @@ export async function leggiFlottaweb(token: string, percorso: string, parametri:
   const r = await conTempo(`${BASE}${percorso}${q ? `?${q}` : ""}`, { method: "GET", headers: intestazioni(token) });
   if (!r.ok) throw new ErroreTelematica("lettura", `FlottaWeb ha risposto ${r.status} a ${percorso}`, r.status);
   return r.json();
+}
+
+/** il gettone si tiene in memoria 20 minuti: la mappa si aggiorna ogni minuto e non deve rifare il login ogni volta */
+let inMemoria: { token: string; fino: number } | null = null;
+export async function accediFlottaweb(forza = false): Promise<string> {
+  if (!forza && inMemoria && inMemoria.fino > Date.now()) return inMemoria.token;
+  const token = await nuovoAccesso();
+  inMemoria = { token, fino: Date.now() + 20 * 60000 };
+  return token;
 }
