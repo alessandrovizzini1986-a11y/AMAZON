@@ -178,3 +178,39 @@ describe("giustificativi della riga RIPOSO", () => {
     for (const c of NON_GIUSTIFICATIVI) expect(codici.has(c), c).toBe(false);
   });
 });
+
+describe("la domenica lavorata va tutta in Standard", () => {
+  it("39 ore di Standard da lunedì a sabato più 8 di domenica in Standard: nessuna richiesta", () => {
+    // come nel tracking vero: 5 giorni + la domenica
+    expect(run(persona("CTI FT", [g(8), g(8), g(8), null, g(8), g(7, { acc: 1 }), g(8)])).richieste).toEqual([]);
+    expect(run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(7), null, g(8)])).richieste).toEqual([]);
+    // anche con meno di 39 ore negli altri giorni, o per un part time
+    expect(run(persona("CTI FT", [g(8), g(8), g(8), g(8), null, null, g(7)])).richieste).toEqual([]);
+    expect(run(persona("CTI PT 24H", [g(8), g(8), g(8), null, null, null, g(6)])).richieste).toEqual([]);
+  });
+  it("lo Standard oltre le 39 ore negli altri giorni resta un errore, e la domenica non viene contata", () => {
+    const e = run(persona("CTI FT", [g(8), g(8), g(8), g(8), g(8.5), null, g(8)]));
+    expect(e.richieste.map((r) => r.tipo)).toEqual(["STD_OLTRE"]);
+    expect(e.richieste[0].testo).toContain("di cui 8 di domenica in Standard");
+    expect(e.richieste[0].testo).toContain("Standard 40,5 → 39");
+  });
+  it("la domenica in Straordinario segue la regola delle 39 ore", () => {
+    expect(run(persona("CTI FT", [g(4), g(8), g(7.5), null, g(8), g(8), g(0, { str: 8 })])).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+  });
+});
+
+describe("straordinario di giornata", () => {
+  it("part time sotto le 39 ore con una giornata oltre le 8 ore: l'ora in più può stare in Straordinario", () => {
+    // come nel tracking vero: 30 ore lavorate + 8 di ferie, sabato Standard 8 + Accordo 0,5 + Straordinario 1
+    const sett = [g(0, { sup: 4 }), null, g(0, { sup: 8 }), g(0, { ass: 8 }), g(8, { acc: 0.5 }), g(8, { acc: 0.5, str: 1 }), null];
+    expect(run(persona("CTI PT", sett)).richieste).toEqual([]);
+  });
+  it("vale solo per le ore oltre l'ottava di quel giorno", () => {
+    // sabato 8 ore di Standard + 3 di Straordinario: tutte e 3 oltre l'ottava ora → va bene
+    expect(run(persona("CTI PT 24H", [g(8), g(8), null, null, null, g(8, { str: 3 }), null])).richieste).toEqual([]);
+    // sabato 4 ore di Standard + 3 di Straordinario (7 ore in tutto): non c'è nessuna ora oltre l'ottava → errore
+    const e = run(persona("CTI PT 24H", [g(8), g(8), null, null, null, g(4, { str: 3 }), null]));
+    expect(e.richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
+    expect(e.richieste[0].testo).toContain("Straordinario 3 → 0");
+  });
+});
