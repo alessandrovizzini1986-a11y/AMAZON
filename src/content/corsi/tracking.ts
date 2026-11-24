@@ -147,7 +147,7 @@ Esempio: 7 ore e 48 minuti → 48 ÷ 60 = 0,8. Quindi **7,8**.
 | 30 minuti | 0,5 |
 | 45 minuti | 0,75 |
 | 7 ore e 48 minuti | 7,8 |
-| 8 ore e 24 minuti (il massimo di Standard in un giorno) | 8,4 |
+| 8 ore e 24 minuti | 8,4 |
 
 **L'errore tipico.** Qualcuno scrive **7,48** pensando «7 ore e 48 minuti». Ma 7,48 vuol dire 7 ore e 29 minuti (0,48 × 60 = 28,8): mancano quasi 20 minuti. Se vedi numeri come 7,48 o 8,24 chiedi all'OS.
 
@@ -217,7 +217,7 @@ Controllo: 39 + 3 + 6 = 48.
 
 **Quando la riga Accordo non è compilata.** Capita spesso: l'OS scrive Standard 39 e poi tutto il resto in Straordinario, oppure Accordo 1 e Straordinario 8. **Non è un errore da chiedere**: una volta arrivati a 39 ore di Standard, le ore dopo possono stare nello Straordinario. L'errore vero è un altro: **Straordinario segnato prima di arrivare a 39 ore**. Esempio: Standard 32 e Straordinario 6 in una settimana da 38 ore. Lì lo Straordinario non ci può essere.
 
-Due limiti in più: lo **Standard non supera mai 8 ore e 24 minuti in un giorno**, e lo **Straordinario non supera mai 12 ore in una settimana**.
+Un limite in più: lo **Straordinario non supera mai 12 ore in una settimana**. Una giornata con più di 8 ore e 24 minuti di Standard, invece, non si chiede: conta il totale della settimana.
 
 **Regola da ricordare:** fino a 39 Standard, da 39 a 42 Accordo, oltre 42 Straordinario.`,
       figure: [
@@ -368,7 +368,6 @@ Attenzione: **SB, L1, R, C1, D, F, P non sono spiegazioni**. Sono nomi di turni 
 | Standard più alto delle ore di contratto | Le ore in più sono Supplementare (part time) o Accordo |
 | Supplementare su un full time | Il Supplementare è solo per i part time |
 | Più di 3 ore nella riga Accordo in una settimana | Le ore assorbite sono al massimo 3 (da 39 a 42) |
-| Standard oltre 8 ore e 24 minuti in un giorno | È il massimo giornaliero |
 | Un'assenza e ore di lavoro nello stesso giorno | O era assente, o ha lavorato: una delle due è sbagliata |
 
 **Non è un errore** la mezz'ora o l'ora in più del giorno scritta nella riga Accordo, anche se la settimana resta sotto le 39 ore: vale per tutti, part time e MOG compresi.
@@ -396,8 +395,8 @@ Negli esercizi clicchi **la cella sbagliata** direttamente nel tracking. Se è t
           cella(TROVA, PT_GIUSTO, [NESSUN_ERRORE], "Part time da 24 ore con 40 ore: Standard 24, Supplementare 15, Accordo 1. È compilato bene."),
           cella(TROVA, FT_48_GIUSTO, [NESSUN_ERRORE], "48 ore: Standard 39, Accordo 3, Straordinario 6. È compilato bene.")),
         g("f",
-          cella(TROVA, trk("Moretti Ivo", "CTI FT", { Standard: riga(9.5, 8, 8, 8, 5.5, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Standard|0"], "Il totale della settimana è 39 e va bene, ma lunedì ha 9,5 ore di Standard: in un giorno lo Standard non supera 8 ore e 24 minuti."),
-          cella(TROVA, trk("Serra Gaia", "CTI FT", { Standard: riga(8, 8, 10, 8, 5, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Standard|2"], "Il totale della settimana è 39 e va bene, ma mercoledì ha 10 ore di Standard: in un giorno lo Standard non supera 8 ore e 24 minuti.")),
+          cella(TROVA, trk("Moretti Ivo", "CTI FT", { Standard: riga(9.5, 8, 8, 8, 5.5, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), [NESSUN_ERRORE], "Lunedì ha 9,5 ore di Standard: una giornata lunga non è un errore da chiedere. Il totale della settimana è 39 e non c'è Straordinario: va bene così."),
+          cella(TROVA, trk("Serra Gaia", "CTI FT", { Standard: riga(8, 8, 8, 8, _, _, _), Straordinario: riga(_, _, _, _, 5, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["Straordinario|4"], "37 ore in tutto: Standard 32 e Straordinario 5. Lo Straordinario parte solo dopo 39 ore di Standard: le 5 ore di venerdì sono Standard.")),
         g("g",
           cella(TROVA, trk("Rossi Mario", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), FERIE: riga(_, _, 8, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["FERIE|2", "Standard|2", "Trasferta|2"], "Mercoledì ha 8 ore di Standard e anche 8 ore di FERIE: o ha lavorato o era in ferie. Va chiesto all'OS quale delle due è giusta."),
           cella(TROVA, trk("Longo Rita", "CTI FT", { Standard: riga(8, 8, 8, 8, 7, _, _), MALATTIA: riga(_, 8, _, _, _, _, _), RIPOSO: riga(_, _, _, _, _, "R", "R"), Trasferta: riga(1, 1, 1, 1, 1, 0, 0) }), ["MALATTIA|1", "Standard|1", "Trasferta|1"], "Martedì ha 8 ore di Standard e anche 8 ore di MALATTIA: o ha lavorato o era malata. Va chiesto all'OS quale delle due è giusta.")),
