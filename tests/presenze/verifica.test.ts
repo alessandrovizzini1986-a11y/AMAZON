@@ -90,8 +90,9 @@ describe("verifica delle settimane", () => {
     expect(e.richieste).toEqual([]);
     expect(e.nonVerificabili[0]).toContain("26/10–01/11");
   });
-  it("Standard oltre 8h24 nel giorno", () => {
-    expect(run(persona("CTI FT", [g(9), null, null, null, null, null, null])).richieste.map((r) => r.tipo)).toEqual(["STD_GIORNO"]);
+  it("una giornata con più di 8h24 di Standard non è più un errore", () => {
+    expect(run(persona("CTI FT", [g(9), null, null, null, null, null, null])).richieste).toEqual([]);
+    expect(run(persona("CTI FT", [g(8.5), g(8.5), g(8), g(7), g(7), null, null])).richieste).toEqual([]);
   });
 });
 
@@ -173,7 +174,7 @@ describe("giustificativi della riga RIPOSO", () => {
   it("SWA, 4H, 8H e i turni L1–L4, C1, C1+ e N chiudono il giorno senza anomalie", async () => {
     const { GIUSTIFICATIVI_DEFAULT, NON_GIUSTIFICATIVI } = await import("@/domain/presenze/regole");
     const codici = new Set(GIUSTIFICATIVI_DEFAULT.map((g) => g.codice));
-    for (const c of ["SWA", "4H", "8H", "L1", "L2", "L3", "L4", "C1", "C1+", "N", "MEZZI", "UFF"]) expect(codici.has(c), c).toBe(true);
+    for (const c of ["SWA", "4H", "8H", "L1", "L2", "L3", "L4", "C1", "C1+", "N", "AFFIANCAMENTO", "AFFIANCO", "AFF", "MEZZI", "UFF"]) expect(codici.has(c), c).toBe(true);
     for (const c of NON_GIUSTIFICATIVI) expect(codici.has(c), c).toBe(false);
   });
 });

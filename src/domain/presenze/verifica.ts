@@ -220,8 +220,8 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
       nuova("ASS_ORE", d, ddmm(d), `${ddmm(d)}: nella riga RIPOSO c'è «${sg}» ma nella riga ${riga} non ci sono ore. Inserire le ore dell'assenza (${it(ORE_GIORNO_ASSENZA)} per una giornata intera): contano nelle 39 ore della settimana.`);
     }
 
-    // Standard oltre 8h24 in un giorno
-    for (const [d, g] of x.giorni) if (d >= da && d <= p.finoA && g.std > STD_MAX_GIORNO + 0.01 && !dispatcher) nuova("STD_GIORNO", d, ddmm(d), `Standard ${it(g.std)} h il ${ddmm(d)}: oltre 8h24 al giorno le ore non vanno nella riga Standard.`);
+    // Lo Standard oltre 8h24 in un giorno non si segnala più (deciso da Alessandro il 24/11/2026): conta solo che lo
+    // Straordinario parta dopo le 39 ore di Standard e Supplementare della settimana.
 
     for (const l of lunedi) {
       const dd = Array.from({ length: 7 }, (_, i) => addDays(l, i));

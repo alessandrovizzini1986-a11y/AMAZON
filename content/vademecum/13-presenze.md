@@ -37,7 +37,7 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 | Standard oltre le ore di contratto | Full time oltre 39 ore, o part time oltre le sue ore, nella riga Standard |
 | Supplementare su un non part time | Il Supplementare è solo per i part time |
 | Ore e assenze: troppe nella settimana | Ore lavorate più assenze ben oltre una settimana piena: una delle due è sbagliata |
-| Straordinario oltre 12 h in settimana · Standard oltre 8h24 nel giorno | Limiti del CCNL e dell'Accordo |
+| Straordinario oltre 12 h in settimana | Limite del CCNL e dell'Accordo. Lo Standard oltre 8h24 in un giorno **non si segnala più** (deciso il 24/11/2026) |
 | +1, −1, H, A, ORE, ACC | Gli stessi del controllo con Amazon (tabella dei simboli più sotto) |
 
 Nel conto delle 39 ore entrano anche le **assenze non retribuite** (sciopero, permesso non retribuito, assenza ingiustificata): non si pagano, ma il giorno conta. Per questo, in una settimana con ferie o sciopero, il sabato lavorato può stare in Straordinario.
@@ -87,7 +87,7 @@ Serve quando vuoi vedere la griglia giorno per giorno di una station, o salvare 
 
 - Rotta Amazon = pacchi consegnati **più di 10**. Trasferta dovuta solo se le ore lavorate sono **più di 4** (servizi da 4 ore: nessun alert).
 - Trasferta a 0 nel tracking non genera mai alert: se gli Ops l'hanno messa a zero, è voluto.
-- Un **giustificativo** nella riga RIPOSO chiude il giorno senza alert: MEZZI, SM (spostamento mezzi), UFF, UFFICIO, CORSO, FORMAZIONE, RESCUE, VM, **SWA** (Ship with Amazon), **4H**, **8H**, i turni **L1, L2, L3, L4, C1, C1+, N**, DVN5, DVN6 e le sigle o i nomi delle altre station (DLO4, ORIGGIO, BUCCINASCO…). Il sito legge anche i **commenti** nelle celle del giorno: se contengono uno di questi codici valgono come giustificativo e lo riporta in nota. L'elenco lo gestisce Alessandro.
+- Un **giustificativo** nella riga RIPOSO chiude il giorno senza alert: MEZZI, SM (spostamento mezzi), UFF, UFFICIO, CORSO, FORMAZIONE, RESCUE, VM, **AFFIANCAMENTO, AFFIANCO, AFF**, **SWA** (Ship with Amazon), **4H**, **8H**, i turni **L1, L2, L3, L4, C1, C1+, N**, DVN5, DVN6 e le sigle o i nomi delle altre station (DLO4, ORIGGIO, BUCCINASCO…). Il sito legge anche i **commenti** nelle celle del giorno: se contengono uno di questi codici valgono come giustificativo e lo riporta in nota. L'elenco lo gestisce Alessandro.
 - I **dispatcher** sono esclusi da ogni alert: non guidano e non hanno trasferta. L'elenco lo gestisce Alessandro.
 - **Malattia e infortunio battono il lavorato**: se nel tracking il giorno ha ore di malattia o infortunio (e 0 ore di lavoro) e Amazon lo vede in rotta, **nessun −1** (nota "malattia batte il lavorato"). Se è davvero andato a lavorare in malattia è un tema HR, non un errore di tracking: non va in questo controllo.
 - **ORE e ACC** si segnalano sempre, anche quando trasferta e rotta coincidono, e hanno una sezione propria nel messaggio Teams.
