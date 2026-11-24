@@ -81,9 +81,9 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
  * Tappe del tour per un ruolo. `promosso` = il ruolo è stato appena cambiato da un Admin.
  * Ordine: benvenuto → Home (da fare, avvisi) → menu → una tappa per sezione → il "?" e la "i" → account → fine.
  */
-export function passiTour({ role, nome, promosso = false }: { role: Role; nome: string; promosso?: boolean }): PassoTour[] {
+export function passiTour({ role, nome, promosso = false, nascosti = [] }: { role: Role; nome: string; promosso?: boolean; nascosti?: string[] }): PassoTour[] {
   if (!haTour(role)) return [];
-  const gruppi = menuPer(role);
+  const gruppi = menuPer(role, nascosti);
   const voci: Voci = new Set(gruppi.flatMap((g) => g.items.map((i) => i.href)));
   const r = RUOLO[role];
   const altreHome = (gruppi.find((g) => g.id === "home")?.items ?? []).filter((i) => i.href !== "/home").map((i) => i.label);

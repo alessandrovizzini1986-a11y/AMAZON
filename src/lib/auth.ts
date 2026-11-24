@@ -1,10 +1,12 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cache } from "react";
+import { cookies, headers } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import type { Role } from "@prisma/client";
+import { bloccato } from "@/components/navModel";
 
 const COOKIE = "fleet_session";
 const SESSION_HOURS = 12;
@@ -21,6 +23,9 @@ export type SessionUser = {
   name: string;
   role: Role;
   stationId: string | null;
+  /** letti dal database a ogni richiesta (non stanno nel cookie): valgono subito, senza uscire e rientrare */
+  superAdmin?: boolean;
+  nascosti?: string[];
 };
 
 export async function createSession(user: SessionUser) {
@@ -76,10 +81,26 @@ export async function getSession(): Promise<SessionUser | null> {
 }
 
 /** Da usare nelle pagine/azioni protette: redirect a /login se non autenticato. */
+const permessiFreschi = cache(async (id: string) => {
+  try { return await db.user.findUnique({ where: { id }, select: { superAdmin: true, menuNascosti: true } }); } catch { return null; }
+});
+
 export async function requireUser(): Promise<SessionUser> {
   const session = await getSession();
   if (!session) redirect("/login");
-  return session;
+  const f = await permessiFreschi(session.id);
+  const user: SessionUser = { ...session, superAdmin: f?.superAdmin ?? false, nascosti: f?.superAdmin ? [] : f?.menuNascosti ?? [] };
+  // voce di menu tolta dal super admin: la pagina (e le sue chiamate) non si apre nemmeno scrivendo l'indirizzo a mano
+  const percorso = (await headers()).get("x-percorso");
+  if (percorso && bloccato(percorso, user.nascosti ?? [])) redirect("/");
+  return user;
+}
+
+/** Solo il super admin. */
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!user.superAdmin) redirect("/");
+  return user;
 }
 
 export async function requireRole(...roles: Role[]): Promise<SessionUser> {

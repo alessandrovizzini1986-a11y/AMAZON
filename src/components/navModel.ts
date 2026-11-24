@@ -87,16 +87,35 @@ export const GRUPPI: Gruppo[] = [
   },
 ];
 
-/** Gruppi visibili per un ruolo (solo le voci permesse; i gruppi vuoti spariscono). L'admin non vede "Il mio training". */
-export function menuPer(role: Role): NavGroup[] {
+/**
+ * Gruppi visibili per un ruolo (solo le voci permesse; i gruppi vuoti spariscono). L'admin non vede "Il mio training".
+ * `nascosti` = voci che il super admin ha tolto a quell'utente (href): spariscono dal menu e non si aprono (vedi `bloccato`).
+ */
+export function menuPer(role: Role, nascosti: string[] = []): NavGroup[] {
   return GRUPPI.map((g) => ({
     id: g.id, label: g.label, icon: g.icon,
-    items: g.voci.filter((v) => can({ role }, v.perm) && !(v.href === "/training" && can({ role }, "training.admin"))).map(({ perm: _p, ...v }) => v),
+    items: g.voci.filter((v) => can({ role }, v.perm) && !nascosti.includes(v.href) && !(v.href === "/training" && can({ role }, "training.admin"))).map(({ perm: _p, ...v }) => v),
   })).filter((g) => g.items.length > 0);
 }
 
 /** Tutte le voci visibili, in ordine. */
-export const vociPer = (role: Role) => menuPer(role).flatMap((g) => g.items);
+export const vociPer = (role: Role, nascosti: string[] = []) => menuPer(role, nascosti).flatMap((g) => g.items);
+
+/** Le voci che un ruolo potrebbe vedere, per gruppo: è l'elenco dei flag che il super admin accende o spegne. */
+export const vociDelRuolo = (role: Role) => menuPer(role);
+
+const TUTTI_GLI_HREF = GRUPPI.flatMap((g) => g.voci.map((v) => v.href)).filter((h) => !h.includes("?"));
+/**
+ * Una pagina (o una sua chiamata /api/…) è bloccata se la voce di menu a cui appartiene è tra le nascoste.
+ * Vale la voce con il percorso più lungo: nascondere "Costi del personale" non nasconde "Costi GLS".
+ */
+export function bloccato(pathname: string, nascosti: string[]): boolean {
+  if (!nascosti.length) return false;
+  const p = pathname.startsWith("/api/") ? pathname.slice(4) : pathname;
+  let voce: string | null = null;
+  for (const h of TUTTI_GLI_HREF) if ((p === h || p.startsWith(`${h}/`)) && (!voce || h.length > voce.length)) voce = h;
+  return !!voce && nascosti.includes(voce);
+}
 
 /** La voce attiva è quella con il percorso più lungo che combacia (/vehicles/listini → Listini, non Mezzi). */
 export function voceAttiva(pathname: string, voci: NavItem[]): NavItem | null {
@@ -114,10 +133,10 @@ export function gruppoAttivo(pathname: string, gruppi: NavGroup[]): NavGroup | n
 }
 
 /** Barra in basso (telefono): i primi 4 gruppi (Gestione esclusa) aprono la loro prima voce; tutto il resto è nel "Menu". */
-export function vociBarra(role: Role, n = 4) {
-  const gruppi = menuPer(role).filter((g) => g.id !== "gestione");
+export function vociBarra(role: Role, n = 4, nascosti: string[] = []) {
+  const gruppi = menuPer(role, nascosti).filter((g) => g.id !== "gestione");
   const barra = gruppi.slice(0, n).map((g) => ({ ...g.items[0], label: g.label, short: g.label, icon: g.icon, gruppo: g.id }));
-  const tutte = vociPer(role);
+  const tutte = vociPer(role, nascosti);
   const conMenu = tutte.length > barra.length;
   return { barra, conMenu };
 }
@@ -129,9 +148,8 @@ export function menuAttivo(pathname: string, role: Role, n = 4): boolean {
 }
 
 /** Pagina iniziale del ruolo. */
-export function paginaIniziale(role: Role): string {
-  if (can({ role }, "home.view")) return "/home";
-  if (can({ role }, "dashboard.station")) return "/dashboard";
-  if (role === "STAGISTA") return "/training";
-  return "/vehicles";
+export function paginaIniziale(role: Role, nascosti: string[] = []): string {
+  const candidate = [can({ role }, "home.view") ? "/home" : null, can({ role }, "dashboard.station") ? "/dashboard" : null, role === "STAGISTA" ? "/training" : null, "/vehicles"];
+  // se anche la pagina iniziale è stata nascosta, si atterra sul proprio account (che non si può nascondere)
+  return candidate.find((h): h is string => !!h && !nascosti.includes(h)) ?? "/account";
 }

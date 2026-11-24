@@ -4,5 +4,5 @@ import { paginaIniziale } from "@/components/navModel";
 
 export default async function Home() {
   const user = await requireUser();
-  redirect(paginaIniziale(user.role));
+  redirect(paginaIniziale(user.role, user.nascosti));
 }

@@ -82,3 +82,32 @@ describe("telematica: giorno e mese", () => {
     expect(ultimoPuntoFw({ message: [] }, "X")).toBeNull();
   });
 });
+
+import { bloccato, menuPer, paginaIniziale } from "@/components/navModel";
+import { riservato } from "@/lib/telematica/riservato";
+
+describe("menu per utente (flag del super admin)", () => {
+  const TELE = ["/telematica", "/telematica/mappa", "/telematica/mese"];
+  it("le voci nascoste spariscono dal menu, le altre restano", () => {
+    const tutte = menuPer("ADMIN").flatMap((g) => g.items.map((i) => i.href));
+    const sue = menuPer("ADMIN", TELE).flatMap((g) => g.items.map((i) => i.href));
+    expect(tutte).toEqual(expect.arrayContaining(TELE));
+    expect(sue.filter((h) => h.startsWith("/telematica"))).toEqual([]);
+    expect(sue).toContain("/portali"); expect(sue.length).toBe(tutte.length - 3);
+  });
+  it("le pagine nascoste e le loro chiamate non si aprono", () => {
+    for (const p of ["/telematica", "/telematica/mappa", "/telematica/mese", "/api/telematica/posizioni", "/api/telematica/mese"]) expect(bloccato(p, TELE)).toBe(true);
+    for (const p of ["/home", "/portali", "/presenze/verifica", "/account", "/"]) expect(bloccato(p, TELE)).toBe(false);
+  });
+  it("vale la voce più precisa: nascondere una sezione non nasconde la sua sorella", () => {
+    expect(bloccato("/costi/gls", ["/costi"])).toBe(false); expect(bloccato("/costi/meta-mese", ["/costi"])).toBe(true);
+    expect(bloccato("/telematica/mappa", ["/telematica"])).toBe(false);
+  });
+  it("se la pagina iniziale è nascosta si atterra altrove, mai in un giro a vuoto", () => {
+    expect(paginaIniziale("ADMIN")).toBe("/home"); expect(paginaIniziale("ADMIN", ["/home"])).toBe("/dashboard");
+    expect(paginaIniziale("STAGISTA", ["/training", "/vehicles"])).toBe("/account");
+  });
+  it("gli accessi alla telematica sono riservati", () => {
+    expect(riservato("Targa Telematics")).toBe(true); expect(riservato("Flotta Web")).toBe(true); expect(riservato("Telepass")).toBe(false);
+  });
+});

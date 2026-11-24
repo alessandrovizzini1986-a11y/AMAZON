@@ -2,12 +2,14 @@ import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
 import { PortaliClient } from "./PortaliClient";
+import { riservato } from "@/lib/telematica/riservato";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortaliPage() {
-  await requireRole("ADMIN");
-  const portali = await db.portaleCredenziale.findMany({ orderBy: { portale: "asc" } });
+  const io = await requireRole("ADMIN");
+  // gli accessi a Targa e FlottaWeb comandano i mezzi: li vede solo il super admin
+  const portali = (await db.portaleCredenziale.findMany({ orderBy: { portale: "asc" } })).filter((p) => io.superAdmin || !riservato(p.portale));
   return (
     <div className="flex max-w-5xl flex-col gap-5">
       <PageHeader eyebrow="Strumenti" title="Portali e credenziali" subtitle="Accessi ai portali dei noleggiatori, Telepass e simili. Le password sono cifrate: per vederle riscrivi la tua password di ADMIN. Ogni visualizzazione resta nel log di audit." />

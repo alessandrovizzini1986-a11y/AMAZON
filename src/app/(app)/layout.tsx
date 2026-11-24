@@ -30,5 +30,5 @@ async function TourDiBenvenuto({ user }: { user: Awaited<ReturnType<typeof requi
     }
   } catch { /* senza database il sito resta usabile: niente tour automatico */ }
   const nome = user.name.trim().split(/\s+/)[0] || user.name;
-  return <Tour passi={passiTour({ role: user.role, nome, promosso })} chiave={chiave} auto={auto} home={paginaIniziale(user.role)} />;
+  return <Tour passi={passiTour({ role: user.role, nome, promosso, nascosti: user.nascosti })} chiave={chiave} auto={auto} home={paginaIniziale(user.role, user.nascosti)} />;
 }

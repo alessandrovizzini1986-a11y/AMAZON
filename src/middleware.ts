@@ -15,11 +15,18 @@ const PUBLIC_PATHS = [
   "/api/telematica/cron",
 ];
 
+/** prosegue passando il percorso richiesto: serve a requireUser per bloccare le pagine nascoste a quell'utente */
+function avanti(req: NextRequest) {
+  const h = new Headers(req.headers);
+  h.set("x-percorso", req.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: h } });
+}
+
 export async function middleware(req: NextRequest) {
   // modalità accesso libero per il pilot in solitaria — vedi src/lib/auth.ts
   // disattivata a livello di codice in produzione: non basta dimenticare di
   // togliere la variabile, l'app resta protetta comunque
-  if (process.env.AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") return NextResponse.next();
+  if (process.env.AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") return avanti(req);
 
   const { pathname } = req.nextUrl;
   if (
@@ -35,7 +42,7 @@ export async function middleware(req: NextRequest) {
   }
   try {
     await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET));
-    return NextResponse.next();
+    return avanti(req);
   } catch {
     const res = NextResponse.redirect(new URL("/login", req.url));
     res.cookies.delete("fleet_session");

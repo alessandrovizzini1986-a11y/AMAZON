@@ -146,6 +146,8 @@ model User {
   licenseNo    String? // patente, per multe con decurtazione punti
   phone        String?
   active       Boolean  @default(true)
+  superAdmin   Boolean  @default(false) // vede tutto e decide quali menu vedono gli altri
+  menuNascosti String[] @default([]) // voci di menu (href) che questo utente non vede e non può aprire
   createdAt    DateTime @default(now())
 
   assignments        Assignment[]

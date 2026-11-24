@@ -48,7 +48,7 @@ describe("barra del telefono", () => {
     expect(menuAttivo("/users", "ADMIN")).toBe(true);
   });
   it("pagina iniziale per ruolo", () => {
-    expect(RUOLI.map(paginaIniziale)).toEqual(["/home", "/dashboard", "/home", "/training", "/vehicles"]);
+    expect(RUOLI.map((r) => paginaIniziale(r))).toEqual(["/home", "/dashboard", "/home", "/training", "/vehicles"]);
   });
 });
 
