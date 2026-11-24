@@ -32,9 +32,9 @@ I file restano **sul tuo PC**: il sito li legge nel browser e li tiene in un arc
 | Tipo di richiesta | Cosa vuol dire |
 |---|---|
 | 7 o più giorni di fila | Violazione: il massimo è 6. Si vede anche a cavallo del mese se c'è il tracking del mese prima. Avvisa subito Alessandro |
-| Straordinario prima delle 39 ore | Lo Straordinario parte solo dopo 39 ore di Standard nella settimana (Standard e Supplementare per i part time): le ore scritte nella riga Accordo non contano per arrivare a 39. La riga Accordo **non compilata non è un errore**: se lo Standard è a 39, le ore dopo possono stare nello Straordinario (deciso il 24/11/2026). Resta un errore l'Accordo di domenica |
+| Straordinario prima delle 39 ore | Lo Straordinario parte solo dopo 39 ore di Standard nella settimana (Standard e Supplementare per i part time): le ore scritte nella riga Accordo non contano per arrivare a 39. La riga Accordo **non compilata non è un errore**: se lo Standard è a 39, le ore dopo possono stare nello Straordinario (deciso il 24/11/2026). Resta un errore l'Accordo di domenica Due eccezioni: le ore oltre l'**ottava lavorata nello stesso giorno** possono stare in Straordinario anche se la settimana è sotto le 39 (tipico dei part time); la **domenica lavorata va tutta in Standard** e non entra nel conto della settimana |
 | Assenza segnata senza le ore | Nella riga RIPOSO c'è la sigla di un'assenza retribuita (F, ROL, EXF, M, I) ma nella riga dell'assenza non ci sono ore. Non è grave, ma le ore vanno scritte: contano nelle 39 della settimana. Finché mancano, il sito conta quel giorno come 7,8 ore, così non segnala a torto lo Straordinario |
-| Standard oltre le ore di contratto | Full time oltre 39 ore, o part time oltre le sue ore, nella riga Standard |
+| Standard oltre le ore di contratto | Full time oltre 39 ore, o part time oltre le sue ore, nella riga Standard. Le ore di Standard della domenica non contano: la domenica lavorata va tutta in Standard |
 | Supplementare su un non part time | Il Supplementare è solo per i part time |
 | Ore e assenze: troppe nella settimana | Ore lavorate più assenze ben oltre una settimana piena: una delle due è sbagliata |
 | Straordinario oltre 12 h in settimana | Limite del CCNL e dell'Accordo. Lo Standard oltre 8h24 in un giorno **non si segnala più** (deciso il 24/11/2026) |
