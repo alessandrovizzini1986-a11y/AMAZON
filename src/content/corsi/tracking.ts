@@ -323,7 +323,7 @@ Il sito confronta le due cose: quello che dice il tracking e quello che ha visto
 | **H** | Ha ore nel tracking, ma Amazon non lo vede e non c'è trasferta né spiegazione | Cosa ha fatto? |
 | **A** | Amazon lo vede in rotta, ma non è in nessun tracking della station | È un prestito, un nuovo assunto o un errore? |
 | **ORE** | Più di 10 ore lavorate in un giorno, o un numero impossibile (es. 78) | Di controllare le ore |
-| **ACC** | Un somministrato (STD) ha ore nella riga Accordo di domenica | La domenica è già pagata con maggiorazione: la cella va tolta |
+| **ACC** | Un somministrato (STD) ha ore nella riga Accordo di domenica | La domenica è già pagata con maggiorazione: la cella va tolta. Non lo chiedi tu agli OS: lo controlla Alessandro |
 
 **Le spiegazioni che chiudono il caso.** Se quel giorno il driver non ha guidato ma ha fatto altro, l'OS lo scrive nella riga RIPOSO con una sigla: **MEZZI** o **SM** (spostamento mezzi), **UFF** (ufficio), **CORSO** o **FORMAZIONE**, **RESCUE**, **VM** (visita medica), oppure la sigla di un'altra station (prestito). Con una di queste sigle il sito non segnala niente.
 
