@@ -100,6 +100,8 @@ export type ParametriSettimanale = {
   giustificativi?: string[];
   /** dispatcher (cognome nome, ordine indifferente): esclusi da ogni alert */
   dispatcher?: string[];
+  /** true = l'Accordo di domenica dei somministrati (ACC) non si segnala: lo guarda il responsabile (deciso il 24/11/2026) */
+  senzaAccordoDomenica?: boolean;
 };
 
 // ------------------------------------------------------------------ tracking (v2)
@@ -516,7 +518,7 @@ function applicaRegoleNuove(x: {
       ];
       r.extra.push({ cat: "ORE", nota: parti.join(" | ") + ": verificare e correggere il tracking" });
     }
-    if (r.tipo.includes("STD") && weekday(r.data) === 6 && r.oreAccordo > 0) {
+    if (!x.p.senzaAccordoDomenica && r.tipo.includes("STD") && weekday(r.data) === 6 && r.oreAccordo > 0) {
       r.extra.push({ cat: "ACC", nota: `Accordo di domenica (STD): ${g(r.oreAccordo)} h nella riga Accordo, cancellare` });
     }
     if (r.esitoBase === "N/D") {

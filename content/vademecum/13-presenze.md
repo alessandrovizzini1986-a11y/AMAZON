@@ -79,7 +79,6 @@ Serve quando vuoi vedere la griglia giorno per giorno di una station, o salvare 
 | H | ore nel tracking ma assente su Amazon, senza trasferta e senza giustificativo | chiedere cosa ha fatto (spesso mezzi o errore di compilazione) |
 | A | su Amazon con rotta ma assente da tutti i tracking della station | la Nota dice se è "presente in Amazon anche su" un'altra station (prestito: cercarlo in quel tracking) oppure se è un nuovo assunto/dimesso non ancora inserito |
 | ORE | più di 10 ore lavorate nel giorno, oppure una cella con un valore oltre 24 (es. 78: errore di digitazione) | chiedere agli Ops di verificare e correggere le ore del giorno; il valore oltre 24 non viene usato per trasferta e rotta |
-| ACC | somministrato (STD) con ore nella riga Accordo di domenica | la domenica è già pagata con maggiorazione: la cella Accordo va cancellata (la cancella Alessandro, tu la segnali) |
 | ? | manca il CSV Amazon di quel giorno | caricare il CSV e rilanciare |
 | vuoto | niente da segnalare | nulla |
 
@@ -90,7 +89,7 @@ Serve quando vuoi vedere la griglia giorno per giorno di una station, o salvare 
 - Un **giustificativo** nella riga RIPOSO chiude il giorno senza alert: MEZZI, SM (spostamento mezzi), UFF, UFFICIO, CORSO, FORMAZIONE, RESCUE, VM, **AFFIANCAMENTO, AFFIANCO, AFF**, **SWA** (Ship with Amazon), **4H**, **8H**, i turni **L1, L2, L3, L4, C1, C1+, N**, DVN5, DVN6 e le sigle o i nomi delle altre station (DLO4, ORIGGIO, BUCCINASCO…). Il sito legge anche i **commenti** nelle celle del giorno: se contengono uno di questi codici valgono come giustificativo e lo riporta in nota. L'elenco lo gestisce Alessandro.
 - I **dispatcher** sono esclusi da ogni alert: non guidano e non hanno trasferta. L'elenco lo gestisce Alessandro.
 - **Malattia e infortunio battono il lavorato**: se nel tracking il giorno ha ore di malattia o infortunio (e 0 ore di lavoro) e Amazon lo vede in rotta, **nessun −1** (nota "malattia batte il lavorato"). Se è davvero andato a lavorare in malattia è un tema HR, non un errore di tracking: non va in questo controllo.
-- **ORE e ACC** si segnalano sempre, anche quando trasferta e rotta coincidono, e hanno una sezione propria nel messaggio Teams.
+- **ORE** si segnala sempre, anche quando trasferta e rotta coincidono, e ha una sezione propria nel messaggio Teams. L'Accordo di domenica dei somministrati (ACC) non si segnala più, né qui né nella Verifica tracking: lo controlla Alessandro (deciso il 24/11/2026).
 - **Non** sono giustificativi: SB (turno "Same B"), R, D, F, P. Se c'è un codice di assenza ma anche ore lavorate, è un errore di compilazione da segnalare.
 - Fine mese: **6° giorno di domenica** = 5 giorni lavorati più la domenica, 6 in tutto nella settimana che finisce di domenica; **7 o più giorni consecutivi** è sempre una violazione da segnalare subito.
 

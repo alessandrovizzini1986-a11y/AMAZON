@@ -4,12 +4,13 @@ import { PDFDocument } from "pdf-lib";
 import { bollettinoVuoto, compilaBollettino, controlla, importo, nomeFile, type Bollettino } from "@/domain/gls/bollettino";
 
 const parte = (nome: string, cap: string) => ({ nome, via: "Via di Prova 1", citta: "Città di Prova (XX)", cap, telefono: "", email: "" });
-const pieno = (): Bollettino => ({ ...bollettinoVuoto("2026-11-19"), mittente: parte("Mittente di prova", "20100"), destinatario: parte("Destinatario di prova – però", "00071") });
+const pieno = (): Bollettino => ({ ...bollettinoVuoto("2026-11-19"), numero: "M1 000000001", mittente: parte("Mittente di prova", "20100"), destinatario: parte("Destinatario di prova – però", "00071") });
 
 describe("bollettino GLS", () => {
   it("controlli: dice cosa manca in parole semplici", () => {
     expect(controlla(pieno())).toEqual([]);
-    expect(controlla(bollettinoVuoto()).length).toBe(8);
+    expect(controlla(bollettinoVuoto()).length).toBe(9);
+    expect(controlla({ ...pieno(), numero: "  " })).toEqual(["Scrivi il numero del bollettino: va stampato in alto sul modulo."]);
     expect(controlla({ ...pieno(), fermoDeposito: true })).toEqual(["Con il fermo deposito serve il telefono del destinatario."]);
     expect(controlla({ ...pieno(), contrassegno: "120" })).toEqual(["Con il contrassegno indica la modalità di incasso."]);
     expect(controlla({ ...pieno(), contrassegno: "123456", modalitaIncasso: "contanti" })[0]).toContain("troppe cifre");

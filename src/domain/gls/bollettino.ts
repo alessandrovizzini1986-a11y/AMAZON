@@ -41,6 +41,7 @@ export function importo(s: string): { interi: string; decimali: string } | null 
 /** Cosa manca o non torna, in parole semplici. Lista vuota = il bollettino si può stampare. */
 export function controlla(b: Bollettino): string[] {
   const e: string[] = [];
+  if (!b.numero.trim()) e.push("Scrivi il numero del bollettino: va stampato in alto sul modulo.");
   const parte = (p: Parte, chi: string) => {
     if (!p.nome.trim()) e.push(`Manca il nome del ${chi}.`);
     if (!p.via.trim()) e.push(`Manca la via del ${chi}.`);
