@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
   if (stimati.length) rc.addRow([`Nota: per ${stimati.map(nomeMese).join(", ")} le rotte STD sono stimate: quota media STD della station nel resto dell'anno, applicata alle rotte fatturate ad Amazon in quel mese (la busta non ha il calendario).`]).font = { italic: true, color: { argb: "FF64748B" } };
   if (buchi.length) rc.addRow([`Nota: manca la busta STD di ${buchi.join(", ")}: quelle rotte non sono contate.`]).font = { italic: true, color: { argb: "FF64748B" } };
   rc.addRow([]);
-  titolo(rc, `2. Assenteismo (${periodo(tassi.TOTALE.mesi)})`, "Giorni di assenza sui giorni in cui si doveva lavorare. Altre assenze = non retribuite, ingiustificate, malattia figlio.");
+  titolo(rc, `2. Assenteismo (${periodo(tassi.TOTALE.mesi)})`, "Giorni di assenza sui giorni in cui si doveva lavorare. Altre assenze = non retribuite e ingiustificate.");
   { const r0 = testa(rc, ["Station", "Assenteismo SIC + STD", "di cui malattia", "di cui infortunio", "di cui altre assenze", "Assenteismo SIC", "Assenteismo STD"]).number;
     for (const st of stations) { const t = ytdDi("TOTALE", st); percento(rc.addRow([st, fr(t.pct), fr(t.malattiaPct), fr(t.infortunioPct), fr(t.altrePct), fr(ytdDi("SIC", st).pct), fr(ytdDi("STD", st).pct)]), 2); }
     const t = ytdDi("TOTALE"), u = rc.addRow(["Network", fr(t.pct), fr(t.malattiaPct), fr(t.infortunioPct), fr(t.altrePct), fr(ytdDi("SIC").pct), fr(ytdDi("STD").pct)]); totale(u); percento(u, 2); riquadra(rc, r0, u.number, 7);
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
   const NOME_VISTA: Record<Vista, string> = { TOTALE: "SIC + STD", SIC: "SIC", STD: "STD" };
   const ay = wb.addWorksheet("Assenteismo");
   ay.columns = [14, ...Array(12).fill(12)].map((width) => ({ width }));
-  titolo(ay, `Assenteismo da inizio anno (${periodo(tassi.TOTALE.mesi)})`, "Giorni di malattia e infortunio ÷ giorni in cui si doveva lavorare (lavorati + assenze). Assenze = malattia, infortunio, altre (non retribuite, ingiustificate, malattia figlio). Ferie, ROL e permessi retribuiti non contano.");
+  titolo(ay, `Assenteismo da inizio anno (${periodo(tassi.TOTALE.mesi)})`, "Giorni di malattia e infortunio ÷ giorni in cui si doveva lavorare (lavorati + assenze). Assenze = malattia, infortunio, altre (non retribuite e ingiustificate). Ferie, ROL e permessi retribuiti non contano.");
   ay.addRow([]);
   { const g = ay.addRow(["", "SIC + STD", "", "", "", "SIC", "", "", "", "STD", "", "", ""]); for (const c0 of [2, 6, 10]) ay.mergeCells(g.number, c0, g.number, c0 + 3);
     g.eachCell((c, n) => { if (n > 1) { c.font = { bold: true, color: { argb: "FFFFFFFF" } }; c.alignment = { horizontal: "center" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: n < 6 ? BLU : n < 10 ? "FF257DE0" : "FF00916E" } }; } });
@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
     const t = tassi[v], ws = wb.addWorksheet(`Assenteismo ${NOME_VISTA[v]}`); fogliMese.push(ws);
     ws.columns = [14, ...t.mesi.map(() => 10.5), 13].map((width) => ({ width }));
     titolo(ws, `Assenteismo ${NOME_VISTA[v]}: station per mese (${periodo(t.mesi)})`, v === "TOTALE" ? "Solo i mesi in cui ci sono le buste di tutti e due i gruppi." : v === "STD" ? "Da febbraio: la busta STD di gennaio non ha il calendario." : "I SIC arrivano al mese prima dell'ultima busta.");
-    for (const [nome, k] of [["Assenteismo (malattia + infortunio + altre assenze)", "pct"], ["di cui malattia", "malattiaPct"], ["di cui infortunio", "infortunioPct"], ["di cui altre assenze (non retribuite, ingiustificate, malattia figlio)", "altrePct"]] as [string, keyof Tasso][]) {
+    for (const [nome, k] of [["Assenteismo (malattia + infortunio + altre assenze)", "pct"], ["di cui malattia", "malattiaPct"], ["di cui infortunio", "infortunioPct"], ["di cui altre assenze (non retribuite e ingiustificate)", "altrePct"]] as [string, keyof Tasso][]) {
       ws.addRow([]); ws.addRow([nome]).font = { bold: true, size: 12 };
       const h = testa(ws, ["Station", ...t.mesi.map((m) => `${MESI[Number(m.slice(5)) - 1].slice(0, 3)} ${m.slice(2, 4)}`), "Da inizio anno"]); h.eachCell((c, n) => { if (n > 1) c.alignment = { horizontal: "center" }; });
       for (const s of t.stations) { const r = ws.addRow([s.station, ...s.perMese.map((x) => fr(x[k])), fr(s.ytd[k])]); percento(r, 2); r.getCell(t.mesi.length + 2).font = { bold: true }; }
@@ -132,12 +132,12 @@ export async function GET(req: NextRequest) {
   top.views = [{ showGridLines: false }]; top.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
   const el = wb.addWorksheet("Persone da inizio anno");
   el.columns = [10, 34, 9, 12, 12, 12, 12, 12, 13, 12, 13, 13, 13].map((width) => ({ width }));
-  testa(el, ["Station", ...INT_P.slice(1), "di cui non retribuite", "di cui ingiustificate", "di cui malattia figlio"]);
-  for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st })) el.addRow([st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi, x.nonRetribuite, x.ingiustificate, x.malattiaFiglio]).getCell(9).numFmt = "0.0%";
+  testa(el, ["Station", ...INT_P.slice(1), "di cui non retribuite", "di cui ingiustificate"]);
+  for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st })) el.addRow([st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi, x.nonRetribuite, x.ingiustificate]).getCell(9).numFmt = "0.0%";
   const pm = wb.addWorksheet("Persone per mese");
   pm.columns = [16, 10, 34, 9, 12, 12, 12, 12, 12, 13, 13, 13, 13].map((width) => ({ width }));
-  testa(pm, ["Mese", "Station", "Persona", "Gruppo", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo", "di cui non retribuite", "di cui ingiustificate", "di cui malattia figlio"]);
-  for (const m of mesiPers) for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st, mese: m })) pm.addRow([nomeMese(m), st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.nonRetribuite, x.ingiustificate, x.malattiaFiglio]).getCell(10).numFmt = "0.0%";
+  testa(pm, ["Mese", "Station", "Persona", "Gruppo", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo", "di cui non retribuite", "di cui ingiustificate"]);
+  for (const m of mesiPers) for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st, mese: m })) pm.addRow([nomeMese(m), st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.nonRetribuite, x.ingiustificate]).getCell(10).numFmt = "0.0%";
 
   // ===== 2. Rotte per mese
   const rm = wb.addWorksheet("Rotte per mese");
@@ -170,7 +170,9 @@ export async function GET(req: NextRequest) {
     ["SIC e STD", "SIC = assunti da noi, a tempo indeterminato o determinato, contati insieme. STD = somministrati."],
     ["Mese", "Il mese in cui si è lavorato. La busta dei SIC paga le trasferte del mese prima, quindi i SIC arrivano con un mese di ritardo."],
     ["Assenteismo %", "Giorni di assenza diviso i giorni in cui si doveva lavorare (lavorati + assenze). Assenze = malattia + infortunio + altre assenze. Ferie, ROL, ex festività e permessi retribuiti non contano né sopra né sotto."],
-    ["Altre assenze", "Assenze non retribuite (ANR, AN), permessi non retribuiti (PNR), assenze ingiustificate (AI, AIG) e malattia figlio (MF). Il codice ARR delle buste STD non è contato: è in verifica."],
+    ["Altre assenze", "Assenze e permessi non retribuiti (STD: ANR, PNR; SIC: AN, PN) e assenze ingiustificate (AI, AIG). Il codice ARR delle buste STD non è contato: è l'arretrato di un permesso di legge (per esempio nascita figlio)."],
+    ["Malattia", "Comprende il ricovero in ospedale (MO)."],
+    ["Non contati", "Ferie, ROL, ex festività, permessi retribuiti, scioperi e congedi di legge (parentale MF, maternità, paternità): non sono né assenze né giorni lavorati."],
     ["Rischio (0–100)", "Tre misure rispetto al network (50 = uguale, 100 = il doppio o più): malattia in % dei giorni dovuti (peso 50%), persone infortunate ogni 1.000 rotte (25%), giorni per infortunato (25%)."],
     ["Giorno lavorato", "Un giorno del calendario della busta con più di 4 ore lavorate. Vale per tutto il personale in busta, non solo per i driver."],
     ["% persone assenti", "Persone con almeno un giorno di malattia o infortunio nel mese, sul totale delle persone in busta."],
@@ -206,7 +208,7 @@ async function excelGls() {
   rc.columns = [18, 10, 12, 11, 11, 11, 13, 12, 12, 12].map((width) => ({ width }));
   titolo(rc, `GLS: assenze degli autisti (${periodo})`, "Fonte: buste paga (LUL). Solo gli autisti: gli addetti alla movimentazione merci non sono contati.");
   rc.addRow([]);
-  titolo(rc, "1. Assenteismo mese per mese", "Giorni di assenza ÷ giorni in cui si doveva lavorare (lavorati + assenze). Altre assenze = non retribuite, ingiustificate, malattia figlio.");
+  titolo(rc, "1. Assenteismo mese per mese", "Giorni di assenza ÷ giorni in cui si doveva lavorare (lavorati + assenze). Altre assenze = non retribuite e ingiustificate.");
   const h = testa(rc, ["Mese", "Autisti", "Giorni lavorati", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Assenteismo", "di cui malattia", "di cui infortunio", "di cui altre"]);
   mesi.forEach((m, i) => { const x = n.perMese[i]; pc(rc.addRow([nomeMese(m), tutte.find((r) => r.mese === m)?.teste ?? "", x.lavorati, x.malattia, x.infortunio, x.altre, fr(x.pct), fr(x.malattiaPct), fr(x.infortunioPct), fr(x.altrePct)]), [7, 8, 9, 10]); });
   const u = rc.addRow(["Da inizio anno", a.network.headcount, n.ytd.lavorati, n.ytd.malattia, n.ytd.infortunio, n.ytd.altre, fr(n.ytd.pct), fr(n.ytd.malattiaPct), fr(n.ytd.infortunioPct), fr(n.ytd.altrePct)]); pc(u, [7, 8, 9, 10]);
@@ -230,11 +232,11 @@ async function excelGls() {
   tutti.slice(0, 20).forEach((x, i) => { const r = top.addRow([i + 1, x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi]); r.getCell(8).numFmt = "0.0%"; r.getCell(6).font = { bold: true }; ultimo = r.number; });
   riquadra(top, ht.number, ultimo, 9); top.views = [{ showGridLines: false }];
   const el = wb.addWorksheet("Persone da inizio anno");
-  el.columns = [34, 12, 12, 12, 12, 12, 13, 12].map((width) => ({ width })); testa(el, [...INT.slice(1), "di cui ingiustificate", "di cui malattia figlio"]);
-  for (const x of tutti) el.addRow([x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi, x.ingiustificate + x.nonRetribuite, x.malattiaFiglio]).getCell(7).numFmt = "0.0%";
+  el.columns = [34, 12, 12, 12, 12, 12, 13, 12].map((width) => ({ width })); testa(el, [...INT.slice(1), "di cui non retribuite", "di cui ingiustificate"]);
+  for (const x of tutti) el.addRow([x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi, x.nonRetribuite, x.ingiustificate]).getCell(7).numFmt = "0.0%";
   const pm = wb.addWorksheet("Persone per mese");
-  pm.columns = [16, 34, 12, 12, 12, 12, 12, 13].map((width) => ({ width })); testa(pm, ["Mese", "Persona", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo", "di cui ingiustificate", "di cui malattia figlio"]);
-  for (const m of mesi) for (const x of piuAssenti(persone, { vista: "SIC", mese: m })) pm.addRow([nomeMese(m), x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.ingiustificate + x.nonRetribuite, x.malattiaFiglio]).getCell(8).numFmt = "0.0%";
+  pm.columns = [16, 34, 12, 12, 12, 12, 12, 13].map((width) => ({ width })); testa(pm, ["Mese", "Persona", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo", "di cui non retribuite", "di cui ingiustificate"]);
+  for (const m of mesi) for (const x of piuAssenti(persone, { vista: "SIC", mese: m })) pm.addRow([nomeMese(m), x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.nonRetribuite, x.ingiustificate]).getCell(8).numFmt = "0.0%";
   const dm = wb.addWorksheet("Dettaglio per mese");
   dm.columns = [16, 10, 12, 12, 12, 12, 10, 10, 12, 13, 13, 12].map((width) => ({ width }));
   testa(dm, ["Mese", "Autisti", "Giorni lavorati", "Giorni malattia", "Giorni infortunio", "Giorni altre assenze", "Giorni ferie", "Giorni ROL", "Giorni ex festività", "Persone in malattia", "Persone in infortunio", "Persone assenti"]);
@@ -245,8 +247,9 @@ async function excelGls() {
     ["Fonte", "Buste paga (LUL) GLS. La busta di un mese riporta il calendario del mese prima, quindi i dati arrivano con un mese di ritardo."],
     ["Chi è contato", "Solo chi in busta ha la qualifica di autista. Fuori gli addetti alla movimentazione merci, i responsabili e le poche persone senza qualifica leggibile."],
     ["Assenteismo %", "Giorni di assenza diviso i giorni in cui si doveva lavorare (lavorati + assenze). Assenze = malattia + infortunio + altre assenze."],
-    ["Altre assenze", "Assenze non retribuite, ingiustificate e malattia figlio (codice MF)."],
-    ["Non contati", "Ferie, ROL, ex festività, permessi retribuiti e scioperi: non sono né assenze né giorni lavorati."],
+    ["Altre assenze", "Permessi e aspettative non retribuiti (PN, AN) e assenze ingiustificate (AI, AIG)."],
+    ["Malattia", "Comprende il ricovero in ospedale (MO)."],
+    ["Non contati", "Ferie, ROL, ex festività, permessi retribuiti, scioperi e congedi di legge (parentale MF, maternità, paternità): non sono né assenze né giorni lavorati."],
     ["Giorno lavorato", "Un giorno del calendario della busta con più di 4 ore lavorate."],
   ]) { const r = cl.addRow([k, x]); r.getCell(1).font = { bold: true }; r.getCell(2).alignment = { wrapText: true, vertical: "top" }; r.height = x.length > 110 ? 32 : 18; }
   const buf = await wb.xlsx.writeBuffer();
