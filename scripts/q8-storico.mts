@@ -1,25 +1,42 @@
 /**
  * Storico Q8 riga per riga: legge i file Excel delle transazioni Q8 già elaborati (MM_Transazioni_<Mese>_<AA>_Q8.xlsx, con la
- * colonna STATION) e scrive un unico JSON con le transazioni nel formato della tabella Q8Transazione. Non tocca nessun database.
+ * colonna STATION) e scrive un unico JSON con le transazioni nel formato della tabella Q8Transazione, con le stesse chiavi
+ * e lo stesso PAN mascherato ("…" + ultime 4 cifre) che scrive il sito. Non tocca nessun database.
  *
- *   npx tsx scripts/q8-storico.mts uscita.json file1.xlsx file2.xlsx …
+ *   npx tsx scripts/q8-storico.mts --segreto <valore> uscita.json file1.xlsx file2.xlsx …
  *
- * Il JSON contiene i PAN delle carte: tenerlo fuori dal repository.
+ * Il segreto è il valore della riga "q8.chiave" della tabella SegretoInterno:
+ *   select valore from "SegretoInterno" where chiave = 'q8.chiave';
+ * Senza lo stesso segreto del sito le chiavi sarebbero diverse e ricaricando il mese dal sito si avrebbero doppioni.
+ * Gli storni si abbinano sul PAN intero, prima di mascherarlo. Il segreto non va scritto in nessun file del repository.
  */
 import fs from "node:fs";
 import path from "node:path";
 import ExcelJS from "exceljs";
 import { worksheetToGrid } from "../src/lib/presenze/excelGrid";
 import { giornoQ8, transazioniDaEsito, type Q8TransazioneIn } from "../src/domain/carburante/q8Righe";
+import { chiaveQ8Da, panMascherato } from "../src/lib/carburante/chiave";
 
-const [uscita, ...file] = process.argv.slice(2);
+const USO = "Uso: npx tsx scripts/q8-storico.mts --segreto <valore> uscita.json file1.xlsx [file2.xlsx …]";
+let segreto = "";
+const posizionali: string[] = [];
+for (let i = 2; i < process.argv.length; i++) {
+  const a = process.argv[i];
+  if (a === "--segreto") segreto = process.argv[++i] ?? "";
+  else if (a.startsWith("--segreto=")) segreto = a.slice("--segreto=".length);
+  else posizionali.push(a);
+}
+const [uscita, ...file] = posizionali;
 if (!uscita || !file.length || !uscita.toLowerCase().endsWith(".json")) {
-  console.error("Uso: npx tsx scripts/q8-storico.mts uscita.json file1.xlsx [file2.xlsx …]");
+  console.error(USO);
+  process.exit(1);
+}
+if (segreto.length < 32) {
+  console.error(`Manca --segreto (o è troppo corto): serve il valore intero della riga q8.chiave di SegretoInterno.\n${USO}`);
   process.exit(1);
 }
 
 const testo = (v: unknown) => (v === null || v === undefined ? "" : v instanceof Date ? v.toISOString() : String(v).trim());
-const maschera = (pan: string) => (pan.length > 8 ? `${pan.slice(0, 4)}${"*".repeat(pan.length - 8)}${pan.slice(-4)}` : "****");
 
 const tutte: Q8TransazioneIn[] = [];
 for (const f of file) {
@@ -43,7 +60,8 @@ for (const f of file) {
   const [meseFile] = [...conta.entries()].reduce((a, b) => (b[1] > a[1] ? b : a));
   const [anno, mese] = meseFile.split("-").map(Number);
 
-  const tx = transazioniDaEsito({ anno, mese, intestazione, righe });
+  // chiave e PAN come li salva il sito (salvaTransazioniQ8)
+  const tx = transazioniDaEsito({ anno, mese, intestazione, righe }).map((t) => ({ ...t, chiave: chiaveQ8Da(t.chiave, segreto), pan: panMascherato(t.pan) }));
   console.log(`${path.basename(f)} → foglio "${ws.name}", mese ${meseFile}: ${righe.length} righe, ${tx.length} transazioni, ${righe.length - tx.length} scartate (senza data o litri)`);
   tutte.push(...tx);
 }
@@ -61,7 +79,7 @@ for (const t of tutte) {
   per.set(t.mese, x);
 }
 console.table(Object.fromEntries([...per.entries()].sort().map(([m, x]) => [m, x])));
-console.log("Esempi (PAN mascherato):");
+console.log("Esempi:");
 for (const t of [tutte.find((x) => x.station === "DER2"), tutte.find((x) => x.station === "GLS")].filter((x): x is Q8TransazioneIn => !!x)) {
-  console.log(JSON.stringify({ ...t, pan: maschera(t.pan), chiave: t.chiave.replace(t.pan, maschera(t.pan)) }));
+  console.log(JSON.stringify(t));
 }

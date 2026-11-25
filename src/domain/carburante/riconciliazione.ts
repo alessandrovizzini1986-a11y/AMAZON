@@ -211,6 +211,8 @@ type Appreso = {
   coordinate: Map<string, { lat: number; lng: number }[]>;
   /** distributore Q8 → comune (o frazione) che Targa scrive per quel distributore → volte */
   comuni: Map<string, Map<string, number>>;
+  /** carta → pagamenti verificabili del mese (abbinati o no): la quota del furgone abituale si misura su questi */
+  pagamenti: Map<string, number>;
 };
 
 export type Q8i = Q8Tx & { t: number };
@@ -219,6 +221,17 @@ export type Evi = EventoTarga & { t: number; i: number };
 const AUTOSTRADA = /AUTOSTRAD|\bADS\b|\bA\s?\d{1,2}\b|RACCORDO/i;
 /** la via del distributore e quella di Targa hanno una parola in comune (es. EMILIA, BERLINGUER) */
 const viaInComune = (indirizzo: string | null | undefined, dove: string | null | undefined) => { const pq = paroleVia(indirizzo), pt = paroleVia(partiTarga(dove).via); return [...pq].some((w) => pt.has(w)); };
+/**
+ * Dove sta un distributore secondo i rifornimenti sicuri: il gruppo più numeroso di punti entro il raggio. Servono almeno 3
+ * punti e il gruppo deve essere la maggioranza: un abbinamento sbagliato non sposta il centro, punti sparsi non contano.
+ */
+export function centroDistributore(punti: { lat: number; lng: number }[] | undefined): { lat: number; lng: number } | null {
+  if (!punti || punti.length < 3) return null;
+  let migliore: { lat: number; lng: number }[] = [];
+  for (const p of punti) { const vicini = punti.filter((x) => km(p, x) <= TOLLERANZE.raggioKm); if (vicini.length > migliore.length) migliore = vicini; }
+  if (migliore.length < 3 || migliore.length / punti.length < 0.6) return null;
+  return { lat: mediana(migliore.map((x) => x.lat)), lng: mediana(migliore.map((x) => x.lng)) };
+}
 const mediana = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
 /** Dove ha fatto rifornimento il furgone rispetto al distributore Q8: coordinate se le conosciamo, altrimenti comune e via. */
@@ -227,9 +240,8 @@ function valutaLuogo(q: Q8Tx, e: EventoTarga, app: Appreso, cache?: Map<string, 
   const giaFatto = cache?.get(k0);
   if (giaFatto) return giaFatto;
   const fatto = ((): { esito: EsitoLuogo; distanza: number | null } => {
-    const coord = q.impianto ? app.coordinate.get(q.impianto) : undefined;
-    if (coord && coord.length >= TOLLERANZE.luogoMinVolte && e.lat != null && e.lng != null) {
-      const c = { lat: mediana(coord.map((x) => x.lat)), lng: mediana(coord.map((x) => x.lng)) };
+    const c = q.impianto ? centroDistributore(app.coordinate.get(q.impianto)) : null;
+    if (c && e.lat != null && e.lng != null) {
       const d = r1(km(c, { lat: e.lat, lng: e.lng }));
       return { esito: d <= TOLLERANZE.raggioKm ? "UGUALE" : "DIVERSO", distanza: d };
     }
@@ -257,18 +269,25 @@ function alDistributore(q: Q8Tx, dove: string | null | undefined, app: Appreso):
   return stessoComune(q.citta, dove) && viaInComune(q.indirizzo, dove);
 }
 
-function abitualeDi(carta: string | null, app: Appreso): { targa: string; volte: number; su: number } | null {
+/**
+ * Furgone abituale di una carta. "rigoroso" misura la quota su tutti i pagamenti della carta nel mese (anche quelli fatti a
+ * furgoni senza telematica): serve per accusare un "serbatoio fermo". Senza "rigoroso" la quota è sui soli pagamenti
+ * abbinati: basta come indizio per scegliere tra furgoni che fanno gasolio insieme.
+ */
+function abitualeDi(carta: string | null, app: Appreso, rigoroso = false): { targa: string; volte: number; su: number } | null {
   const m = carta ? app.carte.get(carta) : undefined;
   if (!m) return null;
-  let su = 0, best: [string, number] | null = null;
-  for (const [t, n] of m) { su += n; if (!best || n > best[1]) best = [t, n]; }
+  let abbinati = 0, best: [string, number] | null = null;
+  for (const [t, n] of m) { abbinati += n; if (!best || n > best[1]) best = [t, n]; }
+  const su = rigoroso ? Math.max(abbinati, app.pagamenti.get(carta!) ?? 0) : abbinati;
   if (!best || best[1] < TOLLERANZE.abitualeMinVolte || best[1] / su < TOLLERANZE.abitualeMinQuota) return null;
   return { targa: best[0], volte: best[1], su };
 }
 
 /** Coppie "sicure" (una sola candidata da entrambe le parti, ora e litri vicini): insegnano dove stanno i distributori. */
 function impara(q8: Q8i[], ev: Evi[]): Appreso {
-  const app: Appreso = { carte: new Map(), luoghi: new Map(), coordinate: new Map(), comuni: new Map() };
+  const app: Appreso = { carte: new Map(), luoghi: new Map(), coordinate: new Map(), comuni: new Map(), pagamenti: new Map() };
+  for (const q of q8) if (q.identificativo && q.litri >= TOLLERANZE.sensoreMinLitri) app.pagamenti.set(q.identificativo, (app.pagamenti.get(q.identificativo) ?? 0) + 1);
   const perFlotta = new Map<string, Evi[]>();
   for (const e of ev) perFlotta.set(e.flotta, [...(perFlotta.get(e.flotta) ?? []), e]);
   const vicini = (q: Q8i) => (perFlotta.get(q.flotta) ?? []).filter((e) => Math.abs(e.t - q.t) <= TOLLERANZE.finestraMin && Math.abs(e.litri - q.litri) <= tolleranzaLitri(q.litri));
@@ -349,7 +368,9 @@ export type Preparato = { q8: Q8i[]; ev: Evi[]; app: Appreso; coppie: [Q8i, Evi]
 export function abbina(q8in: Q8Tx[], evIn: EventoTarga[]): Preparato {
   const q8: Q8i[] = q8in.map((q) => ({ ...q, t: minuti(q.giorno, q.ora) ?? Number.NaN })).filter((q) => Number.isFinite(q.t));
   const ev: Evi[] = evIn.map((e, i) => ({ ...e, t: minuti(e.giorno, e.ora) ?? Number.NaN, i })).filter((e) => Number.isFinite(e.t));
-  const verificabili = q8.filter((q) => !NON_SERBATOIO.test(q.prodotto ?? "") && FLOTTE[q.flotta]?.sensore);
+  // anche i pagamenti delle flotte senza sensore entrano nell'abbinamento: se Targa vede un rifornimento, lo si attribuisce;
+  // quelli che restano soli si dichiarano non verificabili (vedi sotto), non "serbatoio fermo"
+  const verificabili = q8.filter((q) => !NON_SERBATOIO.test(q.prodotto ?? "") && q.flotta in FLOTTE);
   const app = impara(verificabili, ev);
   const prima = assegna(verificabili, ev, app);
   // dagli abbinamenti buoni della prima passata: il furgone abituale di ogni carta e i comuni (o frazioni) dei distributori
@@ -380,28 +401,40 @@ export function tappeNecessarie(p: Preparato): { targa: string; giorno: string }
   return [...fuori.values()];
 }
 
-export type GiornataTappe = { targa: string; giorno: string; tappe: { t: "G" | "S"; da: string; a: string; dove: string | null }[] };
+/** Tappe di una giornata; null = la giornata c'è ma il percorso non è più conservato (oltre 120 giorni). */
+export type GiornataTappe = { targa: string; giorno: string; tappe: { t: "G" | "S"; da: string; a: string; km?: number; dove: string | null }[] | null };
 export type Ingresso = {
   q8: Q8Tx[];
   eventi: EventoTarga[];
   /** tappe delle giornate chieste da tappeNecessarie (le altre non servono) */
   tappe: GiornataTappe[];
   copertura: Copertura[];
-  /** ultimo giorno presente nel file Q8 caricato, per flotta (null = nessun file del mese) */
+  /** istante dell'ultima transazione del file Q8 del mese ("AAAA-MM-GG HH:MM[:SS]"), per flotta (null = nessun file del mese) */
   ultimoGiornoQ8: Partial<Record<Flotta, string | null>>;
 };
 export type Esito = { righe: Riga[]; appreso: { carteAbituali: number; distributoriLocalizzati: number } };
 
-/** Il furgone è passato dal distributore attorno all'ora del pagamento? (arriva, riparte o sosta breve lì) */
+/**
+ * Il furgone è passato dal distributore attorno all'ora del pagamento? Vale solo una sosta breve (al massimo sostaMaxMin)
+ * in un posto che è il distributore: ci arriva e riparte presto, o ci sta fermo poco. Le soste lunghe (il parcheggio della
+ * notte, anche se è nella stessa via della pompa) non contano. Le "guide" di 0 km di Targa sono soste.
+ * Torna null se non passa, "SENZA_PERCORSO" se il percorso non è più disponibile.
+ */
 function passaggio(q: Q8i, g: GiornataTappe | undefined, app: Appreso): string | null {
   if (!g) return null;
-  for (let i = 0; i < g.tappe.length; i++) {
-    const s = g.tappe[i], da = minuti(g.giorno, s.da), a0 = minuti(g.giorno, s.a);
+  if (!g.tappe) return "SENZA_PERCORSO";
+  // soste e guide con i minuti; le guide di 0 km diventano soste; soste consecutive si uniscono
+  const pezzi: { t: "G" | "S"; da: number; a: number; daT: string; aT: string; dove: string | null }[] = [];
+  for (const s of g.tappe) {
+    const da = minuti(g.giorno, s.da), a0 = minuti(g.giorno, s.a);
     if (da === null || a0 === null) continue;
-    const a = a0 < da ? a0 + 1440 : a0, vicino = (x: number) => Math.abs(x - q.t) <= TOLLERANZE.sostaMin;
-    if (s.t === "G" && vicino(a) && alDistributore(q, s.dove, app)) return `arriva al distributore alle ${s.a}`;
-    if (s.t === "G" && i > 0 && vicino(da) && alDistributore(q, g.tappe[i - 1].dove, app)) return `riparte dal distributore alle ${s.da}`;
-    if (s.t === "S" && a - da <= TOLLERANZE.sostaMaxMin && da - TOLLERANZE.sostaMin <= q.t && q.t <= a + TOLLERANZE.sostaMin && alDistributore(q, s.dove, app)) return `fermo al distributore ${s.da}–${s.a}`;
+    const t = s.t === "G" && (s.km ?? 1) < 0.05 ? "S" : s.t, a = a0 < da ? a0 + 1440 : a0, ultimo = pezzi.at(-1);
+    if (t === "S" && ultimo?.t === "S") { ultimo.a = a; ultimo.aT = s.a; ultimo.dove = ultimo.dove ?? s.dove; continue; }
+    pezzi.push({ t, da, a, daT: s.da, aT: s.a, dove: s.dove });
+  }
+  for (const s of pezzi) {
+    if (s.t !== "S" || s.a - s.da > TOLLERANZE.sostaMaxMin || !alDistributore(q, s.dove, app)) continue;
+    if (s.da - TOLLERANZE.sostaMin <= q.t && q.t <= s.a + TOLLERANZE.sostaMin) return `fermo al distributore ${s.daT}–${s.aT}`;
   }
   return null;
 }
@@ -434,9 +467,9 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
   // rifornimento letto in ritardo: pagamento e rifornimento rimasti soli, stesso furgone abituale (o stesso luogo) e stessi litri
   const ritardi = new Map<string, number>();
   for (const q of [...q8].sort((a, b) => a.t - b.t)) {
-    if (usatiQ.has(q.chiave) || NON_SERBATOIO.test(q.prodotto ?? "") || !FLOTTE[q.flotta]?.sensore) continue;
+    if (usatiQ.has(q.chiave) || NON_SERBATOIO.test(q.prodotto ?? "")) continue;
     const abit = abitualeDi(q.identificativo, app);
-    const cand = ev.filter((e) => !usatiE.has(e.i) && e.flotta === q.flotta && e.t >= q.t - TOLLERANZE.finestraMin && e.t - q.t <= TOLLERANZE.ritardoMaxMin
+    const cand = ev.filter((e) => !usatiE.has(e.i) && e.flotta === q.flotta && e.t > q.t + TOLLERANZE.finestraMin && e.t - q.t <= TOLLERANZE.ritardoMaxMin
       && Math.abs(e.litri - q.litri) <= tolleranzaLitri(q.litri) && ((abit && abit.targa === e.targa) || valutaLuogo(q, e, app).esito === "UGUALE"));
     if (cand.length !== 1) continue;
     const e = cand[0];
@@ -456,7 +489,8 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
     // con il ritardo Targa scrive il luogo dove il furgone si è fermato dopo: il luogo non si confronta
     const luogo = rit !== undefined ? { esito: "IGNOTO" as EsitoLuogo, distanza: null } : valutaLuogo(q0, e0, app, cache);
     let stato: Stato = "REGOLARE", motivo = "Pagamento e rifornimento coincidono.", euro: number | null = null;
-    if (delta < -tol) {
+    const sensore = FLOTTE[q0.flotta]?.sensore ?? true;
+    if (delta < -tol && sensore) {
       stato = "LITRI"; euro = r2(-delta * prezzo);
       motivo = `Pagati ${fmtL(litriQ8)} L, nel serbatoio ne sono entrati ${fmtL(litriTarga)}: mancano ${fmtL(-delta)} L.`;
       if (luogo.esito === "DIVERSO") motivo += " Anche il luogo non coincide con il distributore.";
@@ -464,6 +498,7 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
       stato = "LUOGO";
       motivo = luogo.distanza != null ? `Il furgone era a ${fmtL(luogo.distanza)} km dal distributore Q8.` : "Il furgone ha fatto rifornimento in un altro comune rispetto al distributore Q8.";
     } else if (delta > tol) motivo = `Nel serbatoio ${fmtL(delta)} L in più di quelli pagati con questa carta (forse un secondo pagamento).`;
+    else if (!sensore && Math.abs(delta) > tol) motivo = `Furgone riconosciuto; i litri letti (${fmtL(litriTarga)}) non sono affidabili su questa flotta.`;
     if (rit !== undefined) motivo += ` Targa ha registrato il rifornimento ${rit} minuti dopo il pagamento.`;
     if (g.q.length > 1) motivo += ` Scontrini: ${g.q.length}.`;
     if (g.e.length > 1) motivo += ` Rifornimento letto in ${g.e.length} parti.`;
@@ -481,25 +516,29 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
   for (const e of ev) rifornimentiDi.set(e.targa, [...(rifornimentiDi.get(e.targa) ?? []), e.t]);
   for (const q of q8) {
     if (usatiQ.has(q.chiave)) continue;
-    const abituale = abitualeDi(q.identificativo, app);
+    const abituale = abitualeDi(q.identificativo, app, true) ?? abitualeDi(q.identificativo, app);
+    const abitualeSicuro = abitualeDi(q.identificativo, app, true);
     const riga: Riga = {
       flotta: q.flotta, giorno: q.giorno, chiave: `Q8:${q.chiave}`, stato: "NON_VERIFICABILE", q8: [spoglia(q)], eventi: [], targa: null,
       oraQ8: hhmm(q.ora), oraTarga: null, litriQ8: r2(q.litri), litriTarga: null, deltaLitri: null, euro: null, luogoQ8: luogoDi(q), luogoTarga: null,
       luogo: "IGNOTO", distanzaKm: null, motivo: "", abituale,
     };
     const c = cop.get(`${q.flotta}|${q.giorno}`);
-    const giaRifornito = abituale ? (rifornimentiDi.get(abituale.targa) ?? []).some((t) => Math.abs(t - q.t) <= TOLLERANZE.finestraMin) : false;
-    const passato = abituale && !giaRifornito ? passaggio(q, tappe.get(`${abituale.targa}|${q.giorno}`), app) : null;
+    // il furgone abituale ha un rifornimento vicino (anche registrato in ritardo), magari abbinato a un altro pagamento
+    const giaRifornito = abituale ? (rifornimentiDi.get(abituale.targa) ?? []).some((t) => t >= q.t - TOLLERANZE.finestraMin && t <= q.t + TOLLERANZE.ritardoMaxMin) : false;
+    const passato = abitualeSicuro && !giaRifornito ? passaggio(q, tappe.get(`${abitualeSicuro.targa}|${q.giorno}`), app) : null;
     if (NON_SERBATOIO.test(q.prodotto ?? "")) riga.motivo = `${q.prodotto}: non passa dal serbatoio del gasolio.`;
     else if (!FLOTTE[q.flotta].sensore) riga.motivo = FLOTTE[q.flotta].nota;
     else if (!c?.scaricato) riga.motivo = "La telematica di quel giorno non è ancora scaricata.";
-    else if (!c.dettaglioCompleto) riga.motivo = "Mancano ora e luogo dei rifornimenti di quel giorno: completali da Furgoni → Il mese.";
+    else if (!c.dettaglioCompleto) riga.motivo = "Mancano ora e luogo dei rifornimenti di quel giorno: completali da Strumenti → Furgoni: il mese.";
     else if (q.litri < TOLLERANZE.sensoreMinLitri) riga.motivo = `Solo ${fmtL(q.litri)} L: il sensore del serbatoio può non accorgersene.`;
-    else if (abituale && passato) {
+    else if (abitualeSicuro && passato === "SENZA_PERCORSO") riga.motivo = `Il percorso del furgone abituale (${abitualeSicuro.targa}) non è più disponibile (si tiene 120 giorni): non si può dire se era al distributore.`;
+    else if (abitualeSicuro && passato) {
+      const abituale = abitualeSicuro;
       riga.stato = "SERBATOIO_FERMO"; riga.targa = abituale.targa; riga.luogo = "UGUALE";
       riga.deltaLitri = r1(-q.litri); riga.euro = r2(q.importoNoIva);
       riga.motivo = `Furgone abituale di questa carta (${abituale.targa}, ${abituale.volte} rifornimenti su ${abituale.su}): ${passato}, ma il serbatoio non è salito.`;
-    } else if (abituale && giaRifornito) riga.motivo = `Il furgone abituale di questa carta (${abituale.targa}) ha fatto rifornimento in quei minuti, ma abbinato a un altro pagamento: due pagamenti per lo stesso pieno, o un furgone senza telematica.`;
+    } else if (abituale && giaRifornito) riga.motivo = `Il furgone abituale di questa carta (${abituale.targa}) ha un rifornimento vicino a quest'ora, abbinato a un altro pagamento: forse due pagamenti per lo stesso pieno, o un furgone senza telematica.`;
     else riga.motivo = "Nessun furgone con telematica riconducibile a questa carta: probabilmente un furgone senza telematica." + (abituale ? ` Il furgone abituale (${abituale.targa}) in quel momento non era al distributore.` : "");
     righe.push(riga);
   }
@@ -514,7 +553,7 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
       luogo: "IGNOTO", distanzaKm: null, motivo: "Gasolio entrato nel serbatoio senza un pagamento Q8 vicino: altra carta, contanti o file Q8 non ancora caricato.", abituale: null,
     };
     if (!ultimo) { riga.stato = "NON_VERIFICABILE"; riga.motivo = "Il file Q8 di questo mese non è ancora caricato."; }
-    else if (e.giorno > ultimo) { riga.stato = "NON_VERIFICABILE"; riga.motivo = `Il file Q8 caricato arriva al ${ultimo.slice(8, 10)}/${ultimo.slice(5, 7)}.`; }
+    else if (`${e.giorno} ${e.ora}` > ultimo) { riga.stato = "NON_VERIFICABILE"; riga.motivo = `Il file Q8 caricato arriva al ${ultimo.slice(8, 10)}/${ultimo.slice(5, 7)}${ultimo.length > 10 ? ` alle ${ultimo.slice(11, 16)}` : ""}.`; }
     righe.push(riga);
   }
   // rifornimenti senza ora (dettaglio non scaricato): non si possono abbinare
@@ -523,7 +562,7 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
     righe.push({
       flotta: e.flotta, giorno: e.giorno, chiave: `TG:${e.targa}|${e.giorno}||${e.litri}`, stato: "NON_VERIFICABILE", q8: [], eventi: [e], targa: e.targa,
       oraQ8: null, oraTarga: null, litriQ8: null, litriTarga: r1(e.litri), deltaLitri: null, euro: null, luogoQ8: null, luogoTarga: e.dove,
-      luogo: "IGNOTO", distanzaKm: null, motivo: "Manca l'ora del rifornimento: completala da Furgoni → Il mese.", abituale: null,
+      luogo: "IGNOTO", distanzaKm: null, motivo: "Manca l'ora del rifornimento: completala da Strumenti → Furgoni: il mese.", abituale: null,
     });
   }
 

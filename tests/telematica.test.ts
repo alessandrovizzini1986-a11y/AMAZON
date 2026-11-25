@@ -44,7 +44,7 @@ describe("telematica: posizioni", () => {
   });
 });
 
-import { fusoRoma, giorniDelMese, giornoDaFlottaweb, giornoDaTarga, riepilogoMese, type RigaGiorno } from "@/domain/telematica";
+import { fusoRoma, giorniDelMese, giornoDaFlottaweb, giornoDaTarga, intervalloRoma, riepilogoMese, type RigaGiorno } from "@/domain/telematica";
 import { ultimoPuntoFw } from "@/lib/telematica/posizioni";
 
 describe("telematica: giorno e mese", () => {
@@ -80,6 +80,37 @@ describe("telematica: giorno e mese", () => {
   });
   it("fuso italiano e giorni del mese", () => {
     expect(fusoRoma("2026-11-23")).toBe("+01:00"); expect(fusoRoma("2026-07-10")).toBe("+02:00"); expect(giorniDelMese("2026-02")).toHaveLength(28);
+  });
+  it("cambio dell'ora: lo scarto vale all'ora chiesta, non a mezzogiorno", () => {
+    // 29/03/2026: alle 02:00 si passa all'ora legale; 25/10/2026: alle 03:00 si torna all'ora solare
+    expect([fusoRoma("2026-03-29", "00:00:00"), fusoRoma("2026-03-29", "23:59:59")]).toEqual(["+01:00", "+02:00"]);
+    expect([fusoRoma("2026-10-25", "00:00:00"), fusoRoma("2026-10-25", "23:59:59")]).toEqual(["+02:00", "+01:00"]);
+    expect([fusoRoma("2026-03-28", "23:59:59"), fusoRoma("2026-10-26", "00:00:00")]).toEqual(["+01:00", "+01:00"]);
+    expect(fusoRoma("2026-07-10", "00:00:00")).toBe("+02:00");
+  });
+  it("Targa: la giornata chiesta dura 23 ore il 29/03 e 25 ore il 25/10, senza ore del giorno prima o dopo", () => {
+    const ore = (g: string) => { const { begin, end } = intervalloRoma(g); return (Date.parse(end) + 1 - Date.parse(begin)) / 3_600_000; };
+    expect(intervalloRoma("2026-03-29")).toEqual({ begin: "2026-03-29T00:00:00.000+01:00", end: "2026-03-29T23:59:59.999+02:00" });
+    expect(intervalloRoma("2026-10-25")).toEqual({ begin: "2026-10-25T00:00:00.000+02:00", end: "2026-10-25T23:59:59.999+01:00" });
+    expect([ore("2026-03-29"), ore("2026-10-25"), ore("2026-11-23"), ore("2026-07-10")]).toEqual([23, 25, 24, 24]);
+    // l'inizio è la mezzanotte italiana: 22:00 UTC del giorno prima d'estate, 23:00 UTC d'inverno
+    expect(new Date(intervalloRoma("2026-10-25").begin).toISOString()).toBe("2026-10-24T22:00:00.000Z");
+    expect(new Date(intervalloRoma("2026-03-29").begin).toISOString()).toBe("2026-03-28T23:00:00.000Z");
+  });
+  it("Targa: con il giorno, le posizioni di un altro giorno italiano si scartano", () => {
+    const pos = (timestamp: string, litri: number, mileage: number) => ({ mileage, refuel: { refueledLiters: litri }, location: { timestamp, lat: 44.06, lng: 12.56 } });
+    const risposta = (positions: unknown[]) => ({ totalMileage: 50, usageSegments: [seg("USAGE", "2026-10-25T00:00:00+02:00", "2026-10-25T23:59:59+01:00", 50, { positions })] });
+    // 25/10: l'ora 00:00–00:59 (ancora ora legale) è del giorno; le 23:30 del 24 e le 00:10 del 26 no
+    const ott = risposta([pos("2026-10-24T23:30:00+02:00", 20, 1000), pos("2026-10-25T00:30:00+02:00", 30, 1010), pos("2026-10-25T23:30:00+01:00", 10, 1050), pos("2026-10-26T00:10:00+01:00", 5, 1060)]);
+    const g = giornoDaTarga(ott, "2026-10-25");
+    expect(g).toMatchObject({ rifornimenti: 2, litri: 40, kmContatore: 1050 });
+    expect(g.rifDett.map((r) => r.ora)).toEqual(["00:30", "23:30"]);
+    expect(giornoDaTarga(ott).rifornimenti).toBe(4); // senza il giorno: come prima, tutto
+    // 29/03: le 23:30 del 28 (ora solare) non entrano; le 00:10 e le 23:50 del 29 sì
+    const mar = risposta([pos("2026-03-28T23:30:00+01:00", 20, 900), pos("2026-03-29T00:10:00+01:00", 30, 910), pos("2026-03-29T23:50:00+02:00", 10, 950)]);
+    expect(giornoDaTarga(mar, "2026-03-29")).toMatchObject({ rifornimenti: 2, litri: 40, kmContatore: 950 });
+    // posizioni senza ora: non si possono attribuire a un altro giorno, restano
+    expect(giornoDaTarga(risposta([{ refuel: { refueledLiters: 8 }, location: null }]), "2026-10-25").rifornimenti).toBe(1);
   });
   it("riepilogo del mese: medie sui giorni usati e consumo", () => {
     const r = (targa: string, giorno: string, km: number, litri = 0): RigaGiorno => ({ fonte: "TARGA", targa, giorno, km, inizio: null, fine: null, guidaSec: 3600, motoreSec: 0, fermoMotoreAccSec: 1800, velMax: 90, punteggioSicurezza: 6, soste: 2, rifornimenti: litri ? 1 : 0, litri });

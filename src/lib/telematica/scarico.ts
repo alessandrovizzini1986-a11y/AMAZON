@@ -4,7 +4,7 @@
  */
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { GIORNI_TAPPE, fusoRoma, giornoDaFlottaweb, giornoDaTarga, giornoRoma, piuGiorni, primoRifornimentoGrezzo, type GiornoMezzo } from "@/domain/telematica";
+import { GIORNI_TAPPE, giornoDaFlottaweb, giornoDaTarga, giornoRoma, intervalloRoma, piuGiorni, primoRifornimentoGrezzo, type GiornoMezzo } from "@/domain/telematica";
 import { campione } from "./prova";
 import type { Fonte } from "./comune";
 import { accediFlottaweb, leggiFlottaweb } from "./flottaweb";
@@ -29,10 +29,11 @@ async function mezzi(fonte: Fonte, token: string): Promise<Mezzo[]> {
 
 async function giornoDi(m: Mezzo, token: string, giorno: string): Promise<GiornoMezzo> {
   if (m.fonte === "TARGA") {
-    const f = fusoRoma(giorno);
-    const risposta = await leggiTarga(token, `/route/${m.id}`, { begin: `${giorno}T00:00:00.000${f}`, end: `${giorno}T23:59:59.999${f}`, timezone: "Europe/Rome", showIdlingSegments: "true", showDriverName: "true" });
+    // inizio e fine con il loro scarto: nei giorni del cambio dell'ora la giornata dura 23 o 25 ore
+    const { begin, end } = intervalloRoma(giorno);
+    const risposta = await leggiTarga(token, `/route/${m.id}`, { begin, end, timezone: "Europe/Rome", showIdlingSegments: "true", showDriverName: "true" });
     await ricordaRifornimento(risposta);
-    return giornoDaTarga(risposta);
+    return giornoDaTarga(risposta, giorno);
   }
   return giornoDaFlottaweb(await leggiFlottaweb(token, "/gps/getpositions", { unitid: m.id, da: `${giorno} 00:00:00`, a: `${giorno} 23:59:59` }), giorno);
 }
@@ -64,6 +65,17 @@ const dettaglioDaRifare = (mese: string) => Prisma.sql`fonte = 'TARGA' and giorn
 /** quante righe del mese aspettano ora, luogo e coordinate dei rifornimenti */
 export async function rifornimentiDaRiscaricare(mese: string): Promise<number> {
   const [r] = await db.$queryRaw<{ n: number }[]>`select count(*)::int as n from "TelematicaGiorno" where ${dettaglioDaRifare(mese)}`;
+  return Number(r?.n ?? 0);
+}
+
+/**
+ * Come rifornimentiDaRiscaricare, ma solo per le targhe date (per esempio i furgoni di una flotta): quante giornate del mese
+ * aspettano ancora ora, luogo e coordinate dei rifornimenti. Stessa condizione del riscarico. Nessuna targa → 0.
+ */
+export async function rifornimentiDaRiscaricarePerTarghe(mese: string, targhe: string[]): Promise<number> {
+  const elenco = [...new Set(targhe.map(targaPulita).filter(Boolean))];
+  if (!elenco.length) return 0;
+  const [r] = await db.$queryRaw<{ n: number }[]>`select count(*)::int as n from "TelematicaGiorno" where ${dettaglioDaRifare(mese)} and targa in (${Prisma.join(elenco)})`;
   return Number(r?.n ?? 0);
 }
 

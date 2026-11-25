@@ -1,6 +1,7 @@
 /** Costanti e piccoli formati della pagina "Carburante: Q8 e telematica" (server e browser). */
 import { ETICHETTA_STATO, type Stato } from "@/domain/carburante/riconciliazione";
 import type { DatiRiconciliazione, RigaPagina } from "@/lib/carburante/riconciliazione";
+import { bloccato, GRUPPI } from "@/components/navModel";
 
 /** riga come arriva al browser: senza i rifornimenti grezzi e con il minimo dei pagamenti Q8 (pagina più leggera) */
 export type RigaVista = Omit<RigaPagina, "eventi" | "q8"> & { q8: { identificativo: string | null; impianto: string | null; prodotto: string | null }[] };
@@ -10,14 +11,35 @@ export const perVista = (d: DatiRiconciliazione): DatiVista => ({
   righe: d.righe.map(({ eventi: _e, q8, ...r }) => ({ ...r, q8: q8.map((x) => ({ identificativo: x.identificativo, impianto: x.impianto, prodotto: x.prodotto })) })),
 });
 
-/** chiave in TourVisto e in localStorage della guida di questa pagina */
+/** chiave in TourVisto (sul server, per utente) della guida di questa pagina */
 export const CHIAVE_GUIDA = "guida:carburante";
+/** chiave nel browser, solo di ripiego se il server non ha registrato la guida: una per utente (PC condivisi) */
+export const chiaveGuidaLocale = (userId: string) => `${CHIAVE_GUIDA}:${userId}`;
 
 /** eventi del browser per aprire guida e pannello dai pulsanti dell'intestazione */
 export const EVENTO_GUIDA = "carburante:apri-guida";
 export const EVENTO_DATI = "carburante:apri-dati";
 
+/** nome del pannello dei prerequisiti: pulsante, titolo e rimandi usano lo stesso testo */
+export const NOME_PANNELLO = "Prerequisiti e file da caricare";
+
 export const MOTIVI_GIUSTIFICA = ["Furgone sostitutivo", "Sensore guasto", "Errore importazione", "Pagata con altra carta", "Tanica o attrezzatura", "Altro"] as const;
+export type MotivoGiustifica = (typeof MOTIVI_GIUSTIFICA)[number];
+/** con questo motivo la nota è obbligatoria */
+export const MOTIVO_CON_NOTA: MotivoGiustifica = "Altro";
+
+/** pagine collegate (voci del menu): i link si mostrano solo se la voce non è nascosta a quell'utente */
+export const PAGINE = { giornata: "/telematica/giornata", mese: "/telematica/mese", q8: "/carburante-telepass/q8" } as const;
+/** "Gruppo → Voce" del menu per quella pagina, letto dal menu vero (così non si disallinea se cambia un nome) */
+export function percorsoMenu(href: string): string {
+  for (const g of GRUPPI) {
+    const v = g.voci.find((x) => x.href === href);
+    if (v) return `${g.label} → ${v.label}`;
+  }
+  return href;
+}
+/** la pagina (con o senza parametri) si può aprire con queste voci nascoste? */
+export const abilitata = (href: string, nascosti: readonly string[]) => !bloccato(href.split("?")[0], [...nascosti]);
 
 /** badge di ogni tipo: icona + testo, mai solo colore */
 export const STILE_STATO: Record<Stato, { icona: string; colore: string; classe: string; testo: string }> = {

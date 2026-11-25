@@ -49,6 +49,14 @@ export function leggiFiltro(p: Parametri, meseDefault: string): FiltroCarburante
   };
 }
 
+/**
+ * Filtri della pagina letti dall'indirizzo, che è l'unica fonte: così «Indietro», ricarica, link ed export vedono gli stessi
+ * filtri. Il mese è sempre quello che il server ha caricato (l'indirizzo può non averlo o averlo sbagliato).
+ */
+export function filtroDaIndirizzo(p: Parametri, meseCaricato: string): FiltroCarburante {
+  return { ...leggiFiltro(p, meseCaricato), mese: meseCaricato };
+}
+
 /** Parametri dell'indirizzo per questi filtri (solo quelli diversi dal normale), es. "mese=2026-10&flotta=DER2&regolari=1". */
 export function queryFiltro(f: FiltroCarburante, extra: Record<string, string> = {}): string {
   const q = new URLSearchParams();
@@ -77,6 +85,11 @@ export function righeDiScope<R extends RigaFiltrabile>(righe: R[], f: Pick<Filtr
 export function filtraRighe<R extends RigaFiltrabile>(righe: R[], f: Omit<FiltroCarburante, "mese">): R[] {
   return righeDiScope(righe, f).filter((r) =>
     (f.regolari || r.stato !== "REGOLARE") && (f.nonVerificabili || r.stato !== "NON_VERIFICABILE") && (f.archiviate || !r.archiviata));
+}
+
+/** Cambio della flotta: la targa scelta resta solo se ha righe anche nella nuova flotta. */
+export function conFlotta(f: FiltroCarburante, flotta: FlottaFiltro, righe: RigaFiltrabile[]): FiltroCarburante {
+  return { ...f, flotta, targa: f.targa && targhePresenti(righe, flotta).includes(f.targa) ? f.targa : null };
 }
 
 /** Targhe presenti nelle righe della flotta scelta (furgone abbinato o abituale della carta), in ordine. */

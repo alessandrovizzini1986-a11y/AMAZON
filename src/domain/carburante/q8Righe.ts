@@ -8,7 +8,10 @@
 import type { Cell } from "@/domain/presenze/grid";
 
 export type Q8TransazioneIn = {
-  /** pan|giorno|ora|litri|importo (+ "#2", "#3"… per righe uguali nello stesso file) */
+  /**
+   * Chiave client: pan intero|giorno|ora|litri|importo (+ "#2", "#3"… per righe uguali nello stesso file).
+   * Non si salva così: il server la sostituisce con una chiave non reversibile (src/lib/carburante/chiave.ts).
+   */
   chiave: string;
   /** AAAA-MM del file */
   mese: string;
@@ -17,6 +20,7 @@ export type Q8TransazioneIn = {
   /** HH:MM:SS, ora italiana */
   ora: string;
   station: string | null;
+  /** PAN intero letto dal file: serve solo nel browser (storni) e al server per la chiave; si salva solo "…" + ultime 4 cifre */
   pan: string;
   identificativo: string | null;
   targaQ8: string | null;
@@ -32,6 +36,12 @@ export type Q8TransazioneIn = {
 
 /** Lunghezze massime dei testi (le stesse controllate dal server al salvataggio). */
 export const LUNGHEZZE_Q8 = { chiave: 200, station: 80, pan: 40, identificativo: 40, targaQ8: 40, prodotto: 80, impianto: 40, indirizzo: 200, citta: 120 } as const;
+/**
+ * Invio al server a parti (stessi limiti controllati dal server): righe al massimo per parte e transazioni al massimo per
+ * file. L'ultima parte porta l'elenco di tutte le chiavi del file (~55 byte l'una con un PAN di 19 cifre): 12.000 chiavi
+ * sono ~650 KB, sotto 1 MB di corpo della chiamata. Un mese vero ne ha qualche migliaio.
+ */
+export const LIMITI_INVIO_Q8 = { righePerParte: 1500, transazioniFile: 12_000 } as const;
 /** km oltre questo valore sono un errore di battitura alla pompa (e non entrano in una colonna intera del database) */
 const KM_MAX = 10_000_000;
 
@@ -115,22 +125,15 @@ function testo(v: Cell, max: number): string | null {
 
 const norm = (s: string) => s.normalize("NFC").trim();
 
-/** Impronta (FNV-1a, due semi) di un testo: la chiave non porta il numero intero della carta, che arriva fino al browser. */
-export function impronta(s: string): string {
-  let a = 0x811c9dc5, b = 0x01000193 ^ 0x9e3779b9;
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    a = Math.imul(a ^ c, 0x01000193) >>> 0;
-    b = Math.imul(b ^ c, 0x5bd1e995) >>> 0;
-  }
-  return a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0");
-}
+/** Chiave client di una transazione, senza il "#n" delle righe uguali: pan|giorno|ora|litri|importo (2 decimali). */
+export const chiaveClientBase = (t: { pan: string; giorno: string; ora: string; litri: number; importo: number }) =>
+  `${t.pan}|${t.giorno}|${t.ora}|${t.litri.toFixed(2)}|${t.importo.toFixed(2)}`;
 
 /**
  * Righe dell'elaborazione Q8 → transazioni da salvare. Colonne cercate per nome nell'intestazione.
  * Scarta le righe senza una data valida o senza litri. Uno storno (litri negativi) toglie il pagamento che annulla: stessa carta,
  * stessi litri e stesso importo, il più vicino prima dello storno. Righe identiche nello stesso file restano tutte, con "#2", "#3"…
- * La chiave è: ultime 4 cifre della carta | giorno | ora | litri | importo | impronta dell'intera riga.
+ * La chiave client è: PAN intero | giorno | ora | litri | importo. Il server la sostituisce prima di salvare (chiaveQ8Da).
  */
 export function transazioniDaEsito(e: { anno: number; mese: number; intestazione: string[]; righe: Cell[][] }): Q8TransazioneIn[] {
   const hdr = e.intestazione.map((h) => norm(String(h ?? "")));
@@ -171,8 +174,7 @@ export function transazioniDaEsito(e: { anno: number; mese: number; intestazione
     const km = kmGrezzi !== null && Math.round(kmGrezzi) > 0 && Math.round(kmGrezzi) < KM_MAX ? Math.round(kmGrezzi) : null;
     const targa = testo(cella(r, iTarga), 200)?.toUpperCase().replace(/\s+/g, "").slice(0, LUNGHEZZE_Q8.targaQ8) || null;
 
-    const completa = `${pan}|${data.giorno}|${ora}|${litri.toFixed(2)}|${importo.toFixed(2)}`;
-    const base = `${pan.slice(-4)}|${data.giorno}|${ora}|${litri.toFixed(2)}|${importo.toFixed(2)}|${impronta(completa)}`;
+    const base = chiaveClientBase({ pan, giorno: data.giorno, ora, litri, importo });
     const n = (visti.get(base) ?? 0) + 1;
     visti.set(base, n);
     out.push({
@@ -191,4 +193,34 @@ export function transazioniDaEsito(e: { anno: number; mese: number; intestazione
     if (scelto) out.splice(scelto.i, 1);
   }
   return out;
+}
+
+/** byte di un valore scritto come JSON (UTF-8): quanto pesa nel corpo di una chiamata al server */
+const pesoJson = (x: unknown) => new TextEncoder().encode(JSON.stringify(x)).length;
+
+/**
+ * Divide le transazioni nelle parti da mandare al server, in ordine: al massimo `maxRighe` righe e `maxByte` byte per parte.
+ * L'ultima parte porta anche le chiavi di tutto il file (il server toglie le righe del mese che non ci sono): se con le sue
+ * righe supera `maxByte`, le chiavi vanno da sole in una parte in più, senza righe. Nessuna transazione → nessuna parte.
+ */
+export function partiDaInviare(righe: Q8TransazioneIn[], maxRighe = 1000, maxByte = 800_000): { parti: Q8TransazioneIn[][]; chiavi: string[] } {
+  const chiavi = righe.map((r) => r.chiave);
+  if (!righe.length) return { parti: [], chiavi };
+  const quante = righe.length.toLocaleString("it-IT");
+  if (righe.length > LIMITI_INVIO_Q8.transazioniFile) {
+    throw new Error(`il file ha troppe transazioni per salvarle in una volta (${quante}, al massimo ${LIMITI_INVIO_Q8.transazioniFile.toLocaleString("it-IT")})`);
+  }
+  const pesoChiavi = pesoJson(chiavi);
+  if (pesoChiavi > maxByte) throw new Error(`il file ha troppe transazioni per salvarle in una volta (${quante}): l'elenco è troppo pesante`);
+  const max = Math.max(1, Math.min(maxRighe, LIMITI_INVIO_Q8.righePerParte));
+  const parti: Q8TransazioneIn[][] = [];
+  let pezzo: Q8TransazioneIn[] = [], byte = 0;
+  for (const r of righe) {
+    const b = pesoJson(r) + 1;
+    if (pezzo.length && (pezzo.length >= max || byte + b > maxByte)) { parti.push(pezzo); pezzo = []; byte = 0; }
+    pezzo.push(r); byte += b;
+  }
+  parti.push(pezzo);
+  if (byte + pesoChiavi > maxByte) parti.push([]);
+  return { parti, chiavi };
 }

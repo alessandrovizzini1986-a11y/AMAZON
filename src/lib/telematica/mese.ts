@@ -4,9 +4,15 @@ import { giorniDelMese, giornoRoma, riepilogoMese, type RigaGiorno } from "@/dom
 import { targaPulita } from "./posizioni";
 import { rifornimentiDaRiscaricare } from "./scarico";
 
+/** i soli campi che servono al riepilogo: tappe e rifornimentiDett (JSON pesanti, decine di MB in un mese) restano nel database */
+const CAMPI_GIORNO = {
+  fonte: true, targa: true, giorno: true, km: true, inizio: true, fine: true, guidaSec: true, motoreSec: true, fermoMotoreAccSec: true,
+  velMax: true, punteggioSicurezza: true, soste: true, rifornimenti: true, litri: true,
+} as const;
+
 export async function datiMese(mese: string) {
   const [righe, scarichi, mezzi] = await Promise.all([
-    db.telematicaGiorno.findMany({ where: { giorno: { startsWith: mese } }, orderBy: [{ targa: "asc" }, { giorno: "asc" }] }),
+    db.telematicaGiorno.findMany({ where: { giorno: { startsWith: mese } }, select: CAMPI_GIORNO, orderBy: [{ targa: "asc" }, { giorno: "asc" }] }),
     db.telematicaScarico.findMany({ where: { giorno: { startsWith: mese } } }),
     db.vehicle.findMany({ where: { stato: { not: "DISMESSO" } }, select: { targa: true, station: { select: { code: true } } } }),
   ]);

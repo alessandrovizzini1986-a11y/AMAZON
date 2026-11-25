@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  abbina, comuneQ8, km, minuti, riconcilia, riepiloga, stessoComune, tappeNecessarie, tolleranzaLitri, ungherese,
+  abbina, centroDistributore, comuneQ8, km, minuti, riconcilia, riepiloga, stessoComune, tappeNecessarie, tolleranzaLitri, ungherese,
   type Copertura, type EventoTarga, type GiornataTappe, type Ingresso, type Q8Tx,
 } from "@/domain/carburante/riconciliazione";
 
@@ -121,6 +121,11 @@ describe("riconciliazione Q8 – Targa", () => {
     // un rifornimento di cui Targa non ha dato l'ora non si può abbinare
     expect(riconcilia(ingresso([], [ev("", 40)])).righe[0]).toMatchObject({ stato: "NON_VERIFICABILE", motivo: expect.stringContaining("Manca l'ora") });
   });
+  it("flotta senza sensore (GLS): il raro rifornimento letto si abbina al pagamento, gli altri pagamenti restano non verificabili", () => {
+    const gls = { flotta: "GLS" as const };
+    const r = riconcilia(ingresso([q8("10:00", 40, gls), q8("15:00", 40, gls)], [ev("10:03", 40, gls)], { copertura: coperto([G], "GLS") })).righe;
+    expect(r.map((x) => x.stato).sort()).toEqual(["NON_VERIFICABILE", "REGOLARE"]);
+  });
   it("carta usata, serbatoio fermo: il furgone abituale della carta passa dal distributore ma non registra gasolio", () => {
     const storia = ["2026-09-01", "2026-09-03", "2026-09-05"].flatMap((g) => [q8("09:00", 40, { giorno: g, identificativo: "AMZ050" }), ev("09:02", 40, { giorno: g, targa: "HB123CD" })]);
     const sospetto = q8("17:30", 45, { identificativo: "AMZ050", importoNoIva: 80 });
@@ -145,6 +150,64 @@ describe("riconciliazione Q8 – Targa", () => {
     const tappe: GiornataTappe[] = [{ targa: "HB999CD", giorno: G, tappe: [{ t: "S", da: "00:00", a: "23:59", dove: "Via Emilia, Santarcangelo Di Romagna, Rn" }] }];
     const r = riconcilia({ ...ingresso(q, e), tappe, copertura: coperto(["2026-09-01", "2026-09-03", "2026-09-05", G]) }).righe;
     expect(r.some((x) => x.stato === "SERBATOIO_FERMO")).toBe(false);
+  });
+  it("parcheggio notturno nella via della pompa: uscire o rientrare non è un passaggio dal distributore", () => {
+    const storia = ["2026-09-01", "2026-09-03", "2026-09-05"].flatMap((g) => [q8("09:00", 40, { giorno: g, identificativo: "AMZ061" }), ev("09:02", 40, { giorno: g, targa: "HB555CD" })]);
+    const q = [...storia.filter((x): x is Q8Tx => "chiave" in x), q8("07:30", 45, { identificativo: "AMZ061" })], e = storia.filter((x): x is EventoTarga => !("chiave" in x));
+    const cop = coperto(["2026-09-01", "2026-09-03", "2026-09-05", G]);
+    const via = "Via Emilia, Santarcangelo Di Romagna, Rn, Emilia-romagna, Italia";
+    for (const tappe of [
+      [{ t: "S" as const, da: "00:00", a: "07:40", dove: via }, { t: "G" as const, da: "07:40", a: "08:25", km: 30, dove: "Via Roma, Rimini, Rn" }],
+      [{ t: "G" as const, da: "06:50", a: "07:35", km: 25, dove: via }, { t: "S" as const, da: "07:35", a: "23:59", dove: via }],
+      // Targa scrive come "guida" anche una notte ferma (0 km)
+      [{ t: "G" as const, da: "00:00", a: "07:40", km: 0, dove: via }, { t: "G" as const, da: "07:40", a: "08:25", km: 30, dove: "Via Roma, Rimini, Rn" }],
+    ]) {
+      const r = riconcilia({ ...ingresso(q, e), tappe: [{ targa: "HB555CD", giorno: G, tappe }], copertura: cop }).righe;
+      expect(r.some((x) => x.stato === "SERBATOIO_FERMO")).toBe(false);
+    }
+  });
+  it("percorso non più disponibile (oltre 120 giorni): non si afferma nulla", () => {
+    const storia = ["2026-09-01", "2026-09-03", "2026-09-05"].flatMap((g) => [q8("09:00", 40, { giorno: g, identificativo: "AMZ062" }), ev("09:02", 40, { giorno: g, targa: "HB556CD" })]);
+    const q = [...storia.filter((x): x is Q8Tx => "chiave" in x), q8("17:30", 45, { identificativo: "AMZ062" })], e = storia.filter((x): x is EventoTarga => !("chiave" in x));
+    const r = riconcilia({ ...ingresso(q, e), tappe: [{ targa: "HB556CD", giorno: G, tappe: null }], copertura: coperto(["2026-09-01", "2026-09-03", "2026-09-05", G]) }).righe.find((x) => x.giorno === G && x.oraQ8 === "17:30")!;
+    expect(r.stato).toBe("NON_VERIFICABILE");
+    expect(r.motivo).toContain("non è più disponibile");
+  });
+  it("furgone abituale per accusare: la quota si conta su tutti i pagamenti della carta, non solo su quelli abbinati", () => {
+    const giorni = ["2026-09-01", "2026-09-03", "2026-09-05"];
+    const storia = giorni.flatMap((g) => [q8("09:00", 40, { giorno: g, identificativo: "AMZ063" }), ev("09:02", 40, { giorno: g, targa: "HB557CD" })]);
+    // altri 10 pagamenti della stessa carta fatti a furgoni senza telematica
+    const altri = Array.from({ length: 10 }, (_, i) => q8("12:00", 40, { giorno: `2026-09-${String(11 + i).padStart(2, "0")}`, identificativo: "AMZ063" }));
+    const q = [...storia.filter((x): x is Q8Tx => "chiave" in x), ...altri, q8("17:30", 45, { identificativo: "AMZ063" })], e = storia.filter((x): x is EventoTarga => !("chiave" in x));
+    const tappe: GiornataTappe[] = [{ targa: "HB557CD", giorno: G, tappe: [{ t: "S", da: "17:25", a: "17:40", dove: "Via Emilia, Santarcangelo Di Romagna, Rn" }] }];
+    const cop = coperto([...giorni, G, ...altri.map((x) => x.giorno)]);
+    expect(riconcilia({ ...ingresso(q, e), tappe, copertura: cop }).righe.some((x) => x.stato === "SERBATOIO_FERMO")).toBe(false);
+  });
+  it("centro del distributore: servono 3 punti e la maggioranza vicina; un abbinamento sbagliato non lo sposta", () => {
+    const p = (lat: number, lng: number) => ({ lat, lng });
+    expect(centroDistributore([p(44.07, 12.44), p(44.071, 12.441)])).toBeNull();
+    const c = centroDistributore([p(44.07, 12.44), p(44.0705, 12.4405), p(44.071, 12.441), p(44.16, 12.44)])!;
+    expect(km(c, p(44.0705, 12.4405))).toBeLessThan(0.2);
+    expect(centroDistributore([p(44.0, 12.0), p(44.2, 12.0), p(44.4, 12.0)])).toBeNull();
+  });
+  it("ritardo: solo rifornimenti registrati dopo il pagamento, oltre la finestra", () => {
+    const storia = ["2026-09-01", "2026-09-03", "2026-09-05"].flatMap((g) => [q8("09:00", 40, { giorno: g, identificativo: "AMZ071" }), ev("09:02", 40, { giorno: g, targa: "HC112DD" })]);
+    const q = [...storia.filter((x): x is Q8Tx => "chiave" in x), q8("08:00", 50, { identificativo: "AMZ071" })];
+    const prima = ev("07:40", 50, { targa: "HC112DD", dove: "Via Carso, 13, Gambettola, Fc" });
+    const r = riconcilia({ ...ingresso(q, [...storia.filter((x): x is EventoTarga => !("chiave" in x)), prima]), copertura: coperto(["2026-09-01", "2026-09-03", "2026-09-05", G]) }).righe;
+    expect(r.find((x) => x.giorno === G && x.oraQ8 === "08:00")?.stato).not.toBe("REGOLARE");
+  });
+  it("flotta senza sensore: mai discrepanza litri né euro", () => {
+    const gls = { flotta: "GLS" as const };
+    const [r] = riconcilia(ingresso([q8("10:00", 40, gls)], [ev("10:02", 20, gls)], { copertura: coperto([G], "GLS") })).righe;
+    expect(r.stato).toBe("REGOLARE");
+    expect(r.euro).toBeNull();
+  });
+  it("copertura Q8 all'istante dell'ultima transazione del file", () => {
+    const r = riconcilia(ingresso([], [ev("18:00", 40)], { ultimoGiornoQ8: { DER2: `${G} 17:00:00` } })).righe[0];
+    expect(r.stato).toBe("NON_VERIFICABILE");
+    expect(r.motivo).toContain("17:00");
+    expect(riconcilia(ingresso([], [ev("16:00", 40)], { ultimoGiornoQ8: { DER2: `${G} 17:00:00` } })).righe[0].stato).toBe("SENZA_Q8");
   });
   it("Targa registra il rifornimento in ritardo: stesso furgone abituale e stessi litri, fino a 2 ore dopo", () => {
     const storia = ["2026-09-01", "2026-09-03", "2026-09-05"].flatMap((g) => [q8("09:00", 40, { giorno: g, identificativo: "AMZ070" }), ev("09:02", 40, { giorno: g, targa: "HC111DD" })]);

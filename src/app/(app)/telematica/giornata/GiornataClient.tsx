@@ -169,7 +169,7 @@ function Dettaglio({ r, noti, segna }: { r: RigaGiornata; noti: Set<string>; seg
           <b>Rifornimenti rilevati: {r.litri.toLocaleString("it-IT")} litri</b>
           {r.rifDett?.length ? (
             <ul className="mt-0.5 flex flex-col">{r.rifDett.map((x, i) => <li key={i}><span className="tabular-nums">{x.ora || "ora non rilevata"}</span> · {x.litri.toLocaleString("it-IT")} litri{x.dove ? <span className="text-slate-500"> · {x.dove}</span> : null}</li>)}</ul>
-          ) : <span className="text-slate-500"> — ora e posto non ancora scaricati: vai in «Furgoni: il mese» e premi «Scarica il dettaglio dei rifornimenti».</span>}
+          ) : <span className="text-slate-500"> — ora e posto non ancora scaricati: vai in «Furgoni: il mese» e premi «Scarica ora, luogo e coordinate di … giornate con rifornimenti».</span>}
         </div>
       )}
       {ignoti.map((l) => (

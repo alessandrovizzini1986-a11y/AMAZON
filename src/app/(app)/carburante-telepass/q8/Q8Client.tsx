@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Carta } from "@/domain/telepass/anagrafiche";
@@ -9,8 +9,8 @@ import { elaboraQ8, type EsitoQ8 } from "@/domain/telepass/q8";
 import { leggiFile, PAGINA } from "@/lib/telepass/riconosci";
 import { excelQ8 } from "@/lib/telepass/excelQ8";
 import { scarica } from "@/lib/presenze/excelUtil";
-import { transazioniDaEsito, type Q8TransazioneIn } from "@/domain/carburante/q8Righe";
-import { salvaQ8Run, salvaTransazioniQ8 } from "../actions";
+import { partiDaInviare, transazioniDaEsito, type Q8TransazioneIn } from "@/domain/carburante/q8Righe";
+import { salvaQ8Run, salvaTransazioniQ8, type EsitoParteQ8 } from "../actions";
 import type { RunRiga } from "../dati";
 import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
@@ -21,9 +21,15 @@ import { Aiuto } from "@/components/Aiuto";
 const eur = (x: number) => x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // useGrouping "always": in italiano i numeri di 4 cifre altrimenti restano senza punto (2000 invece di 2.000)
 const intero = (x: number) => x.toLocaleString("it-IT", { useGrouping: "always" });
-/** transazioni mandate al server per ogni chiamata */
+/** transazioni mandate al server al massimo per ogni chiamata */
 const PEZZO = 1000;
-type InvioTx = { stato: "invio" | "fatto" | "errore"; fatte: number; totale: number; parte: number; errore?: string };
+/** byte al massimo per chiamata: il corpo di una server action resta sotto 1 MB, con margine */
+const MAX_BYTE = 800_000;
+/** errore non previsto (rete, database): il dettaglio non serve a chi usa la pagina */
+const NON_RIUSCITO = "Salvataggio non riuscito: premi Riprova";
+type InvioTx = { stato: "invio" | "fatto" | "errore"; fatte: number; totale: number; parte: number; errore?: string; nuove?: number; tolte?: number };
+/** Un caricamento delle transazioni: lo stesso id e le stesse parti anche quando si riprende dopo un errore. */
+type Caricamento = { id: string; parti: Q8TransazioneIn[][]; chiavi: string[]; totale: number; inserite: number; tolte: number };
 
 export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; runs: RunRiga[]; canRun: boolean }) {
   const router = useRouter();
@@ -32,12 +38,16 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
   const [e, setE] = useState<(EsitoQ8 & { origine: string; hash: string }) | null>(null);
   const [filtro, setFiltro] = useState("GLS");
   const [salvata, setSalvata] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [erroreSalva, setErroreSalva] = useState<string | null>(null);
   const [tx, setTx] = useState<InvioTx | null>(null);
+  const caricamento = useRef<Caricamento | null>(null);
   const giaFatto = e ? runs.find((r) => r.anno === e.anno && r.mese === e.mese) : undefined;
 
   const carica = async (files: File[]) => {
     if (!files.length) return;
-    setLavoro(true); setErrore(null); setE(null); setSalvata(false); setTx(null);
+    setLavoro(true); setErrore(null); setE(null); setSalvata(false); setErroreSalva(null); setTx(null);
+    caricamento.current = null;
     try {
       const f = await leggiFile(files[0]);
       if (f.tipo !== "Q8") {
@@ -54,34 +64,66 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
 
   const genera = async () => { if (e) { setLavoro(true); try { await scarica(excelQ8(e, filtro), e.nomeFile); } finally { setLavoro(false); } } };
   const salva = async () => {
-    if (!e) return;
-    await salvaQ8Run({
-      nomeFile: e.origine, hash: e.hash, anno: e.anno, mese: e.mese, righeExport: e.righeExport, tenute: e.tenute,
-      scartate: e.scartate.reduce((s, x) => s + x.n, 0), nonCensite: e.nonCensite.length, perIdentificativo: e.perIdentificativo.length,
-      totale: e.totale, totali: e.totali, anomalie: e.anomalie.map((a) => ({ ...a })),
-    });
-    setSalvata(true);
-    router.refresh();
-    await inviaTransazioni(0);
-  };
-  /** Transazioni riga per riga per l'incrocio con la telematica, a pezzi da PEZZO; se un pezzo non va, si riprende da lì. */
-  const inviaTransazioni = async (daParte: number) => {
-    if (!e) return;
-    let righe: Q8TransazioneIn[];
-    try { righe = transazioniDaEsito(e); }
-    catch (x) { setTx({ stato: "errore", fatte: 0, totale: 0, parte: 0, errore: x instanceof Error ? x.message : String(x) }); return; }
-    const totaleParti = Math.max(1, Math.ceil(righe.length / PEZZO));
-    for (let parte = daParte; parte < totaleParti; parte++) {
-      const fatte = Math.min(parte * PEZZO, righe.length);
-      setTx({ stato: "invio", fatte, totale: righe.length, parte });
+    if (!e || salvando) return;
+    setSalvando(true); setErroreSalva(null);
+    try {
+      let r: Awaited<ReturnType<typeof salvaQ8Run>>;
       try {
-        await salvaTransazioniQ8({ anno: e.anno, mese: e.mese, parte, totaleParti, righe: righe.slice(parte * PEZZO, (parte + 1) * PEZZO) });
-      } catch (x) {
-        setTx({ stato: "errore", fatte, totale: righe.length, parte, errore: x instanceof Error ? x.message : String(x) });
+        r = await salvaQ8Run({
+          nomeFile: e.origine, hash: e.hash, anno: e.anno, mese: e.mese, righeExport: e.righeExport, tenute: e.tenute,
+          scartate: e.scartate.reduce((s, x) => s + x.n, 0), nonCensite: e.nonCensite.length, perIdentificativo: e.perIdentificativo.length,
+          totale: e.totale, totali: e.totali, anomalie: e.anomalie.map((a) => ({ ...a })),
+        });
+      } catch { r = { errore: NON_RIUSCITO }; }
+      if ("errore" in r) { setErroreSalva(r.errore); return; }
+      setSalvata(true);
+      router.refresh();
+      await avviaTransazioni();
+    } finally {
+      setSalvando(false);
+    }
+  };
+  /** Prepara un nuovo caricamento delle transazioni del file (nuovo id, parti sotto il limite) e lo manda. */
+  const avviaTransazioni = async () => {
+    if (!e) return;
+    caricamento.current = null;
+    try {
+      const righe = transazioniDaEsito(e);
+      if (!righe.length) {
+        setTx({ stato: "errore", fatte: 0, totale: 0, parte: 0, errore: "nel file non ci sono transazioni con data e litri validi: niente da salvare." });
         return;
       }
+      const { parti, chiavi } = partiDaInviare(righe, PEZZO, MAX_BYTE);
+      caricamento.current = { id: crypto.randomUUID(), parti, chiavi, totale: righe.length, inserite: 0, tolte: 0 };
+    } catch (x) {
+      setTx({ stato: "errore", fatte: 0, totale: 0, parte: 0, errore: x instanceof Error ? x.message : String(x) });
+      return;
     }
-    setTx({ stato: "fatto", fatte: righe.length, totale: righe.length, parte: totaleParti });
+    await inviaParti(0);
+  };
+  /**
+   * Transazioni riga per riga per l'incrocio con la telematica, una parte alla volta e in ordine; se una parte non va si
+   * riprende da lì con lo stesso caricamento. Solo l'ultima parte toglie dal mese le righe che non sono più nel file.
+   */
+  const inviaParti = async (daParte: number) => {
+    const c = caricamento.current;
+    if (!e || !c) return;
+    for (let parte = daParte; parte < c.parti.length; parte++) {
+      const fatte = c.parti.slice(0, parte).reduce((s, p) => s + p.length, 0);
+      const ultima = parte === c.parti.length - 1;
+      setTx({ stato: "invio", fatte, totale: c.totale, parte });
+      let r: EsitoParteQ8;
+      try {
+        r = await salvaTransazioniQ8({
+          caricamento: c.id, nomeFile: e.origine, hash: e.hash, anno: e.anno, mese: e.mese, parte, totaleParti: c.parti.length,
+          righe: c.parti[parte], inseriteFinora: c.inserite, ...(ultima ? { chiaviFile: c.chiavi } : {}),
+        });
+      } catch { r = { errore: NON_RIUSCITO }; }
+      if ("errore" in r) { setTx({ stato: "errore", fatte, totale: c.totale, parte, errore: r.errore }); return; }
+      c.inserite += r.inserite;
+      if (ultima) c.tolte = r.tolte ?? 0;
+    }
+    setTx({ stato: "fatto", fatte: c.totale, totale: c.totale, parte: c.parti.length, nuove: c.inserite, tolte: c.tolte });
   };
   const nScartate = e ? e.scartate.reduce((s, x) => s + x.n, 0) : 0;
 
@@ -127,14 +169,22 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
                 <select className="input h-10 w-36" value={filtro} onChange={(x) => setFiltro(x.target.value)}>{e.stazioni.map((s) => <option key={s}>{s}</option>)}</select>
               </label>
               <button type="button" className="btn-primary h-10" disabled={lavoro} onClick={genera}>Genera Excel</button> <Aiuto k="telepass.excel" />
-              {canRun && <button type="button" className="btn-secondary h-10" disabled={salvata} onClick={salva}>{salvata ? "Salvata ✓" : "Salva elaborazione"}</button>}
+              {canRun && <button type="button" className="btn-secondary h-10" disabled={salvata || salvando} onClick={salva}>{salvata ? "Salvata ✓" : salvando ? "Salvo…" : "Salva elaborazione"}</button>}
             </div>
+            {erroreSalva && <p className="mb-2 rounded-control bg-warn-soft px-4 py-3 text-sm text-warn" role="alert">Elaborazione non salvata. {erroreSalva}</p>}
             {tx?.stato === "invio" && <p className="mb-2 text-sm text-ink-muted" role="status">Salvo le transazioni per l&apos;incrocio con la telematica: {intero(tx.fatte)} su {intero(tx.totale)}…</p>}
-            {tx?.stato === "fatto" && <p className="mb-2 text-sm text-ok" role="status">Transazioni salvate per l&apos;incrocio con la telematica: {intero(tx.totale)}.</p>}
+            {tx?.stato === "fatto" && (
+              <p className="mb-2 text-sm text-ok" role="status">
+                Transazioni salvate per l&apos;incrocio con la telematica: {intero(tx.totale)}
+                {tx.nuove !== undefined && <> (nuove {intero(tx.nuove)}{tx.tolte ? <>, tolte {intero(tx.tolte)} che non sono più nel file</> : null})</>}.
+              </p>
+            )}
             {tx?.stato === "errore" && (
               <p className="mb-2 flex flex-wrap items-center gap-2 rounded-control bg-warn-soft px-4 py-3 text-sm text-warn" role="alert">
-                <span>Elaborazione salvata, ma le transazioni per l&apos;incrocio con la telematica si sono fermate a {intero(tx.fatte)} su {intero(tx.totale)}: {tx.errore}</span>
-                {tx.totale > 0 && <button type="button" className="btn-secondary h-9" onClick={() => inviaTransazioni(tx.parte)}>Riprova</button>}
+                {tx.totale > 0
+                  ? <span>Elaborazione salvata, ma le transazioni per l&apos;incrocio con la telematica si sono fermate a {intero(tx.fatte)} su {intero(tx.totale)}. {tx.errore?.replace(/\.$/, "")}. Le transazioni salvate prima restano tutte finché il caricamento non arriva in fondo.</span>
+                  : <span>Elaborazione salvata, ma le transazioni per l&apos;incrocio con la telematica non sono state salvate: {tx.errore}</span>}
+                {tx.totale > 0 && <button type="button" className="btn-secondary h-9" disabled={salvando} onClick={() => inviaParti(tx.parte)}>Riprova</button>}
               </p>
             )}
             {giaFatto && !salvata && <p className="mb-2 text-sm text-warn">{MESI[e.mese]} {e.anno} è già stato elaborato il {new Date(giaFatto.eseguitoIl).toLocaleDateString("it-IT")} da {giaFatto.eseguitoDa}: salvando ne registri una nuova versione.</p>}

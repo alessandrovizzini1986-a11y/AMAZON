@@ -3,21 +3,27 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { TOLLERANZE } from "@/domain/carburante/riconciliazione";
 import { segnaGuida } from "./actions";
-import { CHIAVE_GUIDA, EVENTO_GUIDA, STILE_STATO } from "./testi";
+import { LinkPagina } from "./LinkPagina";
+import { abilitata, chiaveGuidaLocale, EVENTO_GUIDA, NOME_PANNELLO, PAGINE, percorsoMenu, STILE_STATO } from "./testi";
 
 type Rett = { top: number; left: number; width: number; height: number };
 type Posto = { modo: "centro" } | { modo: "alto" } | { modo: "basso" } | { modo: "libero"; top: number; left: number };
-type Passo = { id: string; bersaglio: string; titolo: string; testo: React.ReactNode[] };
+type Passo = { id: string; bersaglio: string; titolo: string; testo: React.ReactNode[]; seVuoto?: string };
+type Esito = "completato" | "saltato";
 
 const MARGINE = 8, STRETTO = 640, LARGO = 420;
-const RIMANDATA = `${CHIAVE_GUIDA}:rimandata`;
 
 /** primo elemento visibile con quel data-guida */
 const trova = (b: string) => Array.from(document.querySelectorAll<HTMLElement>(`[data-guida~="${b}"]`)).find((e) => e.getClientRects().length > 0) ?? null;
 const pocoMoto = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const num = (x: number) => x.toLocaleString("it-IT");
+/** il tour del sito (components/Tour.tsx) è aperto: le sue classi sono nel DOM solo finché è visibile */
+const tourAperto = () => !!document.querySelector(".tour-scheda, .tour-faro");
+/** qualcosa occupa già lo schermo: il tour del sito o un dialog aperto (pannello, giustifica…) */
+const schermoOccupato = () => tourAperto() || !!document.querySelector("dialog[open]");
 
-function passi(t: typeof TOLLERANZE): Passo[] {
+function passi(t: typeof TOLLERANZE, nascosti: readonly string[]): Passo[] {
+  const giornataOk = abilitata(PAGINE.giornata, nascosti);
   return [
     {
       id: "incrocio", bersaglio: "schede", titolo: "Come funziona l'incrocio",
@@ -29,6 +35,7 @@ function passi(t: typeof TOLLERANZE): Passo[] {
     },
     {
       id: "badge", bersaglio: "tabella", titolo: "Come leggere il tipo e il delta",
+      seVuoto: "Con questi filtri ora l'elenco è vuoto: quando ci sono righe, ognuna ha il suo tipo e il suo delta.",
       testo: [
         <span key="b" className="flex flex-col gap-1">
           {(["SERBATOIO_FERMO", "LITRI", "LUOGO", "SENZA_Q8", "REGOLARE", "NON_VERIFICABILE"] as const).map((s) => (
@@ -40,9 +47,12 @@ function passi(t: typeof TOLLERANZE): Passo[] {
     },
     {
       id: "azioni", bersaglio: "azioni", titolo: "Controllare e chiudere una riga",
+      seVuoto: "Con questi filtri ora l'elenco è vuoto: i pulsanti compaiono accanto a ogni riga.",
       testo: [
-        <><b>Apri la giornata</b> porta alla Giornata di consegna di quel furgone: vedi il percorso, le soste e dove ha fatto gasolio.</>,
-        <>Quando hai capito il perché (furgone sostitutivo, sensore guasto, tanica…), premi <b>Giustifica / Archivia</b>, scegli il motivo e scrivi una nota. La riga sparisce e non conta più nei totali.</>,
+        giornataOk
+          ? <><b>Apri la giornata</b> porta alla Giornata di consegna di quel furgone: vedi il percorso, le soste e dove ha fatto gasolio.</>
+          : <>La <b>Giornata di consegna</b> mostrerebbe il percorso del furgone, ma per il tuo utente quella pagina non è abilitata.</>,
+        <>Quando hai capito il perché (furgone sostitutivo, sensore guasto, tanica…), premi <b>Giustifica / Archivia</b>, scegli il motivo e scrivi una nota. La riga sparisce e non conta più nei totali; se con dati nuovi diventa più grave, torna da sola con «stato cambiato dopo l&apos;archiviazione».</>,
         <>Con <b>Mostra archiviate</b> le rivedi, con chi e quando le ha chiuse; <b>Riapri</b> le rimette tra quelle da guardare.</>,
       ],
     },
@@ -56,8 +66,8 @@ function passi(t: typeof TOLLERANZE): Passo[] {
     {
       id: "dati", bersaglio: "alimenta", titolo: "Da dove arrivano i dati",
       testo: [
-        <>I pagamenti arrivano dal file Q8 del mese, caricato in <b>Carburante e Telepass → Q8</b>. I rifornimenti arrivano da soli ogni notte dalla telematica.</>,
-        <><b>Come alimentare i dati</b> spiega i passi e mostra cosa manca. Puoi rivedere questa guida quando vuoi con <b>Rivedi guida</b>.</>,
+        <>I pagamenti arrivano dal file Q8 del mese, caricato in <LinkPagina href={PAGINE.q8} nascosti={nascosti} className="font-medium text-brand underline">{percorsoMenu(PAGINE.q8)}</LinkPagina>. I rifornimenti arrivano da soli ogni notte dalla telematica.</>,
+        <><b>{NOME_PANNELLO}</b> spiega i passi e mostra cosa manca. Puoi rivedere questa guida quando vuoi con <b>Rivedi guida</b>.</>,
       ],
     },
   ];
@@ -65,13 +75,16 @@ function passi(t: typeof TOLLERANZE): Passo[] {
 
 /**
  * Guida della pagina: tappe che illuminano gli elementi veri (data-guida) con il resto in ombra.
- * Parte da sola la prima volta (se il server non l'ha segnata e il browser non la ricorda); "Rivedi guida" la riapre.
- * Indietro, Avanti, Salta; Esc la chiude; il fuoco resta nel riquadro.
+ * Parte da sola la prima volta: decide il server (TourVisto); il browser ricorda la guida, per utente, solo come ripiego
+ * se il salvataggio sul server non è riuscito. Non parte sopra il tour del sito e si chiude se il tour si apre.
+ * "Rivedi guida" la riapre. Indietro, Avanti, Salta; Esc la chiude; il fuoco resta nel riquadro.
  */
-export function GuidaCarburante({ vista, tolleranze }: { vista: boolean; tolleranze: typeof TOLLERANZE }) {
-  const lista = useMemo(() => passi(tolleranze), [tolleranze]);
+export function GuidaCarburante({ vista, tolleranze, utente, nascosti }: { vista: boolean; tolleranze: typeof TOLLERANZE; utente: string; nascosti: string[] }) {
+  const lista = useMemo(() => passi(tolleranze, nascosti), [tolleranze, nascosti]);
+  const chiaveLocale = chiaveGuidaLocale(utente), chiaveRimandata = `${chiaveLocale}:rimandata`;
   const [i, setI] = useState<number | null>(null);
   const [rect, setRect] = useState<Rett | null>(null);
+  const [vuoto, setVuoto] = useState(false);
   const [posto, setPosto] = useState<Posto>({ modo: "centro" });
   const scheda = useRef<HTMLDivElement>(null), titolo = useRef<HTMLHeadingElement>(null), prima = useRef<HTMLElement | null>(null);
   const passo = i === null ? null : lista[i];
@@ -82,45 +95,73 @@ export function GuidaCarburante({ vista, tolleranze }: { vista: boolean; tollera
     document.querySelectorAll<HTMLDialogElement>("dialog[open]").forEach((d) => d.close());
     setRect(null); setI(0);
   }, []);
-  const chiudi = useCallback(() => { setI(null); setRect(null); prima.current?.focus?.(); }, []);
-  const rimanda = useCallback(() => { try { sessionStorage.setItem(RIMANDATA, "1"); } catch { /* ok */ } chiudi(); }, [chiudi]);
-  const segna = useCallback((esito: "completato" | "saltato") => {
-    try { localStorage.setItem(CHIAVE_GUIDA, esito); } catch { /* ok */ }
-    void segnaGuida(esito).catch(() => { /* resta il segno nel browser */ });
+  const chiudi = useCallback((ridaiFuoco = true) => { setI(null); setRect(null); if (ridaiFuoco) prima.current?.focus?.(); }, []);
+  const rimanda = useCallback(() => { try { sessionStorage.setItem(chiaveRimandata, "1"); } catch { /* ok */ } chiudi(); }, [chiudi, chiaveRimandata]);
+  const segna = useCallback((esito: Esito) => {
+    // ripiego nel browser finché il server non conferma; poi non serve più
+    try { localStorage.setItem(chiaveLocale, esito); } catch { /* ok */ }
+    void segnaGuida(esito).then(() => { try { localStorage.removeItem(chiaveLocale); } catch { /* ok */ } }, () => { /* resta il segno nel browser */ });
     chiudi();
-  }, [chiudi]);
+  }, [chiudi, chiaveLocale]);
   const avanti = useCallback(() => { if (i === null) return; if (i === lista.length - 1) segna("completato"); else setI(i + 1); }, [i, lista.length, segna]);
   const indietro = useCallback(() => { if (i !== null && i > 0) setI(i - 1); }, [i]);
 
-  // partenza da sola alla prima apertura; "Rivedi guida" la riapre sempre
+  // partenza da sola alla prima apertura (quando lo schermo è libero); "Rivedi guida" la riapre sempre
   useEffect(() => {
     const suEvento = () => apri();
     window.addEventListener(EVENTO_GUIDA, suEvento);
-    let t: ReturnType<typeof setTimeout> | undefined;
+    let attesa: ReturnType<typeof setInterval> | undefined;
     if (!vista) {
-      let giaVista = true;
-      try { giaVista = !!localStorage.getItem(CHIAVE_GUIDA) || sessionStorage.getItem(RIMANDATA) === "1"; } catch { giaVista = true; }
-      if (!giaVista) t = setTimeout(apri, 700);
+      let locale: string | null = null, rimandata = false;
+      try { locale = localStorage.getItem(chiaveLocale); rimandata = sessionStorage.getItem(chiaveRimandata) === "1"; } catch { /* conta il server */ }
+      if (locale === "completato" || locale === "saltato") {
+        // il server non l'aveva registrata: riprovo in silenzio, senza riaprirla
+        void segnaGuida(locale).then(() => { try { localStorage.removeItem(chiaveLocale); } catch { /* ok */ } }, () => { /* riprova la prossima volta */ });
+      } else if (!rimandata) {
+        // aspetta che non ci siano il tour del sito o un dialog per un po' di fila: il tour parte da solo dopo mezzo secondo
+        let libero = 0;
+        attesa = setInterval(() => {
+          if (schermoOccupato()) { libero = 0; return; }
+          if (++libero >= 5) { clearInterval(attesa); attesa = undefined; apri(); }
+        }, 300);
+      }
     }
-    return () => { window.removeEventListener(EVENTO_GUIDA, suEvento); if (t) clearTimeout(t); };
-  }, [vista, apri]);
+    return () => { window.removeEventListener(EVENTO_GUIDA, suEvento); if (attesa) clearInterval(attesa); };
+  }, [vista, apri, chiaveLocale, chiaveRimandata]);
+
+  // se si apre il tour del sito mentre la guida è aperta, la guida si fa da parte (senza segnarla come vista)
+  useEffect(() => {
+    if (i === null) return;
+    const id = setInterval(() => { if (tourAperto()) chiudi(false); }, 400);
+    return () => clearInterval(id);
+  }, [i, chiudi]);
 
   // trova l'elemento della tappa, lo porta in vista e ne segue la posizione
   useEffect(() => {
     if (!passo) return;
+    // a ogni tappa si riparte da zero: niente faro rimasto sull'elemento della tappa prima
+    setRect(null); setVuoto(false);
     let el: HTMLElement | null = null, tentativi = 0, raf = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const misura = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (el) { const r = el.getBoundingClientRect(); setRect({ top: r.top, left: r.left, width: r.width, height: r.height }); } }); };
     const cerca = () => {
       el = trova(passo.bersaglio);
       if (!el) { if (++tentativi < 15) timer = setTimeout(cerca, 100); else setRect(null); return; }
-      const r = el.getBoundingClientRect(), testata = window.innerWidth < 768 ? 72 : 96;
-      if (r.top < testata || r.bottom > window.innerHeight - 40) window.scrollTo({ top: Math.max(0, window.scrollY + r.top - testata), behavior: pocoMoto() ? "auto" : "smooth" });
+      setVuoto(el.matches('[data-guida~="vuoto"]'));
+      const r = el.getBoundingClientRect(), testata = window.innerWidth < 768 ? 72 : 96, comporta: ScrollBehavior = pocoMoto() ? "auto" : "smooth";
+      if (r.height > window.innerHeight - testata - 40) {
+        // più alto dello schermo (la tabella intera): se ne mostra l'inizio, sotto la testata
+        if (r.top < testata || r.top > window.innerHeight / 2) window.scrollTo({ top: Math.max(0, window.scrollY + r.top - testata), behavior: comporta });
+      } else {
+        // al centro, anche in orizzontale: la colonna Azioni di una tabella che scorre di lato torna in vista
+        el.scrollIntoView({ block: "center", inline: "center", behavior: comporta });
+      }
       misura();
     };
     cerca();
-    window.addEventListener("scroll", misura, { passive: true }); window.addEventListener("resize", misura);
-    return () => { clearTimeout(timer); cancelAnimationFrame(raf); window.removeEventListener("scroll", misura); window.removeEventListener("resize", misura); };
+    // capture: segue anche lo scorrimento dei contenitori (la tabella che scorre di lato), non solo della pagina
+    window.addEventListener("scroll", misura, { passive: true, capture: true }); window.addEventListener("resize", misura);
+    return () => { clearTimeout(timer); cancelAnimationFrame(raf); window.removeEventListener("scroll", misura, { capture: true }); window.removeEventListener("resize", misura); };
   }, [passo]);
 
   // dove mettere il riquadro: sotto o sopra l'elemento (computer), attaccato in basso o in alto (telefono)
@@ -185,7 +226,9 @@ export function GuidaCarburante({ vista, tolleranze }: { vista: boolean; tollera
           <span className="shrink-0 text-xs font-medium text-ink-muted">{i + 1} di {lista.length}</span>
         </div>
         <h2 id="guida-carb-titolo" ref={titolo} tabIndex={-1} className="text-[19px] font-semibold tracking-tight outline-none">{passo.titolo}</h2>
-        <div className="mt-2 flex flex-col gap-2 text-sm leading-relaxed text-ink">
+        {/* un link nel testo porta via dalla pagina: la guida si chiude (vista, se era l'ultima tappa) */}
+        <div className="mt-2 flex flex-col gap-2 text-sm leading-relaxed text-ink" onClickCapture={(e) => { if ((e.target as HTMLElement).closest("a[href]")) { if (ultimo) segna("completato"); else rimanda(); } }}>
+          {vuoto && passo.seVuoto && <p className="rounded-control bg-surface px-3 py-1.5 text-[13px] text-ink-muted">{passo.seVuoto}</p>}
           {passo.testo.map((t, k) => <p key={k}>{t}</p>)}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">

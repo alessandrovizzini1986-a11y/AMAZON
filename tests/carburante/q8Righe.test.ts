@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Cell, SheetGrid } from "@/domain/presenze/grid";
-import { giornoQ8, numeroQ8, transazioniDaEsito } from "@/domain/carburante/q8Righe";
+import { createHmac } from "node:crypto";
+import { giornoQ8, LIMITI_INVIO_Q8, numeroQ8, partiDaInviare, transazioniDaEsito, type Q8TransazioneIn } from "@/domain/carburante/q8Righe";
+import { chiaveClientValida, chiaveQ8Da, panMascherato } from "@/lib/carburante/chiave";
 import { elaboraQ8 } from "@/domain/telepass/q8";
 import type { Carta } from "@/domain/telepass/anagrafiche";
 
@@ -19,7 +21,7 @@ describe("transazioni Q8 riga per riga", () => {
     const [t, ...resto] = transazioniDaEsito(esito([riga(base)]));
     expect(resto).toEqual([]);
     expect(t).toEqual({
-      chiave: expect.stringMatching(/^0001\|2026-08-31\|19:33:32\|36\.76\|79\.00\|[0-9a-f]{16}$/), mese: "2026-08", giorno: "2026-08-31", ora: "19:33:32", station: "DER2",
+      chiave: "7000000000000000001|2026-08-31|19:33:32|36.76|79.00", mese: "2026-08", giorno: "2026-08-31", ora: "19:33:32", station: "DER2",
       pan: "7000000000000000001", identificativo: "AMZ726", targaQ8: "AMZ726", prodotto: "GASOLIO", litri: 36.76, importo: 79, importoNoIva: 64.75,
       impianto: "1365", indirizzo: "VIA DI PROVA 1", citta: "CESENA", km: 5324,
     });
@@ -54,10 +56,9 @@ describe("transazioni Q8 riga per riga", () => {
     expect(k[1]).toBe(`${k[0]}#2`);
     expect(k[3]).toBe(`${k[0]}#3`);
     expect(k[2]).not.toBe(k[0]);
-    expect(k.every((x) => !x.includes("7000000000000000001"))).toBe(true);
-    // due carte con le stesse ultime 4 cifre non si confondono
+    expect(k.every(chiaveClientValida)).toBe(true);
+    // due carte con le stesse ultime 4 cifre non si confondono (la chiave client ha il PAN intero)
     const [x] = transazioniDaEsito(esito([riga({ ...base, "PAN Carta": "7999999999999990001" })]));
-    expect(x.chiave.slice(0, 4)).toBe(k[0].slice(0, 4));
     expect(x.chiave).not.toBe(k[0]);
   });
 
@@ -106,5 +107,99 @@ describe("transazioni Q8 riga per riga", () => {
     expect(numeroQ8(" 36,76 ")).toBe(36.76);
     expect(numeroQ8("1.234,5")).toBe(1234.5);
     expect(numeroQ8(true)).toBeNull();
+  });
+});
+
+describe("chiave non reversibile delle transazioni Q8", () => {
+  const SEGRETO = "0123456789abcdef".repeat(4);
+  const ALTRO = "fedcba9876543210".repeat(4);
+  const PAN = "7000000000000000001";
+  const client = `${PAN}|2026-08-31|19:33:32|36.76|79.00`;
+
+  it("stessa chiave client e stesso segreto = stessa chiave; segreto diverso = chiave diversa", () => {
+    expect(chiaveQ8Da(client, SEGRETO)).toBe(chiaveQ8Da(client, SEGRETO));
+    expect(chiaveQ8Da(client, ALTRO)).not.toBe(chiaveQ8Da(client, SEGRETO));
+  });
+
+  it("forma: ultime 4 cifre | giorno | ora | 20 caratteri dell'HMAC-SHA256 della chiave client", () => {
+    const k = chiaveQ8Da(client, SEGRETO);
+    expect(k).toMatch(/^0001\|2026-08-31\|19:33:32\|[0-9a-f]{20}$/);
+    expect(k.slice(-20)).toBe(createHmac("sha256", SEGRETO).update(client).digest("hex").slice(0, 20));
+  });
+
+  it("il PAN non compare: né intero né le prime cifre, né i litri e l'importo che servirebbero a rifare il calcolo", () => {
+    const k = chiaveQ8Da(client, SEGRETO);
+    expect(k).not.toContain(PAN);
+    expect(k).not.toContain(PAN.slice(0, 8));
+    expect(k).not.toContain("36.76");
+    expect(k).not.toContain("79.00");
+  });
+
+  it("righe uguali (#2) e carte con le stesse ultime 4 cifre danno chiavi diverse", () => {
+    const a = chiaveQ8Da(client, SEGRETO), b = chiaveQ8Da(`${client}#2`, SEGRETO), c = chiaveQ8Da(`7999999999999990001|2026-08-31|19:33:32|36.76|79.00`, SEGRETO);
+    expect(new Set([a, b, c]).size).toBe(3);
+    expect(c.slice(0, 4)).toBe(a.slice(0, 4));
+  });
+
+  it("dalle transazioni del file alla chiave salvata, come fa il server", () => {
+    const [t] = transazioniDaEsito(esito([riga(base)]));
+    expect(chiaveQ8Da(t.chiave, SEGRETO)).toBe(chiaveQ8Da(client, SEGRETO));
+    expect(panMascherato(t.pan)).toBe("…0001");
+    expect(panMascherato("")).toBe("");
+  });
+
+  it("chiavi client non valide o segreto troppo corto: errore", () => {
+    expect(() => chiaveQ8Da("0001|2026-08-31|19:33:32|abc", SEGRETO)).toThrow();
+    expect(() => chiaveQ8Da(`${client}#0`, SEGRETO)).toThrow();
+    expect(() => chiaveQ8Da(client, "corto")).toThrow();
+    expect(chiaveClientValida(`${client}#3`)).toBe(true);
+    expect(chiaveClientValida(`|2026-08-31|19:33:32|36.76|79.00`)).toBe(true); // riga senza PAN
+    expect(chiaveClientValida("x".repeat(200))).toBe(false);
+  });
+});
+
+describe("invio a parti", () => {
+  const finta = (i: number): Q8TransazioneIn => ({
+    chiave: `70000000000${String(i).padStart(8, "0")}|2026-08-10|08:00:00|30.00|60.00`, mese: "2026-08", giorno: "2026-08-10", ora: "08:00:00", station: "DER2",
+    pan: `70000000000${String(i).padStart(8, "0")}`, identificativo: "AMZ001", targaQ8: null, prodotto: "GASOLIO", litri: 30, importo: 60, importoNoIva: 49.18,
+    impianto: "42", indirizzo: "VIA DI PROVA 1", citta: "CESENA", km: null,
+  });
+  const peso = (x: unknown) => new TextEncoder().encode(JSON.stringify(x)).length;
+
+  it("parti in ordine, al massimo N righe; l'ultima porta le chiavi di tutto il file", () => {
+    const righe = Array.from({ length: 2500 }, (_, i) => finta(i));
+    const { parti, chiavi } = partiDaInviare(righe, 1000, 800_000);
+    expect(parti.map((p) => p.length)).toEqual([1000, 1000, 500]);
+    expect(parti.flat()).toEqual(righe);
+    expect(chiavi).toEqual(righe.map((r) => r.chiave));
+    // anche l'ultima chiamata (righe + chiavi) sta sotto il limite di 1 MB
+    expect(peso(parti[2]) + peso(chiavi)).toBeLessThan(800_000);
+  });
+
+  it("se le chiavi non stanno con le ultime righe vanno da sole in una parte in più; limite di byte rispettato", () => {
+    const righe = Array.from({ length: 300 }, (_, i) => finta(i));
+    const max = 60_000;
+    const { parti } = partiDaInviare(righe, 1000, max);
+    expect(parti.flat()).toHaveLength(300);
+    expect(parti.at(-1)).toEqual([]);
+    for (const p of parti) expect(peso(p)).toBeLessThanOrEqual(max);
+  });
+
+  it("anche con il massimo di transazioni ogni chiamata resta sotto 1 MB", () => {
+    const righe = Array.from({ length: LIMITI_INVIO_Q8.transazioniFile }, (_, i) => finta(i));
+    const { parti, chiavi } = partiDaInviare(righe);
+    expect(parti.flat()).toHaveLength(righe.length);
+    parti.forEach((p, i) => {
+      const ultima = i === parti.length - 1;
+      const corpo = { caricamento: "8f1c2b9e-0d3a-4c55-9a51-2f7d1e6b4c10", nomeFile: "x".repeat(300), hash: "a".repeat(64), anno: 2026, mese: 8, parte: i, totaleParti: parti.length, inseriteFinora: 0, righe: p, ...(ultima ? { chiaviFile: chiavi } : {}) };
+      expect(peso(corpo)).toBeLessThan(1_000_000);
+      expect(p.length).toBeLessThanOrEqual(LIMITI_INVIO_Q8.righePerParte);
+    });
+  });
+
+  it("nessuna transazione: nessuna parte; troppe: errore", () => {
+    expect(partiDaInviare([])).toEqual({ parti: [], chiavi: [] });
+    const troppe = Array.from({ length: LIMITI_INVIO_Q8.transazioniFile + 1 }, (_, i) => finta(i));
+    expect(() => partiDaInviare(troppe)).toThrow(/troppe transazioni/);
   });
 });

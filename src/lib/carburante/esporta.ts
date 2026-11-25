@@ -37,22 +37,35 @@ export const COLONNE_EXPORT: ColonnaExport[] = [
   { nome: "Carta", larghezza: 12, tipo: "testo", valore: (r) => carte(r) || null },
   { nome: "Distributore Q8", larghezza: 12, tipo: "testo", valore: (r) => impianti(r) || null },
   { nome: "Furgone abituale della carta", larghezza: 16, tipo: "testo", valore: (r) => (r.abituale ? `${r.abituale.targa} (${r.abituale.volte} su ${r.abituale.su})` : null) },
-  { nome: "Archiviata", larghezza: 40, tipo: "testo", valore: (r) => (r.archiviata ? [r.archiviata.motivo, r.archiviata.nota, `da ${r.archiviata.da}`, dataIt(r.archiviata.il)].filter(Boolean).join(" · ") : null) },
+  {
+    nome: "Archiviata", larghezza: 40, tipo: "testo",
+    valore: (r) => (r.archiviata ? [r.archiviata.motivo, r.archiviata.nota, `da ${r.archiviata.da}`, dataIt(r.archiviata.il)].filter(Boolean).join(" · ")
+      : r.statoCambiato ? `Stato cambiato dopo l'archiviazione: era «${ETICHETTA_STATO[r.statoCambiato.prima]}»` : null),
+  },
 ];
 
-/** Valore per il CSV: numeri con la virgola (Excel italiano), date gg/mm/aaaa. */
+/**
+ * Un testo che Excel (o LibreOffice) leggerebbe come formula: comincia, anche dopo spazi o tabulazioni, con = + - @.
+ * Indirizzi, motivi e note arrivano da file e portali esterni: non devono poter diventare formule.
+ */
+export const sembraFormula = (s: string) => /^[ \t\r\n]*[=+\-@]/.test(s);
+/** Testo per il CSV: davanti a una possibile formula va un apostrofo, così Excel la mostra come testo. */
+export const testoSicuro = (s: string) => (sembraFormula(s) ? `'${s}` : s);
+
+/** Valore per il CSV: numeri con la virgola (Excel italiano), date gg/mm/aaaa, testi senza formule. */
 function cellaCsv(c: ColonnaExport, r: RigaPagina): string {
   const v = c.valore(r);
   if (v === null || v === undefined || v === "") return "";
+  // i numeri (anche negativi, come il delta) restano numeri: la protezione vale solo per i testi
   if (typeof v === "number") return String(c.tipo === "euro" ? v.toFixed(2) : Math.round(v * 10) / 10).replace(".", ",");
   if (c.tipo === "data" && /^\d{4}-\d\d-\d\d$/.test(v)) return `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}`;
-  return v;
+  return testoSicuro(v);
 }
 const quota = (s: string) => (/[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
 
 /** CSV separato da ";" con BOM UTF-8 (si apre bene in Excel italiano). */
 export function csvRighe(righe: RigaPagina[]): string {
-  const linee = [COLONNE_EXPORT.map((c) => quota(c.nome)).join(";"), ...righe.map((r) => COLONNE_EXPORT.map((c) => quota(cellaCsv(c, r))).join(";"))];
+  const linee = [COLONNE_EXPORT.map((c) => quota(testoSicuro(c.nome))).join(";"), ...righe.map((r) => COLONNE_EXPORT.map((c) => quota(cellaCsv(c, r))).join(";"))];
   return `﻿${linee.join("\r\n")}\r\n`;
 }
 

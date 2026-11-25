@@ -1382,8 +1382,20 @@ model CarburanteGiustifica {
   mese     String
   motivo   String
   nota     String?
+  /** stato e numeri della riga quando è stata archiviata: se poi la riga peggiora, torna visibile */
+  stato      String?
+  deltaLitri Float?
+  euro       Float?
   creatoDa String
   creatoIl DateTime @default(now())
 
   @@index([mese])
+}
+
+// Segreti generati dal database alla migrazione (mai nel codice né nelle variabili d'ambiente):
+// "q8.chiave" rende non reversibile la chiave delle transazioni Q8, che arriva fino al browser.
+model SegretoInterno {
+  chiave   String   @id
+  valore   String
+  creatoIl DateTime @default(now())
 }

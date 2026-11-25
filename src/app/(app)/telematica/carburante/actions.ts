@@ -5,29 +5,36 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { CHIAVE_GUIDA } from "./testi";
+import { ORDINE_STATI, type Stato } from "@/domain/carburante/riconciliazione";
+import { CHIAVE_GUIDA, MOTIVI_GIUSTIFICA, MOTIVO_CON_NOTA, type MotivoGiustifica } from "./testi";
 
 // un file "use server" esporta solo funzioni async: le costanti stanno in testi.ts
 const PAGINA = "/telematica/carburante";
 
+const numero = z.number().finite().nullable();
 const Giustifica = z.object({
   chiave: z.string().trim().min(3).max(300),
   mese: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
-  motivo: z.string().trim().min(1).max(80),
+  motivo: z.enum(MOTIVI_GIUSTIFICA),
   nota: z.string().trim().max(500).optional().nullable(),
-});
+  // stato e numeri della riga al momento dell'archiviazione: se poi la riga peggiora, torna tra quelle da guardare
+  stato: z.enum(ORDINE_STATI as [Stato, ...Stato[]]),
+  deltaLitri: numero,
+  euro: numero,
+}).refine((x) => x.motivo !== MOTIVO_CON_NOTA || !!x.nota, { message: "Con «Altro» la nota è obbligatoria.", path: ["nota"] });
 
 /** Segna una riga dell'incrocio Q8 / telematica come verificata: sparisce dall'elenco e dai conteggi. Solo ADMIN. */
-export async function giustifica(input: { chiave: string; mese: string; motivo: string; nota?: string | null }) {
+export async function giustifica(input: { chiave: string; mese: string; motivo: MotivoGiustifica; nota?: string | null; stato: Stato; deltaLitri: number | null; euro: number | null }) {
   const user = await requireRole("ADMIN");
   const x = Giustifica.parse(input);
   const nota = x.nota ? x.nota : null;
+  const dati = { mese: x.mese, motivo: x.motivo, nota, stato: x.stato, deltaLitri: x.deltaLitri, euro: x.euro, creatoDa: user.name };
   await db.carburanteGiustifica.upsert({
     where: { chiave: x.chiave },
-    create: { chiave: x.chiave, mese: x.mese, motivo: x.motivo, nota, creatoDa: user.name },
-    update: { mese: x.mese, motivo: x.motivo, nota, creatoDa: user.name, creatoIl: new Date() },
+    create: { chiave: x.chiave, ...dati },
+    update: { ...dati, creatoIl: new Date() },
   });
-  await audit({ userId: user.id, action: "carburante.giustifica", entity: "CarburanteGiustifica", entityId: x.chiave, meta: { mese: x.mese, motivo: x.motivo, conNota: !!nota } });
+  await audit({ userId: user.id, action: "carburante.giustifica", entity: "CarburanteGiustifica", entityId: x.chiave, meta: { mese: x.mese, motivo: x.motivo, conNota: !!nota, stato: x.stato } });
   revalidatePath(PAGINA);
 }
 
