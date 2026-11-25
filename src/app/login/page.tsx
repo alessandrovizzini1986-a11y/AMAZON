@@ -1,15 +1,18 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { FestivitaLogin } from "@/components/festivita/FestivitaLogin";
 import { loginAction } from "./actions";
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(loginAction, undefined);
   const [showPassword, setShowPassword] = useState(false);
+  const colonna = useRef<HTMLDivElement>(null);
 
   return (
     <main className="auth-backdrop flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+      {/* relative z-10: il modulo resta sopra il livello delle decorazioni festive (z-index 0) */}
+      <div ref={colonna} className="relative z-10 w-full max-w-sm">
         <div className="card w-full p-8 shadow-lift">
           <div className="mb-8 text-center">
             {/* logo generato dal Brand Kit Canva (design DAHOu9CU_-c) */}
@@ -55,6 +58,8 @@ export default function LoginPage() {
         <p className="mt-6 text-center text-xs text-slate-400">
           FleetDSP · 8 stazioni, una sola fonte di verità
         </p>
+        {/* nei giorni di festa: accenti, interruttore e canvas (chunk lazy); negli altri giorni nulla */}
+        <FestivitaLogin colonna={colonna} />
       </div>
     </main>
   );

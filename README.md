@@ -76,3 +76,13 @@ Percorso di 10 giorni per la stagista in `/training` (ruolo **STAGISTA**: vede s
 - **Al volo, senza git:** su `/training/<giorno>` l'Admin ha "+ Aggiungi attività" (tabella `TrainingExtra`): compare in coda con l'etichetta "extra".
 - **Creare l'utente stagista:** da `/users` → Nuovo utente → ruolo "Stagista (training)" (password iniziale mostrata una volta), oppure `DATABASE_URL=… npx tsx scripts/crea-stagista.mts email Nome Cognome`.
 - **Validare un modulo:** ogni modulo ha un'attività `check` (campo `valida`). Quando la stagista la segna "Fatto", l'Admin preme "Validato" (sulla card del giorno o in `/training/admin`, sezione "Da validare"): il badge del modulo diventa verde. In `/training/admin` ci sono anche lo stato giorno per giorno, le note di giornata e l'export CSV.
+
+## Decorazioni festive della login
+
+Nei giorni delle festività italiane la pagina di login mostra un'animazione leggera (neve a Natale, tricolore il 25 aprile e il 2 giugno, foglie il 4 ottobre…). Tutto è generato da codice: niente immagini, niente librerie, niente CDN.
+
+- **Quando:** calendario in `src/domain/festivita.ts` (modulo puro, data locale del browser, Pasqua calcolata con `src/domain/pasqua.ts`). Al massimo una festa al giorno: se due finestre si sovrappongono vince la più corta (es. Pasquetta il 25 aprile → Liberazione).
+- **Anteprima per i test:** `/login?holiday=natale` (anche `pasqua`, `2giugno`, `4ottobre`, `capodanno`, `ferragosto`, `none` …). Il parametro vale solo per la pagina aperta e non entra nel flusso di accesso.
+- **Costo nei giorni feriali:** solo il controllo della data. Accenti e interruttore (`DecorFestivo`) e il motore canvas (`CanvasFestivo` + `motore.ts`) sono chunk separati scaricati solo in festa; il canvas solo se le decorazioni sono accese e il sistema non chiede movimento ridotto.
+- **Spegnerle:** l'interruttore «Decorazioni festive» (in basso a destra; su telefono sotto la card). La scelta resta nel browser, chiave `fleetdsp.decorazioni-festive` in localStorage. Con «riduci movimento» attivo nel sistema resta solo il piccolo accento fermo.
+- **Guardrail del canvas:** ~30 fps, devicePixelRatio ≤ 2, pausa a scheda nascosta e dopo 60 s senza input, al massimo 30 particelle su telefono e 70 su desktop, nessuna particella dietro il modulo di login. Colori solo dai token di `globals.css`.

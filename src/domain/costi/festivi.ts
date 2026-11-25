@@ -3,6 +3,8 @@
  * nazionali (dal 2026 anche il 4 ottobre, San Francesco), 24/12 e 31/12 (semifestivi, art. 10 Accordo) e patrono della
  * station. Mai il sabato.
  */
+import { pasqua } from "@/domain/pasqua";
+
 export const STATIONS_COSTI = ["DER1", "DER2", "DLO2", "DLO4", "DLO5", "DLZ2", "DVN1"] as const;
 export type StationCosti = (typeof STATIONS_COSTI)[number];
 
@@ -10,13 +12,8 @@ export type Festivo = { data: string; descrizione: string; station: string }; //
 
 const iso = (y: number, m: number, d: number) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
-/** Pasqua (algoritmo di Gauss / Meeus) → AAAA-MM-GG */
-export function pasqua(y: number): string {
-  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const mese = Math.floor((h + l - 7 * m + 114) / 31), giorno = ((h + l - 7 * m + 114) % 31) + 1;
-  return iso(y, mese, giorno);
-}
+/** Pasqua (algoritmo anonimo gregoriano di Meeus/Jones/Butcher) → AAAA-MM-GG: vive in un modulo a sé, condiviso con la login */
+export { pasqua };
 
 const piuGiorni = (d: string, n: number) => { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
