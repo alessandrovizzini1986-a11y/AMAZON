@@ -1304,3 +1304,26 @@ model UsoPagina {
   @@id([giorno, userId, voce])
   @@index([voce])
 }
+
+// Assenze e rotte del personale per mese, station e gruppo (SIC = dipendenti Professional Solutions, STD = somministrati Adecco),
+// ricavate dalle buste paga (LUL). Solo totali: nessun nome, nessun importo.
+model PersonaleMese {
+  mese           String // AAAA-MM (mese di lavoro, non quello della busta)
+  station        String
+  gruppo         String // SIC | STD
+  teste          Int // persone in busta
+  calendario     Boolean @default(true) // false = in busta non c'è il calendario: le assenze non sono note
+  rotte          Int? // giornate di consegna
+  rotteTd        Int     @default(0) // di cui di persone a tempo determinato (solo SIC; gli STD sono tutti a termine)
+  rotteStimate   Boolean @default(false)
+  ggMalattia     Int     @default(0)
+  ggInfortunio   Int     @default(0)
+  ggFerie        Int     @default(0)
+  ggRol          Int     @default(0)
+  ggExfest       Int     @default(0)
+  persMalattia   Int     @default(0)
+  persInfortunio Int     @default(0)
+  persAssenti    Int     @default(0) // persone con almeno un giorno di malattia o infortunio
+
+  @@id([mese, station, gruppo])
+}
