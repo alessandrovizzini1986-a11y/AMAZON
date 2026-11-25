@@ -12,7 +12,7 @@
  */
 import { addDays, weekday } from "./grid";
 import { ASSENZE_NON_RETRIB, ASSENZE_RETRIB, leggiLavoratori, type Lavoratore } from "./lavoratori";
-import { alertDelGiorno, type EsitoSettimanale, type TrackingInput } from "./controlloSettimanale";
+import { alertDelGiorno, nomeInElenco, type EsitoSettimanale, type TrackingInput } from "./controlloSettimanale";
 import { findTrackingSheet } from "./tracking";
 import { normName, type Station } from "./regole";
 
@@ -87,6 +87,22 @@ export const ORE_GIORNO_STR = 8;
 const chiavePersona = (l: Lavoratore) => (l.cf.trim().toUpperCase() || l.matricola || normName(l.nome));
 const lav = (g: OreGiorno | undefined) => (g ? g.std + g.sup + g.acc + g.str : 0);
 /** Il giorno ha una sigla di assenza retribuita nella riga RIPOSO, ma né ore di assenza né ore di lavoro. */
+// Festività nazionali a data fissa (più Pasquetta, che cambia): in quei giorni un'assenza segnata non chiede ore
+const FESTE_FISSE = new Set(["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"]);
+const giornoDiRiposoPerTutti = (d: string) => weekday(d) === 6 || FESTE_FISSE.has(d.slice(5));
+/**
+ * Assenza segnata con la sola sigla (es. «M» nella riga RIPOSO) senza ore. Le ore servono solo se quel giorno il lavoratore
+ * doveva lavorare "da contratto", e i giorni di contratto non sono nel tracking (chiarito dagli OS, deciso da Alessandro il 25/11/2026):
+ *  - MOG: non ha giorni fissi → non si chiede niente e la sigla non conta verso le 39 ore;
+ *  - part time: non si sa quali sono i suoi giorni → non si chiede niente, ma la sigla conta verso le 39 ore
+ *    (così uno Straordinario dopo una giornata di ferie non viene segnalato a torto);
+ *  - tempo pieno: si chiede solo se nella settimana ha meno di 5 giorni tra lavorati e assenze con le ore
+ *    (con 5 giorni già pieni, quello con la sigla è il suo giorno di riposo);
+ *  - domeniche e festivi: mai.
+ */
+const contaVerso39 = (x: Persona, c: Contratto, d: string) => assenzaSenzaOre(x, d) && c.tipo !== "MOG" && !giornoDiRiposoPerTutti(d);
+const giorniPieniDellaSettimana = (x: Persona, d: string) => { let l = d; while (weekday(l) !== 0) l = addDays(l, -1); return [0, 1, 2, 3, 4, 5, 6].filter((k) => { const o = x.giorni.get(addDays(l, k)); return !!o && (lav(o) > 0 || o.ass > 0); }).length; };
+const chiediLeOre = (x: Persona, c: Contratto, d: string) => contaVerso39(x, c, d) && c.tipo !== "PT" && giorniPieniDellaSettimana(x, d) < 5;
 const assenzaSenzaOre = (x: Persona, d: string) => { const sg = x.sigle?.get(d); const g = x.giorni.get(d); return !!sg && sg in SIGLE_ASSENZA && !(g && (g.ass > 0 || lav(g) > 0)); };
 const r1 = (x: number) => Math.round(x * 100) / 100;
 const it = (x: number) => String(r1(x)).replace(".", ",");
@@ -150,19 +166,19 @@ export function personeDelMese(tracking: TrackingInput[], mese: string, preceden
   }
   return { persone, coperti, avvisi };
 }
-export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT" | "ASS_ORE" | "DOPPIO";
+export type TipoRichiesta = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "7GG" | "STR_PRIMA" | "STD_OLTRE" | "SUP" | "RIPARTO" | "ASSENZE" | "STD_GIORNO" | "STR_SETT" | "ASS_ORE" | "DOPPIO" | "ID";
 export const ETICHETTA_TIPO: Record<TipoRichiesta, string> = {
   "+1": "Trasferta senza rotta Amazon", "-1": "Rotta Amazon ma zero ore", H: "Ore senza Amazon", A: "Su Amazon, non nel tracking",
   ORE: "Ore del giorno anomale", ACC: "Accordo di domenica (somministrati)", "7GG": "7 o più giorni di fila",
   STR_PRIMA: "Straordinario prima delle 39 ore", STD_OLTRE: "Standard oltre le ore di contratto",
-  SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana", ASS_ORE: "Assenza segnata senza le ore", DOPPIO: "Driver in tutti e due i tracking (STD e SIC)",
+  SUP: "Supplementare su un non part time", RIPARTO: "Ore della settimana da spostare", ASSENZE: "Ore e assenze: troppe nella settimana", STD_GIORNO: "Standard oltre 8h24 nel giorno", STR_SETT: "Straordinario oltre 12 h in settimana", ASS_ORE: "Assenza segnata senza le ore", DOPPIO: "Driver in tutti e due i tracking (STD e SIC)", ID: "ID di un altro driver nel suo blocco",
 };
 /**
  * Gruppi per il menu dei filtri: quattro domande al posto di quattordici tipi. Il tipo preciso resta nella colonna Tipo
  * e nei messaggi per gli OS.
  */
 export const GRUPPI_TIPO = [
-  { id: "DOPPIO", nome: "Driver in tutti e due i tracking (grave)", tipi: ["DOPPIO"] },
+  { id: "DOPPIO", nome: "Driver doppio o ID sbagliato (grave)", tipi: ["DOPPIO", "ID"] },
   { id: "GIORNI", nome: "Ha lavorato davvero? (tracking e Amazon non coincidono)", tipi: ["-1", "+1", "H", "A"] },
   { id: "ORE", nome: "Ore nella riga sbagliata", tipi: ["STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "ORE", "ASS_ORE"] },
   { id: "ACCORDO", nome: "Accordo di domenica (non più richiesto)", tipi: ["ACC"] },
@@ -171,7 +187,7 @@ export const GRUPPI_TIPO = [
 export const gruppoDi = (t: string) => GRUPPI_TIPO.find((g) => (g.tipi as readonly string[]).includes(t))?.id ?? "ORE";
 
 /** Ordine nel messaggio e nelle tabelle: prima le violazioni. */
-export const ORDINE_TIPO: TipoRichiesta[] = ["DOPPIO", "7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC", "ASS_ORE"];
+export const ORDINE_TIPO: TipoRichiesta[] = ["DOPPIO", "ID", "7GG", "STR_PRIMA", "STD_OLTRE", "SUP", "RIPARTO", "ASSENZE", "STR_SETT", "STD_GIORNO", "-1", "+1", "H", "A", "ORE", "ACC", "ASS_ORE"];
 
 export type Richiesta = {
   /** mese|station|pop|persona|tipo|riferimento: non contiene numeri che cambiano, così lo stato resta */
@@ -229,7 +245,7 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
   for (const x of persone) {
     const cop = coperti.get(`${x.station}|${x.pop}`) ?? new Set<string>();
     const c = leggiContratto(x.contratto);
-    const dispatcher = c.tipo === "DISPATCHER" || disp.has(normName(x.nome));
+    const dispatcher = c.tipo === "DISPATCHER" || nomeInElenco(disp, x.nome);
     const chi = x.cf || x.driverId || normName(x.nome);
     const nuova = (tipo: TipoRichiesta, rif: string, periodo: string, testo: string, breve: string) =>
       richieste.push({ chiave: `${p.mese}|${x.station}|${x.pop}|${chi}|${tipo}|${rif}`, mese: p.mese, station: x.station, pop: x.pop, driver: x.nome, tipo, rif, periodo, testo, breve });
@@ -244,7 +260,7 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
     }
 
     // Assenza segnata con la sigla ma senza ore: non è grave, ma senza le ore i conti della settimana non tornano
-    for (const [d, sg] of x.sigle ?? []) if (d >= da && d <= p.finoA && assenzaSenzaOre(x, d)) {
+    for (const [d, sg] of x.sigle ?? []) if (d >= da && d <= p.finoA && chiediLeOre(x, c, d)) {
       const riga = SIGLE_ASSENZA[sg];
       nuova("ASS_ORE", d, ddmm(d), `il ${ddmm(d)} c'è «${sg}» nella riga RIPOSO ma mancano le ore nella riga ${riga}: riesci a inserirle?`, `«${sg}» senza ore: inserire le ore nella riga ${riga}`);
     }
@@ -262,7 +278,7 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
       // assenza scritta solo come sigla nella riga RIPOSO (es. F) senza ore: per il conto della settimana vale una giornata
       // (solo per decidere se lo Straordinario è lecito: non entra nel controllo "ore + assenze troppe" né nei totali mostrati)
       // Contano verso le 39 anche le assenze non retribuite: le ore scritte nelle loro righe e le sigle (sciopero, PNR) senza ore.
-      const assSigle = dd.filter((d) => assenzaSenzaOre(x, d)).length * ORE_GIORNO_ASSENZA
+      const assSigle = dd.filter((d) => contaVerso39(x, c, d)).length * ORE_GIORNO_ASSENZA
         + g.reduce((a, o) => a + (o?.nr ?? 0), 0)
         + dd.filter((d) => { const sg = x.sigle?.get(d), o = x.giorni.get(d); return !!sg && SIGLE_NON_RETRIB.has(sg) && !(o && ((o.nr ?? 0) > 0 || lav(o) > 0)); }).length * ORE_GIORNO_ASSENZA;
       const tot = s.std + s.sup + s.acc + s.str, gg = g.filter((o) => lav(o) > 0).length;
@@ -388,6 +404,9 @@ export function richiesteDaAmazon(e: EsitoSettimanale, mese: string): Richiesta[
         breve: tipo === "+1" || tipo === "-1" || tipo === "H" ? IN_BREVE[tipo](r.ore, r.pacchi ?? null) : `${nota}: giusto?` });
     }
   }
+  // ID di un altro driver dentro il blocco: una richiesta per driver (grave: le ore finiscono alla persona sbagliata)
+  for (const a of e.anomalie) if (a.codice === "ID_ALTRUI") out.push({ chiave: `${mese}|${e.station}|${a.file}|${normName(a.driver)}|ID|${mese}-01`, mese, station: e.station, pop: a.file, driver: a.driver, tipo: "ID", rif: `${mese}-01`, periodo: mese.split("-").reverse().join("/"),
+    testo: `${a.anomalia}. Riesci a sistemare gli ID nel tracking?`, breve: a.breve ?? "Nel suo blocco c'è l'ID di un altro driver: va corretto" });
   for (const n of e.nonInTracking) if (n.categoria === "A") out.push({ chiave: `${mese}|${e.station}|AMAZON|${n.driverId}|A|${n.data}`, mese, station: e.station, pop: "AMAZON", driver: n.driver, tipo: "A", rif: n.data, periodo: ddmm(n.data), testo: `il ${ddmm(n.data)} ${CHIEDI.A} (Amazon ${n.pacchi} pacchi).`, breve: IN_BREVE.A(0, n.pacchi) });
   return out;
 }

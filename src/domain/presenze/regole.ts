@@ -23,6 +23,10 @@ export const IND_EUR = 22.5; // indennità di trasferta giornaliera
 /** Giustificativi della riga RIPOSO (regole/giustificativi.csv): chiudono il giorno senza alert. */
 export const GIUSTIFICATIVI_DEFAULT: { codice: string; descrizione: string }[] = [
   { codice: "MEZZI", descrizione: "spostamento mezzi" },
+  { codice: "SAME", descrizione: "same day (giro corto)" },
+  { codice: "SAMEDAY", descrizione: "same day (giro corto)" },
+  { codice: "SD", descrizione: "same day (giro corto)" },
+  { codice: "VISITA", descrizione: "visita medica" },
   { codice: "SM", descrizione: "spostamento mezzi" },
   { codice: "UFF", descrizione: "ufficio" },
   { codice: "UFFICIO", descrizione: "ufficio" },
@@ -88,3 +92,6 @@ export function stationFromName(fileName: string): Station | null {
   const up = fileName.toUpperCase();
   return STATIONS.find((s) => up.includes(s)) ?? null;
 }
+
+/** Codici "same day": giro corto, poche ore con la rotta Amazon. Scritti nella riga RIPOSO o in un commento di cella, spiegano le ore sotto soglia. */
+export const CODICI_SAME = new Set(["SAME", "SAMEDAY", "SD"]);
