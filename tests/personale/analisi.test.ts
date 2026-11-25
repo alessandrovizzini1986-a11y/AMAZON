@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tabellaTassi, tasso, analisi, indicatori, livelloDi, mesiAnomali, mesiValidi, riepilogo, rischio, somma, type RigaMese } from "@/domain/personale/analisi";
+import { piuAssenti, tabellaTassi, tasso, analisi, indicatori, livelloDi, mesiAnomali, mesiValidi, riepilogo, rischio, somma, type RigaMese } from "@/domain/personale/analisi";
 
 const r = (mese: string, station: string, gruppo: "SIC" | "STD", teste: number, mal: number, inf: number, ass: number, rotte = 1000, calendario = true): RigaMese =>
   ({ mese, station, gruppo, teste, calendario, rotte, rotteTd: 0, ggLavorati: rotte, ggMalattia: mal, ggInfortunio: inf, persMalattia: ass, persInfortunio: 0, persAssenti: ass });
@@ -48,6 +48,16 @@ describe("assenze del personale", () => {
     expect(tab.mesi).toEqual(["2026-02"]); expect(tab.stations.map((x) => x.station)).toEqual(["A", "B"]);
     expect(tab.stations[0].ytd.pct).toBe(5.3); expect(tab.network.ytd.lavorati).toBe(1620);
     expect(tabellaTassi([r("2026-02", "A", "SIC", 50, 60, 20, 10, 920), r("2026-03", "A", "SIC", 50, 100, 0, 10, 900)], "SIC").stations[0].perMese.map((x) => x.pct)).toEqual([8, 10]);
+  });
+  it("chi è stato più assente: somma per persona, filtra station, gruppo e mese, ordina per la misura scelta", () => {
+    const p = (mese: string, station: string, gruppo: "SIC" | "STD", codice: string, lav: number, mal: number, inf: number) => ({ mese, station, gruppo, codice, nome: codice === "9" ? "" : `Persona ${codice}`, ggLavorati: lav, ggMalattia: mal, ggInfortunio: inf });
+    const dati = [p("2026-02", "A", "SIC", "1", 15, 5, 0), p("2026-03", "A", "SIC", "1", 20, 0, 0), p("2026-03", "A", "SIC", "2", 0, 0, 22), p("2026-03", "A", "STD", "1", 18, 2, 0), p("2026-03", "B", "SIC", "9", 10, 10, 0), p("2026-03", "A", "SIC", "3", 20, 0, 0)];
+    const tutti = piuAssenti(dati, { vista: "TOTALE" });
+    expect(tutti.map((x) => [x.nome, x.station, x.gruppo, x.giorni])).toEqual([["Persona 2", "A", "SIC", 22], ["matricola 9", "B", "SIC", 10], ["Persona 1", "A", "SIC", 5], ["Persona 1", "A", "STD", 2]]);
+    expect(tutti[2]).toMatchObject({ lavorati: 35, pct: 12.5, mesi: 1 }); expect(tutti[0].pct).toBe(100);
+    expect(piuAssenti(dati, { vista: "SIC", station: "A", ordine: "malattia" }).map((x) => x.nome)).toEqual(["Persona 1"]);
+    expect(piuAssenti(dati, { vista: "TOTALE", mese: "2026-03", ordine: "infortunio" }).map((x) => x.nome)).toEqual(["Persona 2"]);
+    expect(piuAssenti(dati, { vista: "STD", mese: "2026-02" })).toEqual([]);
   });
   it("mesi anomali: solo con almeno 6 mesi e un salto vero", () => {
     const base = [10, 11, 9, 10, 12, 10, 11].map((v, i) => ({ mese: `2026-0${i + 1}`, persi100: v }));

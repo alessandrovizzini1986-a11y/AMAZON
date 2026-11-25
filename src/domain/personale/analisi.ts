@@ -178,3 +178,25 @@ export function tabellaTassi(tutte: RigaMese[], vista: Vista): { mesi: string[];
   const riga = (station: string, rr: RigaMese[]): RigaTasso => ({ station, perMese: mesi.map((m) => tasso(rr.filter((r) => r.mese === m))), ytd: tasso(rr) });
   return { mesi, stations: [...new Set(righe.map((r) => r.station))].sort().map((st) => riga(st, righe.filter((r) => r.station === st))), network: riga("Network", righe) };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Chi è stato più assente: per persona, in un mese o da inizio anno.
+
+export type RigaPersona = { mese: string; station: string; gruppo: Gruppo; codice: string; nome: string; ggLavorati: number; ggMalattia: number; ggInfortunio: number };
+export type Assente = { chiave: string; nome: string; station: string; gruppo: Gruppo; malattia: number; infortunio: number; giorni: number; lavorati: number; /** % sui giorni dovuti */ pct: number | null; /** mesi con almeno un giorno di assenza */ mesi: number };
+export type OrdineAssenti = "giorni" | "malattia" | "infortunio";
+
+/** Persone con almeno un giorno di assenza nel periodo, dalla più assente. `mese` vuoto = tutto il periodo. */
+export function piuAssenti(righe: RigaPersona[], f: { vista: Vista; station?: string; mese?: string; ordine?: OrdineAssenti }): Assente[] {
+  const per = new Map<string, Assente>();
+  for (const r of righe) {
+    if ((f.vista !== "TOTALE" && r.gruppo !== f.vista) || (f.station && r.station !== f.station) || (f.mese && r.mese !== f.mese)) continue;
+    const chiave = `${r.station}|${r.gruppo}|${r.codice}`;
+    const a = per.get(chiave) ?? { chiave, nome: r.nome || `matricola ${r.codice}`, station: r.station, gruppo: r.gruppo, malattia: 0, infortunio: 0, giorni: 0, lavorati: 0, pct: null, mesi: 0 };
+    a.malattia += r.ggMalattia; a.infortunio += r.ggInfortunio; a.lavorati += r.ggLavorati; if (r.ggMalattia + r.ggInfortunio > 0) a.mesi++;
+    per.set(chiave, a);
+  }
+  const k = f.ordine ?? "giorni", out: Assente[] = [];
+  for (const a of per.values()) { a.giorni = a.malattia + a.infortunio; if (a[k] <= 0) continue; const dovuti = a.lavorati + a.giorni; a.pct = dovuti ? Math.round((a.giorni / dovuti) * 1000) / 10 : null; out.push(a); }
+  return out.sort((x, y) => y[k] - x[k] || y.giorni - x.giorni || x.nome.localeCompare(y.nome));
+}
