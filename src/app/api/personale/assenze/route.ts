@@ -49,7 +49,7 @@ export async function GET() {
   for (const st of stations) { const x = rotteDi(st), t = x.std + x.ind + x.det; tot.std += x.std; tot.ind += x.ind; tot.det += x.det; rc.addRow([st, x.std, x.ind, x.det, t, pct(x.std, t), pct(x.ind, t)]); }
   const T = tot.std + tot.ind + tot.det; totale(rc.addRow(["Totale", tot.std, tot.ind, tot.det, T, pct(tot.std, T), pct(tot.ind, T)]));
   rc.addRow([`In una riga: su ${T.toLocaleString("it-IT")} rotte, ${Math.round(pct(tot.std, T) * 100)}% le hanno fatte gli STD, ${Math.round(pct(tot.ind, T) * 100)}% i SIC indeterminati, ${Math.round(pct(tot.det, T) * 100)}% i SIC determinati.`]).font = { bold: true };
-  if (stimati.length) rc.addRow([`Nota: per ${stimati.map(nomeMese).join(", ")} le rotte STD sono stimate (la busta di quel mese non ha il calendario).`]).font = { italic: true, color: { argb: "FF64748B" } };
+  if (stimati.length) rc.addRow([`Nota: per ${stimati.map(nomeMese).join(", ")} le rotte STD sono stimate: quota media STD della station nel resto dell'anno, applicata alle rotte fatturate ad Amazon in quel mese (la busta non ha il calendario).`]).font = { italic: true, color: { argb: "FF64748B" } };
   if (buchi.length) rc.addRow([`Nota: manca la busta STD di ${buchi.join(", ")}: quelle rotte non sono contate.`]).font = { italic: true, color: { argb: "FF64748B" } };
   rc.addRow([]);
   titolo(rc, `2. Malattia e infortuni (${periodo(mesiAss)})`, "Giorni ogni 100 lavoratori al mese. Priorità: da 0 a 100, più è alta più serve intervenire.");
@@ -70,7 +70,7 @@ export async function GET() {
   const rm = wb.addWorksheet("Rotte per mese");
   rm.columns = [16, 10, 10, 16, 15, 10, 10, 26].map((width) => ({ width }));
   testa(rm, ["Mese", "Station", "STD", "SIC indeterminati", "SIC determinati", "Totale", "% STD", "Nota"]);
-  for (const m of mesiRotte) for (const st of stations) { const c = cella(m, st), t = c.std + c.ind + c.det; rm.addRow([nomeMese(m), st, c.mancaStd ? "" : c.std, c.ind, c.det, t, c.mancaStd ? "" : pct(c.std, t), c.mancaStd ? "manca la busta STD" : c.stimate ? "rotte STD stimate" : ""]); }
+  for (const m of mesiRotte) for (const st of stations) { const c = cella(m, st), t = c.std + c.ind + c.det; rm.addRow([nomeMese(m), st, c.mancaStd ? "" : c.std, c.ind, c.det, t, c.mancaStd ? "" : pct(c.std, t), c.mancaStd ? "manca la busta STD" : c.stimate ? "rotte STD stimate: quota media dell'anno sulle rotte fatturate" : ""]); }
   rm.getColumn(7).numFmt = "0.0%";
 
   // ===== 3. Station: SIC e STD
