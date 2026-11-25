@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import type { Role } from "@prisma/client";
-import { bloccato } from "@/components/navModel";
+import { bloccato, SOLO_SUPER } from "@/components/navModel";
 
 const COOKIE = "fleet_session";
 const SESSION_HOURS = 12;
@@ -89,7 +89,7 @@ export async function requireUser(): Promise<SessionUser> {
   const session = await getSession();
   if (!session) redirect("/login");
   const f = await permessiFreschi(session.id);
-  const user: SessionUser = { ...session, superAdmin: f?.superAdmin ?? false, nascosti: f?.superAdmin ? [] : f?.menuNascosti ?? [] };
+  const user: SessionUser = { ...session, superAdmin: f?.superAdmin ?? false, nascosti: f?.superAdmin ? [] : [...(f?.menuNascosti ?? []), ...SOLO_SUPER] };
   // voce di menu tolta dal super admin: la pagina (e le sue chiamate) non si apre nemmeno scrivendo l'indirizzo a mano
   const percorso = (await headers()).get("x-percorso");
   if (percorso && bloccato(percorso, user.nascosti ?? [])) redirect("/");

@@ -1290,3 +1290,16 @@ model TelematicaLuogo {
 
   @@unique([station, luogo])
 }
+
+// Statistica d'uso del sito: una riga per giorno, persona e voce di menu (contatori, non la cronologia dei clic).
+// Serve a decidere, dati alla mano, cosa tenere, cosa ridurre e cosa togliere.
+model UsoPagina {
+  giorno  String // AAAA-MM-GG (giorno italiano)
+  userId  String
+  voce    String // href della voce di menu a cui appartiene la pagina, oppure "altro:/percorso"
+  visite  Int    @default(0)
+  secondi Int    @default(0) // tempo con la pagina in vista
+
+  @@id([giorno, userId, voce])
+  @@index([voce])
+}

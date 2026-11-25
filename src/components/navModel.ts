@@ -81,6 +81,7 @@ export const GRUPPI: Gruppo[] = [
   {
     id: "gestione", label: "Gestione", icon: "settings", voci: [
       { href: "/users", label: "Utenti", icon: "users", perm: "users.manage", descr: "chi entra, con che ruolo e password" },
+      { href: "/uso", label: "Uso del sito", icon: "dashboard", perm: "users.manage", descr: "quali pagine si usano davvero, e quali no" },
       { href: "/audit", label: "Registro attività", icon: "audit", perm: "audit.viewFull", descr: "chi ha fatto cosa, e quando" },
       { href: "/config", label: "Configurazione", icon: "settings", perm: "config.manage", descr: "impostazioni del sito" },
       { href: "/import", label: "Import iniziale", icon: "import", perm: "import.run", descr: "caricamenti massivi da Excel, di rado" },
@@ -102,10 +103,28 @@ export function menuPer(role: Role, nascosti: string[] = []): NavGroup[] {
 /** Tutte le voci visibili, in ordine. */
 export const vociPer = (role: Role, nascosti: string[] = []) => menuPer(role, nascosti).flatMap((g) => g.items);
 
-/** Le voci che un ruolo potrebbe vedere, per gruppo: è l'elenco dei flag che il super admin accende o spegne. */
-export const vociDelRuolo = (role: Role) => menuPer(role);
-
 const TUTTI_GLI_HREF = GRUPPI.flatMap((g) => g.voci.map((v) => v.href)).filter((h) => !h.includes("?"));
+
+/** Voci riservate al super admin: agli altri non compaiono mai e non si aprono (requireUser le aggiunge alle nascoste). */
+export const SOLO_SUPER = ["/uso"];
+
+/** Le voci che un ruolo potrebbe vedere, per gruppo: è l'elenco dei flag che il super admin accende o spegne. */
+export const vociDelRuolo = (role: Role) => menuPer(role, SOLO_SUPER);
+
+/**
+ * A quale voce di menu appartiene una pagina (quella con il percorso più lungo che combacia): è l'unità della statistica d'uso.
+ * Le pagine fuori menu finiscono sotto "altro:/primo-pezzo".
+ */
+export function voceDi(pathname: string): string {
+  const p = pathname.split("?")[0].replace(/\/+$/, "") || "/";
+  let voce: string | null = null;
+  for (const h of TUTTI_GLI_HREF) if ((p === h || p.startsWith(`${h}/`)) && (!voce || h.length > voce.length)) voce = h;
+  return voce ?? `altro:/${p.split("/")[1] ?? ""}`;
+}
+
+/** Tutte le voci del menu con gruppo ed etichetta, per la tabella della statistica (anche quelle mai aperte). */
+export const tutteLeVoci = () => GRUPPI.flatMap((g) => g.voci.filter((v) => !v.href.includes("?")).map((v) => ({ href: v.href, label: v.label, gruppo: g.label })));
+
 /**
  * Una pagina (o una sua chiamata /api/…) è bloccata se la voce di menu a cui appartiene è tra le nascoste.
  * Vale la voce con il percorso più lungo: nascondere "Costi del personale" non nasconde "Costi GLS".
