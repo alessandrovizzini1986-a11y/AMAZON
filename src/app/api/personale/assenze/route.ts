@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const righe: RigaMese[] = tutte.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", teste: r.teste, calendario: r.calendario, rotte: r.rotte, rotteTd: r.rotteTd, ggLavorati: r.ggLavorati, ggAltre: r.ggAltre, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, persMalattia: r.persMalattia, persInfortunio: r.persInfortunio, persAssenti: r.persAssenti }));
   const stations = [...new Set(tutte.map((r) => r.station))].sort();
   const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" }, station: { not: "GLS" } } });
-  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, ggAltre: r.ggAltre }));
+  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, ggAltre: r.ggAltre, ggNonRetribuite: r.ggNonRetribuite, ggIngiustificate: r.ggIngiustificate, ggMalattiaFiglio: r.ggMalattiaFiglio }));
   const mesiPers = [...new Set(persone.map((x) => x.mese))].sort();
 
   // --- rotte: i mesi in cui ci sono le buste dei SIC (arrivano un mese dopo)
@@ -131,13 +131,13 @@ export async function GET(req: NextRequest) {
   }
   top.views = [{ showGridLines: false }]; top.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
   const el = wb.addWorksheet("Persone da inizio anno");
-  el.columns = [10, 34, 9, 12, 12, 12, 12, 12, 13, 12].map((width) => ({ width }));
-  testa(el, ["Station", ...INT_P.slice(1)]);
-  for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st })) el.addRow([st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi]).getCell(9).numFmt = "0.0%";
+  el.columns = [10, 34, 9, 12, 12, 12, 12, 12, 13, 12, 13, 13, 13].map((width) => ({ width }));
+  testa(el, ["Station", ...INT_P.slice(1), "di cui non retribuite", "di cui ingiustificate", "di cui malattia figlio"]);
+  for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st })) el.addRow([st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi, x.nonRetribuite, x.ingiustificate, x.malattiaFiglio]).getCell(9).numFmt = "0.0%";
   const pm = wb.addWorksheet("Persone per mese");
-  pm.columns = [16, 10, 34, 9, 12, 12, 12, 12, 12, 13].map((width) => ({ width }));
-  testa(pm, ["Mese", "Station", "Persona", "Gruppo", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo"]);
-  for (const m of mesiPers) for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st, mese: m })) pm.addRow([nomeMese(m), st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct)]).getCell(10).numFmt = "0.0%";
+  pm.columns = [16, 10, 34, 9, 12, 12, 12, 12, 12, 13, 13, 13, 13].map((width) => ({ width }));
+  testa(pm, ["Mese", "Station", "Persona", "Gruppo", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo", "di cui non retribuite", "di cui ingiustificate", "di cui malattia figlio"]);
+  for (const m of mesiPers) for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st, mese: m })) pm.addRow([nomeMese(m), st, x.nome, x.gruppo, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.nonRetribuite, x.ingiustificate, x.malattiaFiglio]).getCell(10).numFmt = "0.0%";
 
   // ===== 2. Rotte per mese
   const rm = wb.addWorksheet("Rotte per mese");
@@ -192,7 +192,7 @@ async function excelGls() {
   const tutte = await db.personaleMese.findMany({ where: { mese: { gte: "2026-01" }, station: "GLS" }, orderBy: { mese: "asc" } });
   const righe: RigaMese[] = tutte.map((r) => ({ mese: r.mese, station: r.station, gruppo: "SIC", teste: r.teste, calendario: r.calendario, rotte: r.rotte, rotteTd: r.rotteTd, ggLavorati: r.ggLavorati, ggAltre: r.ggAltre, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, persMalattia: r.persMalattia, persInfortunio: r.persInfortunio, persAssenti: r.persAssenti }));
   const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" }, station: "GLS" } });
-  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: "SIC", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, ggAltre: r.ggAltre }));
+  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: "SIC", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, ggAltre: r.ggAltre, ggNonRetribuite: r.ggNonRetribuite, ggIngiustificate: r.ggIngiustificate, ggMalattiaFiglio: r.ggMalattiaFiglio }));
   const t = tabellaTassi(righe, "SIC"), mesi = t.mesi, n = t.network, a = analisi(righe, "SIC", mesi, persone);
   const periodo = mesi.length ? `${nomeMese(mesi[0])} – ${nomeMese(mesi[mesi.length - 1])}` : "nessun mese";
   const wb = new ExcelJS.Workbook(); wb.creator = "FleetDSP";
@@ -230,11 +230,11 @@ async function excelGls() {
   tutti.slice(0, 20).forEach((x, i) => { const r = top.addRow([i + 1, x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi]); r.getCell(8).numFmt = "0.0%"; r.getCell(6).font = { bold: true }; ultimo = r.number; });
   riquadra(top, ht.number, ultimo, 9); top.views = [{ showGridLines: false }];
   const el = wb.addWorksheet("Persone da inizio anno");
-  el.columns = [34, 12, 12, 12, 12, 12, 13, 12].map((width) => ({ width })); testa(el, INT.slice(1));
-  for (const x of tutti) el.addRow([x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi]).getCell(7).numFmt = "0.0%";
+  el.columns = [34, 12, 12, 12, 12, 12, 13, 12].map((width) => ({ width })); testa(el, [...INT.slice(1), "di cui ingiustificate", "di cui malattia figlio"]);
+  for (const x of tutti) el.addRow([x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi, x.ingiustificate + x.nonRetribuite, x.malattiaFiglio]).getCell(7).numFmt = "0.0%";
   const pm = wb.addWorksheet("Persone per mese");
-  pm.columns = [16, 34, 12, 12, 12, 12, 12, 13].map((width) => ({ width })); testa(pm, ["Mese", "Persona", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo"]);
-  for (const m of mesi) for (const x of piuAssenti(persone, { vista: "SIC", mese: m })) pm.addRow([nomeMese(m), x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct)]).getCell(8).numFmt = "0.0%";
+  pm.columns = [16, 34, 12, 12, 12, 12, 12, 13].map((width) => ({ width })); testa(pm, ["Mese", "Persona", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo", "di cui ingiustificate", "di cui malattia figlio"]);
+  for (const m of mesi) for (const x of piuAssenti(persone, { vista: "SIC", mese: m })) pm.addRow([nomeMese(m), x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.ingiustificate + x.nonRetribuite, x.malattiaFiglio]).getCell(8).numFmt = "0.0%";
   const dm = wb.addWorksheet("Dettaglio per mese");
   dm.columns = [16, 10, 12, 12, 12, 12, 10, 10, 12, 13, 13, 12].map((width) => ({ width }));
   testa(dm, ["Mese", "Autisti", "Giorni lavorati", "Giorni malattia", "Giorni infortunio", "Giorni altre assenze", "Giorni ferie", "Giorni ROL", "Giorni ex festività", "Persone in malattia", "Persone in infortunio", "Persone assenti"]);

@@ -70,7 +70,7 @@ export function AssenzeClient({ righe, persone, gls = false }: { righe: RigaMese
         {gls ? <Tessera titolo="Autisti (media al mese)" valore={String(a.network.headcount)} nota={`${a.sommaNetwork.ggLavorati.toLocaleString("it-IT")} giorni lavorati`} /> : <Tessera titolo="Station migliore" valore={migliore?.station ?? "—"} nota={migliore ? `rischio ${migliore.rischio} su 100` : undefined} />}
       </div>
 
-      {gls ? <TassiUnici righe={righe} /> : <Tassi righe={righe} vista={vista} />}
+      {gls ? <TassiUnici righe={righe} persone={persone} /> : <Tassi righe={righe} vista={vista} persone={persone} />}
 
       <Assenti persone={persone} vista={vista} fissa={gls ? "GLS" : undefined} />
 
@@ -262,7 +262,8 @@ function Calore({ righe, vista, mesi, stations }: { righe: RigaMese[]; vista: Vi
 }
 
 /** Assenteismo %: station per mese e da inizio anno, con la scelta totale / malattia / infortunio. */
-function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
+function Tassi({ righe, vista, persone }: { righe: RigaMese[]; vista: Vista; persone: RigaPersona[] }) {
+  const [scelta, setScelta] = useState<{ station?: string; mese?: string } | null>(null);
   const [misura, setMisura] = useState<"pct" | "malattiaPct" | "infortunioPct" | "altrePct">("pct");
   const t = useMemo(() => tabellaTassi(righe, vista), [righe, vista]);
   const comuni = useMemo(() => new Set(tabellaTassi(righe, "TOTALE").mesi), [righe]);
@@ -283,13 +284,14 @@ function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
             {[...t.stations, t.network].map((s) => (
               <tr key={s.station} className={s.station === "Network" ? "font-semibold" : ""}>
                 <th className="whitespace-nowrap pr-2 text-left font-semibold">{s.station}</th>
-                {s.perMese.map((x, i) => <td key={i} className="rounded px-1 py-1.5 text-center tabular-nums" style={{ background: s.station === "Network" ? "#F1F5F9" : fondo(x[misura]) }} title={`${s.station} ${mb(t.mesi[i])}: ${x.malattia} giorni di malattia, ${x.infortunio} di infortunio e ${x.altre} di altre assenze su ${x.lavorati + x.malattia + x.infortunio + x.altre} giorni dovuti`}>{p(x[misura])}</td>)}
-                <td className="rounded px-2 py-1.5 text-center font-semibold tabular-nums" style={{ background: "#E2E8F0" }} title={`${s.ytd.malattia} giorni di malattia, ${s.ytd.infortunio} di infortunio e ${s.ytd.altre} di altre assenze su ${s.ytd.lavorati + s.ytd.malattia + s.ytd.infortunio + s.ytd.altre} giorni dovuti`}>{p(s.ytd[misura])}</td>
+                {s.perMese.map((x, i) => <td key={i} role="button" tabIndex={0} onClick={() => setScelta({ station: s.station === "Network" ? undefined : s.station, mese: t.mesi[i] })} className="cursor-pointer rounded px-1 py-1.5 text-center tabular-nums hover:outline hover:outline-2 hover:outline-slate-400" style={{ background: s.station === "Network" ? "#F1F5F9" : fondo(x[misura]) }} title={`${s.station} ${mb(t.mesi[i])}: ${x.malattia} giorni di malattia, ${x.infortunio} di infortunio e ${x.altre} di altre assenze su ${x.lavorati + x.malattia + x.infortunio + x.altre} giorni dovuti`}>{p(x[misura])}</td>)}
+                <td role="button" tabIndex={0} onClick={() => setScelta({ station: s.station === "Network" ? undefined : s.station })} className="cursor-pointer rounded px-2 py-1.5 text-center font-semibold tabular-nums hover:outline hover:outline-2 hover:outline-slate-400" style={{ background: "#E2E8F0" }} title={`${s.ytd.malattia} giorni di malattia, ${s.ytd.infortunio} di infortunio e ${s.ytd.altre} di altre assenze su ${s.ytd.lavorati + s.ytd.malattia + s.ytd.infortunio + s.ytd.altre} giorni dovuti`}>{p(s.ytd[misura])}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {scelta ? <Dettaglio persone={persone} vista={vista} station={scelta.station} mese={scelta.mese} mesi={t.mesi} chiudi={() => setScelta(null)} /> : <p className="text-xs text-slate-500">Clicca un numero per vedere cosa c'è dentro: i giorni per tipo di assenza e le persone.</p>}
       <h3 className="mt-2 text-sm font-semibold">Da inizio anno: SIC + STD, SIC e STD a confronto <span className="font-normal text-slate-500">(stessi mesi per tutti: {comuni.size ? `${mb([...comuni][0])} – ${mb([...comuni][comuni.size - 1])}` : "—"})</span></h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -365,7 +367,8 @@ function Assenti({ persone, vista, fissa }: { persone: RigaPersona[]; vista: Vis
 }
 
 /** Assenteismo di un solo gruppo (autisti GLS): le quattro voci per mese e da inizio anno. */
-function TassiUnici({ righe }: { righe: RigaMese[] }) {
+function TassiUnici({ righe, persone }: { righe: RigaMese[]; persone: RigaPersona[] }) {
+  const [scelta, setScelta] = useState<{ mese?: string } | null>(null);
   const t = useMemo(() => tabellaTassi(righe, "SIC"), [righe]), n = t.network;
   const p = (v: number | null) => (v === null ? "—" : `${n1(v)}%`);
   const max = Math.max(1, ...n.perMese.map((x) => x.pct ?? 0));
@@ -379,14 +382,46 @@ function TassiUnici({ righe }: { righe: RigaMese[] }) {
             {voci.map(([nome, k], i) => (
               <tr key={k} className={i === 0 ? "font-semibold" : ""}>
                 <th className="whitespace-nowrap pr-2 text-left font-semibold">{nome}</th>
-                {n.perMese.map((x, j) => <td key={j} className="rounded px-1 py-1.5 text-center tabular-nums" style={{ background: `rgba(220, 38, 38, ${(((x[k] ?? 0) / max) * 0.5).toFixed(2)})` }} title={`${mb(t.mesi[j])}: ${x.malattia} giorni di malattia, ${x.infortunio} di infortunio, ${x.altre} di altre assenze, ${x.lavorati} lavorati`}>{p(x[k])}</td>)}
-                <td className="rounded px-2 py-1.5 text-center font-semibold tabular-nums" style={{ background: "#E2E8F0" }}>{p(n.ytd[k])}</td>
+                {n.perMese.map((x, j) => <td key={j} role="button" tabIndex={0} onClick={() => setScelta({ mese: t.mesi[j] })} className="cursor-pointer rounded px-1 py-1.5 text-center tabular-nums hover:outline hover:outline-2 hover:outline-slate-400" style={{ background: `rgba(220, 38, 38, ${(((x[k] ?? 0) / max) * 0.5).toFixed(2)})` }} title={`${mb(t.mesi[j])}: ${x.malattia} giorni di malattia, ${x.infortunio} di infortunio, ${x.altre} di altre assenze, ${x.lavorati} lavorati`}>{p(x[k])}</td>)}
+                <td role="button" tabIndex={0} onClick={() => setScelta({})} className="cursor-pointer rounded px-2 py-1.5 text-center font-semibold tabular-nums hover:outline hover:outline-2 hover:outline-slate-400" style={{ background: "#E2E8F0" }}>{p(n.ytd[k])}</td>
               </tr>
             ))}
             <tr className="text-slate-600"><th className="pr-2 text-left font-normal">Giorni lavorati</th>{n.perMese.map((x, j) => <td key={j} className="px-1 py-1 text-center tabular-nums">{x.lavorati.toLocaleString("it-IT")}</td>)}<td className="px-2 py-1 text-center tabular-nums">{n.ytd.lavorati.toLocaleString("it-IT")}</td></tr>
           </tbody>
         </table>
       </div>
+      {scelta ? <Dettaglio persone={persone} vista="SIC" station="GLS" mese={scelta.mese} mesi={t.mesi} chiudi={() => setScelta(null)} autisti /> : <p className="text-xs text-slate-500">Clicca un numero per vedere cosa c'è dentro: i giorni per tipo di assenza e le persone.</p>}
     </Riquadro>
   );
 }
+
+/** Cosa c'è dentro un numero: i giorni per tipo di assenza e le persone, per una station (o tutte) in un mese (o da inizio anno). */
+function Dettaglio({ persone, vista, station, mese, mesi, chiudi, autisti = false }: { persone: RigaPersona[]; vista: Vista; station?: string; mese?: string; mesi: string[]; chiudi: () => void; autisti?: boolean }) {
+  const [tutti, setTutti] = useState(false);
+  const elenco = useMemo(() => piuAssenti(mese ? persone : persone.filter((p) => mesi.includes(p.mese)), { vista, station, mese }), [persone, vista, station, mese, mesi]);
+  const tot = elenco.reduce((a, x) => ({ malattia: a.malattia + x.malattia, infortunio: a.infortunio + x.infortunio, altre: a.altre + x.altre, nr: a.nr + x.nonRetribuite, ing: a.ing + x.ingiustificate, mf: a.mf + x.malattiaFiglio }), { malattia: 0, infortunio: 0, altre: 0, nr: 0, ing: 0, mf: 0 });
+  const Voce = ({ nome, n, chi }: { nome: string; n: number; chi: number }) => <div className="rounded border border-slate-200 bg-white px-2.5 py-1.5"><div className="text-xs text-slate-500">{nome}</div><div className="font-semibold tabular-nums">{n} giorni <span className="font-normal text-slate-500">· {chi} {chi === 1 ? "persona" : "persone"}</span></div></div>;
+  const conta = (f: (x: Assente) => number) => elenco.filter((x) => f(x) > 0).length;
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-slate-300 bg-slate-50 p-3">
+      <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">{station ?? "Tutte le station"} · {mese ? `${MESI_LUNGHI[Number(mese.slice(5)) - 1]} ${mese.slice(0, 4)}` : "da inizio anno"}: {tot.malattia + tot.infortunio + tot.altre} giorni di assenza, {elenco.length} persone</h3><button className="btn-secondary text-xs" onClick={chiudi}>Chiudi</button></div>
+      <div className="grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-5">
+        <Voce nome="Malattia" n={tot.malattia} chi={conta((x) => x.malattia)} /><Voce nome="Infortunio" n={tot.infortunio} chi={conta((x) => x.infortunio)} />
+        <Voce nome="Altre: malattia figlio (MF)" n={tot.mf} chi={conta((x) => x.malattiaFiglio)} /><Voce nome="Altre: ingiustificate" n={tot.ing} chi={conta((x) => x.ingiustificate)} /><Voce nome="Altre: non retribuite" n={tot.nr} chi={conta((x) => x.nonRetribuite)} />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3 font-normal">Persona</th>{!station && <th className="py-1 pr-3 font-normal">Station</th>}{!autisti && <th className="py-1 pr-3 font-normal">Gruppo</th>}<th className="py-1 pr-3 text-right font-normal">Malattia</th><th className="py-1 pr-3 text-right font-normal">Infortunio</th><th className="py-1 pr-3 text-right font-normal">Malattia figlio</th><th className="py-1 pr-3 text-right font-normal">Ingiustificate</th><th className="py-1 pr-3 text-right font-normal">Non retribuite</th><th className="py-1 pr-3 text-right font-normal">Totale</th><th className="py-1 text-right font-normal">Lavorati</th></tr></thead>
+          <tbody>
+            {elenco.slice(0, tutti ? undefined : 12).map((x) => { const z = (v: number) => (v ? v : <span className="text-slate-300">·</span>); return (
+              <tr key={x.chiave} className="border-t border-slate-200"><td className="py-1 pr-3 font-medium">{x.nome}</td>{!station && <td className="py-1 pr-3">{x.station}</td>}{!autisti && <td className="py-1 pr-3 text-xs text-slate-600">{x.gruppo}</td>}
+                <td className="py-1 pr-3 text-right tabular-nums">{z(x.malattia)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.infortunio)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.malattiaFiglio)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.ingiustificate)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.nonRetribuite)}</td><td className="py-1 pr-3 text-right font-semibold tabular-nums">{x.giorni}</td><td className="py-1 text-right tabular-nums">{x.lavorati}</td></tr>); })}
+            {elenco.length === 0 && <tr><td colSpan={10} className="py-2 text-slate-500">Nessuna assenza.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {elenco.length > 12 && <button className="btn-secondary self-start text-xs" onClick={() => setTutti(!tutti)}>{tutti ? "Mostra solo i primi 12" : `Mostra tutti (${elenco.length})`}</button>}
+    </div>
+  );
+}
+const MESI_LUNGHI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
