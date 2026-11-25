@@ -23,8 +23,8 @@ function Riquadro({ titolo, sotto, children }: { titolo: string; sotto?: string;
   return <section className="card flex flex-col gap-2 p-4"><div><h2 className="text-base font-semibold">{titolo}</h2>{sotto && <p className="text-xs text-slate-500">{sotto}</p>}</div>{children}</section>;
 }
 
-export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: RigaPersona[] }) {
-  const [vista, setVista] = useState<Vista>("TOTALE");
+export function AssenzeClient({ righe, persone, gls = false }: { righe: RigaMese[]; persone: RigaPersona[]; gls?: boolean }) {
+  const [vista, setVista] = useState<Vista>(gls ? "SIC" : "TOTALE");
   const [periodo, setPeriodo] = useState<Periodo>("ANNO");
   const [station, setStation] = useState<string>("NETWORK");
 
@@ -54,11 +54,11 @@ export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        {(["TOTALE", "SIC", "STD"] as Vista[]).map((v) => <button key={v} className={vista === v ? "btn-primary" : "btn-secondary"} onClick={() => setVista(v)}>{v === "TOTALE" ? "SIC + STD" : v}</button>)}
-        <span className="mx-1 h-6 w-px bg-slate-200" />
+        {!gls && (["TOTALE", "SIC", "STD"] as Vista[]).map((v) => <button key={v} className={vista === v ? "btn-primary" : "btn-secondary"} onClick={() => setVista(v)}>{v === "TOTALE" ? "SIC + STD" : v}</button>)}
+        {!gls && <span className="mx-1 h-6 w-px bg-slate-200" />}
         {([["ANNO", "Da inizio anno"], ["6", "Ultimi 6 mesi"], ["3", "Ultimi 3 mesi"]] as [Periodo, string][]).map(([k, nome]) => <button key={k} className={periodo === k ? "btn-primary" : "btn-secondary"} onClick={() => setPeriodo(k)}>{nome}</button>)}
         <span className="text-slate-500">{mesi.length ? `${mb(mesi[0])} – ${mb(ultimo)} ${ultimo.slice(0, 4)} · ${mesi.length} mesi` : "nessun mese"}</span>
-        <a className="btn-secondary ml-auto" href="/api/personale/assenze" title="Excel con il recap, l'assenteismo, i fogli di dettaglio e i nomi delle persone più assenti (dati riservati). Scarica sempre tutto il periodo, non segue i filtri.">Scarica Excel</a>
+        <a className="btn-secondary ml-auto" href={gls ? "/api/personale/assenze?cliente=gls" : "/api/personale/assenze"} title="Excel con il recap, l'assenteismo, i fogli di dettaglio e i nomi delle persone più assenti (dati riservati). Scarica sempre tutto il periodo, non segue i filtri.">Scarica Excel</a>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
@@ -66,14 +66,15 @@ export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: 
         <Tessera titolo="Persone assenti" valore={`${n1(a.network.assentiPct)}%`} ora={iu?.assentiPct} prima={ip?.assentiPct} unita="%" />
         <Tessera titolo="Giorni di malattia ogni 100" valore={n1(a.network.malattia100)} ora={iu?.malattia100} prima={ip?.malattia100} />
         <Tessera titolo="Giorni di infortunio ogni 100" valore={n1(a.network.infortunio100)} ora={iu?.infortunio100} prima={ip?.infortunio100} />
-        <Tessera titolo="Station critiche" valore={String(critiche.length)} nota={critiche.map((s) => s.station).join(", ") || "nessuna"} />
-        <Tessera titolo="Station migliore" valore={migliore?.station ?? "—"} nota={migliore ? `rischio ${migliore.rischio} su 100` : undefined} />
+        {gls ? <Tessera titolo="Persone infortunate" valore={String(a.misNetwork.infortunati)} nota={`${n1(a.misNetwork.gravita)} giorni per infortunato`} /> : <Tessera titolo="Station critiche" valore={String(critiche.length)} nota={critiche.map((s) => s.station).join(", ") || "nessuna"} />}
+        {gls ? <Tessera titolo="Autisti (media al mese)" valore={String(a.network.headcount)} nota={`${a.sommaNetwork.ggLavorati.toLocaleString("it-IT")} giorni lavorati`} /> : <Tessera titolo="Station migliore" valore={migliore?.station ?? "—"} nota={migliore ? `rischio ${migliore.rischio} su 100` : undefined} />}
       </div>
 
-      <Tassi righe={righe} vista={vista} />
+      {gls ? <TassiUnici righe={righe} /> : <Tassi righe={righe} vista={vista} />}
 
-      <Assenti persone={persone} vista={vista} />
+      <Assenti persone={persone} vista={vista} fissa={gls ? "GLS" : undefined} />
 
+      {!gls && <>
       <Riquadro titolo="In breve" sotto="Le cose da sapere, in ordine di importanza">
         <ul className="flex flex-col gap-1.5 text-sm">
           {frasi.map((f, i) => <li key={i} className="flex gap-2"><span aria-hidden style={{ color: f.tono === "INFO" ? "#2563EB" : STATO[f.tono].colore }}>{f.tono === "INFO" ? "ℹ" : STATO[f.tono].segno}</span><span>{f.testo.replace(/(\d)\.(\d)(?!\d)/g, "$1,$2")}</span></li>)}
@@ -110,21 +111,23 @@ export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: 
         <Riquadro titolo="Chi pesa di più" sotto="Quota dei giorni persi del network contro quota delle persone: sopra la sua quota di persone, la station pesa più di quanto dovrebbe."><Quote s={a.stations} /></Riquadro>
       </div>
 
-      <Riquadro titolo="Andamento mese per mese: SIC e STD" sotto="Tre misure, ognuna con la sua scala">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
+      </>}
+
+      <Riquadro titolo={gls ? "Andamento mese per mese" : "Andamento mese per mese: SIC e STD"} sotto="Tre misure, ognuna con la sua scala">
+        <div className={gls ? "hidden" : "flex flex-wrap items-center gap-2 text-sm"}>
           <select className="input w-auto" value={station} onChange={(e) => setStation(e.target.value)} aria-label="Station"><option value="NETWORK">Tutto il network</option>{a.stations.map((s) => s.station).sort().map((s) => <option key={s}>{s}</option>)}</select>
           <span className="flex items-center gap-1 text-xs"><span className="inline-block h-0.5 w-5" style={{ background: SERIE.SIC }} />SIC</span>
           <span className="flex items-center gap-1 text-xs"><span className="inline-block h-0.5 w-5" style={{ background: SERIE.STD }} />STD</span>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
-          {([["assentiPct", "Persone assenti (%)"], ["malattia100", "Giorni di malattia ogni 100 lavoratori"], ["infortunio100", "Giorni di infortunio ogni 100 lavoratori"]] as const).map(([k, titolo]) => <Linee key={k} titolo={titolo} chiave={k} righe={righe} mesi={mesiValidi(righe, "SIC").concat(mesiValidi(righe, "STD")).filter((m, i, x) => x.indexOf(m) === i).sort().filter((m) => periodo === "ANNO" || mesi.includes(m))} station={station === "NETWORK" ? undefined : station} />)}
+          {([["assentiPct", "Persone assenti (%)"], ["malattia100", "Giorni di malattia ogni 100 lavoratori"], ["infortunio100", "Giorni di infortunio ogni 100 lavoratori"]] as const).map(([k, titolo]) => <Linee key={k} titolo={titolo} chiave={k} righe={righe} mesi={mesiValidi(righe, "SIC").concat(mesiValidi(righe, "STD")).filter((m, i, x) => x.indexOf(m) === i).sort().filter((m) => periodo === "ANNO" || mesi.includes(m))} station={station === "NETWORK" ? undefined : station} nomeSic={gls ? "" : "SIC"} />)}
         </div>
       </Riquadro>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      {!gls && <div className="grid gap-5 lg:grid-cols-2">
         <Riquadro titolo="SIC contro STD per station" sotto="Giorni persi (malattia + infortunio) ogni 100 lavoratori al mese"><Gruppi s={a.stations} /></Riquadro>
         <Riquadro titolo="Station per mese" sotto="Giorni persi ogni 100 lavoratori: più scuro = più giorni persi"><Calore righe={righe} vista={vista} mesi={mesi} stations={a.stations.map((s) => s.station).sort()} /></Riquadro>
-      </div>
+      </div>}
 
       <details className="card p-4 text-sm text-slate-700">
         <summary className="cursor-pointer font-semibold">Come sono fatti i conti</summary>
@@ -191,7 +194,7 @@ function Quote({ s }: { s: SchedaStation[] }) {
 }
 
 /** Una misura nel tempo, SIC e STD, con la sua scala (mai due scale nello stesso grafico). */
-function Linee({ titolo, chiave, righe, mesi, station }: { titolo: string; chiave: "assentiPct" | "malattia100" | "infortunio100"; righe: RigaMese[]; mesi: string[]; station?: string }) {
+function Linee({ titolo, chiave, righe, mesi, station, nomeSic = "SIC" }: { titolo: string; chiave: "assentiPct" | "malattia100" | "infortunio100"; righe: RigaMese[]; mesi: string[]; station?: string; nomeSic?: string }) {
   const W = 320, H = 190, L = 34, B = 24, T = 16, R = 34;
   const serie = (g: "SIC" | "STD") => { const validi = new Set(mesiValidi(righe, g)); return serieMensile(righe, g, mesi.filter((m) => validi.has(m)), station).map((p) => ({ mese: p.mese, v: p[chiave] })); };
   const sic = serie("SIC"), std = serie("STD"), max = Math.max(1, ...sic.map((p) => p.v), ...std.map((p) => p.v)) * 1.1;
@@ -208,7 +211,7 @@ function Linee({ titolo, chiave, righe, mesi, station }: { titolo: string; chiav
           <g key={g}>
             <polyline fill="none" stroke={SERIE[g]} strokeWidth="2" strokeLinejoin="round" points={pp.map((p) => `${x(p.mese)},${y(p.v)}`).join(" ")} />
             {pp.map((p) => <circle key={p.mese} cx={x(p.mese)} cy={y(p.v)} r="4" fill={SERIE[g]} stroke="#fff" strokeWidth="1.5"><title>{`${g} ${mb(p.mese)}: ${n1(p.v)}`}</title></circle>)}
-            <text x={x(pp[pp.length - 1].mese) + 7} y={y(pp[pp.length - 1].v) + 4} fontSize="11" fontWeight="600" fill={INK}>{g}</text>
+            <text x={x(pp[pp.length - 1].mese) + 7} y={y(pp[pp.length - 1].v) + 4} fontSize="11" fontWeight="600" fill={INK}>{g === "SIC" ? nomeSic : g}</text>
           </g>
         ))}
       </svg>
@@ -309,8 +312,8 @@ function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
 }
 
 /** Chi è stato più assente: un colpo d'occhio per station, oppure l'elenco di una station; in un mese o da inizio anno. */
-function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
-  const [station, setStation] = useState(""), [mese, setMese] = useState(""), [ordine, setOrdine] = useState<OrdineAssenti>("giorni"), [tutti, setTutti] = useState(false);
+function Assenti({ persone, vista, fissa }: { persone: RigaPersona[]; vista: Vista; fissa?: string }) {
+  const [station, setStation] = useState(fissa ?? ""), [mese, setMese] = useState(""), [ordine, setOrdine] = useState<OrdineAssenti>("giorni"), [tutti, setTutti] = useState(false);
   const stations = useMemo(() => [...new Set(persone.map((p) => p.station))].sort(), [persone]);
   const mesi = useMemo(() => [...new Set(persone.filter((p) => vista === "TOTALE" || p.gruppo === vista).map((p) => p.mese))].sort(), [persone, vista]);
   const meseOk = mesi.includes(mese) ? mese : "";
@@ -321,7 +324,7 @@ function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
   return (
     <Riquadro titolo="Chi è stato più assente" sotto={`Persone con più giorni di ${ordine === "giorni" ? "assenza (malattia, infortunio, altre)" : ordine === "altre" ? "altre assenze (non retribuite, ingiustificate, malattia figlio)" : ordine} ${meseOk ? `a ${mb(meseOk)}` : "da inizio anno"}. Dati personali: li vedi solo tu.`}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <select className="input w-auto" value={station} onChange={(e) => { setStation(e.target.value); setTutti(false); }} aria-label="Station"><option value="">Tutte le station (primi 5)</option>{stations.map((s) => <option key={s}>{s}</option>)}</select>
+        <select className={fissa ? "hidden" : "input w-auto"} value={station} onChange={(e) => { setStation(e.target.value); setTutti(false); }} aria-label="Station"><option value="">Tutte le station (primi 5)</option>{stations.map((s) => <option key={s}>{s}</option>)}</select>
         <select className="input w-auto" value={meseOk} onChange={(e) => setMese(e.target.value)} aria-label="Periodo"><option value="">Da inizio anno</option>{mesi.map((m) => <option key={m} value={m}>{MESI[Number(m.slice(5)) - 1]} {m.slice(0, 4)}</option>)}</select>
         {([["giorni", "Tutte le assenze"], ["malattia", "Malattia"], ["infortunio", "Infortunio"], ["altre", "Altre assenze"]] as [OrdineAssenti, string][]).map(([k, nome]) => <button key={k} className={ordine === k ? "btn-primary" : "btn-secondary"} onClick={() => setOrdine(k)}>{nome}</button>)}
       </div>
@@ -345,7 +348,7 @@ function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
               <tbody>
                 {righeStation.slice(0, tutti ? undefined : 10).map((a, i) => (
                   <tr key={a.chiave} className="border-t border-slate-100">
-                    <td className="py-1.5 pr-2 tabular-nums text-slate-500">{i + 1}</td><td className="py-1.5 pr-3 font-medium">{a.nome}</td><td className="py-1.5 pr-3"><Gr g={a.gruppo} /></td>
+                    <td className="py-1.5 pr-2 tabular-nums text-slate-500">{i + 1}</td><td className="py-1.5 pr-3 font-medium">{a.nome}</td><td className="py-1.5 pr-3">{fissa ? "Autista" : <Gr g={a.gruppo} />}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums">{a.malattia}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.infortunio}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.altre}</td><td className="py-1.5 pr-3 text-right font-semibold tabular-nums">{a.giorni}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums">{a.lavorati}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.pct === null ? "—" : `${n1(a.pct)}%`}</td>{!meseOk && <td className="py-1.5 text-right tabular-nums">{a.mesi}</td>}
                   </tr>
@@ -357,6 +360,33 @@ function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
           {righeStation.length > 10 && <button className="btn-secondary self-start text-sm" onClick={() => setTutti(!tutti)}>{tutti ? "Mostra solo i primi 10" : `Mostra tutti (${righeStation.length})`}</button>}
         </>
       )}
+    </Riquadro>
+  );
+}
+
+/** Assenteismo di un solo gruppo (autisti GLS): le quattro voci per mese e da inizio anno. */
+function TassiUnici({ righe }: { righe: RigaMese[] }) {
+  const t = useMemo(() => tabellaTassi(righe, "SIC"), [righe]), n = t.network;
+  const p = (v: number | null) => (v === null ? "—" : `${n1(v)}%`);
+  const max = Math.max(1, ...n.perMese.map((x) => x.pct ?? 0));
+  const voci = [["Assenteismo", "pct"], ["di cui malattia", "malattiaPct"], ["di cui infortunio", "infortunioPct"], ["di cui altre assenze", "altrePct"]] as const;
+  return (
+    <Riquadro titolo="Assenteismo degli autisti: mese per mese e da inizio anno" sotto="Giorni di assenza sui giorni in cui si doveva lavorare. Malattia + infortunio + altre assenze (non retribuite, ingiustificate, malattia figlio) = assenteismo. Scioperi, ferie e permessi retribuiti non contano.">
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate text-sm" style={{ borderSpacing: 2 }}>
+          <thead><tr className="text-slate-500"><th />{t.mesi.map((m) => <th key={m} className="px-1 font-normal">{mb(m)}</th>)}<th className="px-2 font-semibold text-slate-700">Da inizio anno</th></tr></thead>
+          <tbody>
+            {voci.map(([nome, k], i) => (
+              <tr key={k} className={i === 0 ? "font-semibold" : ""}>
+                <th className="whitespace-nowrap pr-2 text-left font-semibold">{nome}</th>
+                {n.perMese.map((x, j) => <td key={j} className="rounded px-1 py-1.5 text-center tabular-nums" style={{ background: `rgba(220, 38, 38, ${(((x[k] ?? 0) / max) * 0.5).toFixed(2)})` }} title={`${mb(t.mesi[j])}: ${x.malattia} giorni di malattia, ${x.infortunio} di infortunio, ${x.altre} di altre assenze, ${x.lavorati} lavorati`}>{p(x[k])}</td>)}
+                <td className="rounded px-2 py-1.5 text-center font-semibold tabular-nums" style={{ background: "#E2E8F0" }}>{p(n.ytd[k])}</td>
+              </tr>
+            ))}
+            <tr className="text-slate-600"><th className="pr-2 text-left font-normal">Giorni lavorati</th>{n.perMese.map((x, j) => <td key={j} className="px-1 py-1 text-center tabular-nums">{x.lavorati.toLocaleString("it-IT")}</td>)}<td className="px-2 py-1 text-center tabular-nums">{n.ytd.lavorati.toLocaleString("it-IT")}</td></tr>
+          </tbody>
+        </table>
+      </div>
     </Riquadro>
   );
 }

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -12,12 +12,13 @@ const FONDO: Record<Livello, string> = { OK: "FFDCFCE7", ATTENZIONE: "FFFEF9C3",
 const BLU = "FF1E3A5F", GRIGIO = "FFF1F5F9";
 
 /** Excel "Rotte e assenze SIC e STD": primo foglio = recap da leggere in un minuto, poi i fogli di dettaglio. Solo super admin. */
-export async function GET() {
+export async function GET(req: NextRequest) {
   await requireSuperAdmin();
-  const tutte = await db.personaleMese.findMany({ where: { mese: { gte: "2026-01" } }, orderBy: [{ mese: "asc" }, { station: "asc" }, { gruppo: "asc" }] });
+  if (req.nextUrl.searchParams.get("cliente") === "gls") return excelGls();
+  const tutte = await db.personaleMese.findMany({ where: { mese: { gte: "2026-01" }, station: { not: "GLS" } }, orderBy: [{ mese: "asc" }, { station: "asc" }, { gruppo: "asc" }] });
   const righe: RigaMese[] = tutte.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", teste: r.teste, calendario: r.calendario, rotte: r.rotte, rotteTd: r.rotteTd, ggLavorati: r.ggLavorati, ggAltre: r.ggAltre, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, persMalattia: r.persMalattia, persInfortunio: r.persInfortunio, persAssenti: r.persAssenti }));
   const stations = [...new Set(tutte.map((r) => r.station))].sort();
-  const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" } } });
+  const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" }, station: { not: "GLS" } } });
   const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, ggAltre: r.ggAltre }));
   const mesiPers = [...new Set(persone.map((x) => x.mese))].sort();
 
@@ -184,4 +185,70 @@ export async function GET() {
   for (const ws of [rm, sg, dm, el, pm]) { ws.views = [{ state: "frozen", ySplit: 1 }]; ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } }; ws.eachRow((r, n) => { if (n > 1) r.eachCell((c) => { if (typeof c.value === "number" && !c.numFmt) c.numFmt = Number.isInteger(c.value) ? "#,##0" : "#,##0.0"; }); }); }
   const buf = await wb.xlsx.writeBuffer();
   return new NextResponse(buf as ArrayBuffer, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="Rotte_e_assenze_SIC_STD_${mesiRotte[mesiRotte.length - 1] ?? "2026"}.xlsx"`, "Cache-Control": "no-store" } });
+}
+
+/** Excel degli autisti GLS: un solo gruppo, quindi recap per mese, persone più assenti e dettaglio. */
+async function excelGls() {
+  const tutte = await db.personaleMese.findMany({ where: { mese: { gte: "2026-01" }, station: "GLS" }, orderBy: { mese: "asc" } });
+  const righe: RigaMese[] = tutte.map((r) => ({ mese: r.mese, station: r.station, gruppo: "SIC", teste: r.teste, calendario: r.calendario, rotte: r.rotte, rotteTd: r.rotteTd, ggLavorati: r.ggLavorati, ggAltre: r.ggAltre, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, persMalattia: r.persMalattia, persInfortunio: r.persInfortunio, persAssenti: r.persAssenti }));
+  const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" }, station: "GLS" } });
+  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: "SIC", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, ggAltre: r.ggAltre }));
+  const t = tabellaTassi(righe, "SIC"), mesi = t.mesi, n = t.network, a = analisi(righe, "SIC", mesi, persone);
+  const periodo = mesi.length ? `${nomeMese(mesi[0])} – ${nomeMese(mesi[mesi.length - 1])}` : "nessun mese";
+  const wb = new ExcelJS.Workbook(); wb.creator = "FleetDSP";
+  const fr = (x: number | null) => (x === null ? "" : x / 100), BORDO = { style: "thin" as const, color: { argb: "FFCBD5E1" } };
+  const titolo = (ws: ExcelJS.Worksheet, testo: string, sotto?: string) => { ws.addRow([testo]).font = { bold: true, size: 13, color: { argb: BLU } }; if (sotto) ws.addRow([sotto]).font = { italic: true, color: { argb: "FF64748B" } }; };
+  const testa = (ws: ExcelJS.Worksheet, nomi: string[]) => { const r = ws.addRow(nomi); r.eachCell((c) => { c.font = { bold: true, color: { argb: "FFFFFFFF" } }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLU } }; c.alignment = { wrapText: true, vertical: "middle" }; }); return r; };
+  const riquadra = (ws: ExcelJS.Worksheet, da: number, fino: number, colonne: number) => { for (let i = da; i <= fino; i++) for (let j = 1; j <= colonne; j++) ws.getRow(i).getCell(j).border = { top: BORDO, bottom: BORDO, left: BORDO, right: BORDO }; };
+  const pc = (r: ExcelJS.Row, colonne: number[]) => { for (const k of colonne) { r.getCell(k).numFmt = "0.0%"; r.getCell(k).alignment = { horizontal: "center" }; } };
+
+  const rc = wb.addWorksheet("Recap");
+  rc.columns = [18, 10, 12, 11, 11, 11, 13, 12, 12, 12].map((width) => ({ width }));
+  titolo(rc, `GLS: assenze degli autisti (${periodo})`, "Fonte: buste paga (LUL). Solo gli autisti: gli addetti alla movimentazione merci non sono contati.");
+  rc.addRow([]);
+  titolo(rc, "1. Assenteismo mese per mese", "Giorni di assenza ÷ giorni in cui si doveva lavorare (lavorati + assenze). Altre assenze = non retribuite, ingiustificate, malattia figlio.");
+  const h = testa(rc, ["Mese", "Autisti", "Giorni lavorati", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Assenteismo", "di cui malattia", "di cui infortunio", "di cui altre"]);
+  mesi.forEach((m, i) => { const x = n.perMese[i]; pc(rc.addRow([nomeMese(m), tutte.find((r) => r.mese === m)?.teste ?? "", x.lavorati, x.malattia, x.infortunio, x.altre, fr(x.pct), fr(x.malattiaPct), fr(x.infortunioPct), fr(x.altrePct)]), [7, 8, 9, 10]); });
+  const u = rc.addRow(["Da inizio anno", a.network.headcount, n.ytd.lavorati, n.ytd.malattia, n.ytd.infortunio, n.ytd.altre, fr(n.ytd.pct), fr(n.ytd.malattiaPct), fr(n.ytd.infortunioPct), fr(n.ytd.altrePct)]); pc(u, [7, 8, 9, 10]);
+  u.eachCell((c) => { c.font = { bold: true }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GRIGIO } }; }); riquadra(rc, h.number, u.number, 10);
+  if (mesi.length) rc.addConditionalFormatting({ ref: `G${h.number + 1}:G${u.number - 1}`, rules: [{ type: "colorScale", priority: 1, cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "FFFFFFFF" }, { argb: "FFF4A6A6" }] }] });
+  const v = (x: number | null) => String(x ?? "—").replace(".", ",");
+  rc.addRow([`In una riga: assenteismo ${v(n.ytd.pct)}%, di cui ${v(n.ytd.malattiaPct)}% malattia, ${v(n.ytd.infortunioPct)}% infortunio e ${v(n.ytd.altrePct)}% altre assenze.`]).font = { bold: true };
+  rc.addRow([]);
+  titolo(rc, "2. Infortuni");
+  const h2 = testa(rc, ["Persone infortunate", "Giorni di infortunio", "Giorni per infortunato", "Ogni 1.000 giornate"]);
+  const r2 = rc.addRow([a.misNetwork.infortunati, n.ytd.infortunio, a.misNetwork.gravita, a.misNetwork.frequenza]); r2.getCell(4).numFmt = "0.00"; riquadra(rc, h2.number, r2.number, 4);
+  rc.addRow(["Persone infortunate: persone diverse con almeno un giorno di infortunio. \"Ogni 1.000 giornate\": persone infortunate ogni 1.000 giorni lavorati dagli autisti."]).font = { italic: true, color: { argb: "FF64748B" } };
+  rc.views = [{ showGridLines: false }]; rc.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+  const INT = ["#", "Persona", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo", "Mesi con assenze"];
+  const tutti = piuAssenti(persone, { vista: "SIC" });
+  const top = wb.addWorksheet("Più assenti");
+  top.columns = [6, 34, 12, 12, 12, 12, 12, 13, 12].map((width) => ({ width }));
+  titolo(top, `Autisti più assenti: primi 20 (${periodo})`, `${tutti.length} autisti con almeno un giorno di assenza. Dati personali riservati.`); top.addRow([]);
+  const ht = testa(top, INT); let ultimo = ht.number;
+  tutti.slice(0, 20).forEach((x, i) => { const r = top.addRow([i + 1, x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi]); r.getCell(8).numFmt = "0.0%"; r.getCell(6).font = { bold: true }; ultimo = r.number; });
+  riquadra(top, ht.number, ultimo, 9); top.views = [{ showGridLines: false }];
+  const el = wb.addWorksheet("Persone da inizio anno");
+  el.columns = [34, 12, 12, 12, 12, 12, 13, 12].map((width) => ({ width })); testa(el, INT.slice(1));
+  for (const x of tutti) el.addRow([x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct), x.mesi]).getCell(7).numFmt = "0.0%";
+  const pm = wb.addWorksheet("Persone per mese");
+  pm.columns = [16, 34, 12, 12, 12, 12, 12, 13].map((width) => ({ width })); testa(pm, ["Mese", "Persona", "Giorni malattia", "Giorni infortunio", "Altre assenze", "Totale giorni", "Giorni lavorati", "Assenteismo"]);
+  for (const m of mesi) for (const x of piuAssenti(persone, { vista: "SIC", mese: m })) pm.addRow([nomeMese(m), x.nome, x.malattia, x.infortunio, x.altre, x.giorni, x.lavorati, fr(x.pct)]).getCell(8).numFmt = "0.0%";
+  const dm = wb.addWorksheet("Dettaglio per mese");
+  dm.columns = [16, 10, 12, 12, 12, 12, 10, 10, 12, 13, 13, 12].map((width) => ({ width }));
+  testa(dm, ["Mese", "Autisti", "Giorni lavorati", "Giorni malattia", "Giorni infortunio", "Giorni altre assenze", "Giorni ferie", "Giorni ROL", "Giorni ex festività", "Persone in malattia", "Persone in infortunio", "Persone assenti"]);
+  for (const r of tutte) dm.addRow([nomeMese(r.mese), r.teste, r.ggLavorati, r.ggMalattia, r.ggInfortunio, r.ggAltre, r.ggFerie, r.ggRol, r.ggExfest, r.persMalattia, r.persInfortunio, r.persAssenti]);
+  for (const ws of [el, pm, dm]) { ws.views = [{ state: "frozen", ySplit: 1 }]; ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } }; }
+  const cl = wb.addWorksheet("Come leggere"); cl.columns = [{ width: 26 }, { width: 110 }]; testa(cl, ["Voce", "Cosa vuol dire"]);
+  for (const [k, x] of [
+    ["Fonte", "Buste paga (LUL) GLS. La busta di un mese riporta il calendario del mese prima, quindi i dati arrivano con un mese di ritardo."],
+    ["Chi è contato", "Solo chi in busta ha la qualifica di autista. Fuori gli addetti alla movimentazione merci, i responsabili e le poche persone senza qualifica leggibile."],
+    ["Assenteismo %", "Giorni di assenza diviso i giorni in cui si doveva lavorare (lavorati + assenze). Assenze = malattia + infortunio + altre assenze."],
+    ["Altre assenze", "Assenze non retribuite, ingiustificate e malattia figlio (codice MF)."],
+    ["Non contati", "Ferie, ROL, ex festività, permessi retribuiti e scioperi: non sono né assenze né giorni lavorati."],
+    ["Giorno lavorato", "Un giorno del calendario della busta con più di 4 ore lavorate."],
+  ]) { const r = cl.addRow([k, x]); r.getCell(1).font = { bold: true }; r.getCell(2).alignment = { wrapText: true, vertical: "top" }; r.height = x.length > 110 ? 32 : 18; }
+  const buf = await wb.xlsx.writeBuffer();
+  return new NextResponse(buf as ArrayBuffer, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="Assenze_autisti_GLS_${mesi[mesi.length - 1] ?? "2026"}.xlsx"`, "Cache-Control": "no-store" } });
 }
