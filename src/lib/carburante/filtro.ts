@@ -94,9 +94,10 @@ export function targhePresenti(righe: RigaFiltrabile[], flotta: FlottaFiltro): s
  * Numeri delle schede per flotta e furgone scelti: come il riepilogo del server (le archiviate non contano tra le
  * anomalie, ma i loro pagamenti sì tra quelli analizzati).
  */
-export function riepilogoScope(righe: (RigaFiltrabile & Pick<Riga, "q8" | "deltaLitri" | "euro">)[], f: Pick<FiltroCarburante, "flotta" | "targa">): Riepilogo {
+export function riepilogoScope(righe: (RigaFiltrabile & Pick<Riga, "deltaLitri" | "euro"> & { q8: readonly unknown[] })[], f: Pick<FiltroCarburante, "flotta" | "targa">): Riepilogo {
   const scope = righeDiScope(righe, f);
-  const r = riepiloga(scope.filter((x) => !x.archiviata) as Riga[]);
+  // riepiloga legge solo stato, numero di pagamenti, delta litri ed euro
+  const r = riepiloga(scope.filter((x) => !x.archiviata) as unknown as Riga[]);
   return { ...r, pagamentiQ8: scope.reduce((s, x) => s + x.q8.length, 0) };
 }
 

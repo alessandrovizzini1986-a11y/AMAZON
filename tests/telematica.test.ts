@@ -52,12 +52,22 @@ describe("telematica: giorno e mese", () => {
   it("Targa: km, orari, soste in mezzo alla giornata e rifornimenti", () => {
     const g = giornoDaTarga({
       totalMileage: 63.017, dateUsageBegin: "2026-11-23T09:41:45.000+01:00", dateUsageEnd: "2026-11-23T18:03:59.000+01:00", totalDriveTime: 14635, totalEngineOnTime: 17090, totalParkEngineOnTime: 2455, dailyMaximumSpeed: 133, drivingScore: { safety: { score: 5.9 } },
-      usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T09:41:45+01:00", 0), seg("USAGE", "2026-11-23T09:41:45+01:00", "2026-11-23T11:00:00+01:00", 30, { positions: [{ mileage: 14230, refuel: { refueledLiters: 41.5 }, location: { timestamp: "2026-11-23T10:15:00+01:00", formattedAddress: "Via Emilia, 10, Rimini, Rn" } }] }),
+      usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T09:41:45+01:00", 0), seg("USAGE", "2026-11-23T09:41:45+01:00", "2026-11-23T11:00:00+01:00", 30, { positions: [{ mileage: 14230, refuel: { refueledLiters: 41.5 }, location: { timestamp: "2026-11-23T10:15:00+01:00", formattedAddress: "Via Emilia, 10, Rimini, Rn", lat: 44.0612345678, lng: 12.5654321 } }] }),
         seg("INACTIVITY", "2026-11-23T11:00:00+01:00", "2026-11-23T11:20:00+01:00", 0), seg("USAGE", "2026-11-23T11:20:00+01:00", "2026-11-23T18:03:59+01:00", 33, { positions: [{ mileage: 14265.9, refuel: null }] }), seg("INACTIVITY", "2026-11-23T18:03:59+01:00", "2026-11-23T23:59:59+01:00", 0)],
     });
     expect(g).toMatchObject({ km: 63, guidaSec: 14635, fermoMotoreAccSec: 2455, velMax: 133, soste: 1, rifornimenti: 1, litri: 41.5, kmContatore: 14265.9 });
-    expect(g.rifDett).toEqual([{ ora: "10:15", litri: 41.5, dove: "Via Emilia, 10, Rimini, Rn" }]);
+    expect(g.rifDett).toEqual([{ ora: "10:15", litri: 41.5, dove: "Via Emilia, 10, Rimini, Rn", lat: 44.061235, lng: 12.565432 }]);
     expect(g.tappe).toHaveLength(5); expect(g.tappe[1]).toEqual({ t: "G", da: "09:41", a: "11:00", km: 30, dove: "Via B" });
+  });
+  it("Targa: rifornimento senza coordinate → lat e lng null, ma le chiavi ci sono sempre (formato nuovo)", () => {
+    const g = giornoDaTarga({ totalMileage: 10, usageSegments: [seg("USAGE", "2026-11-23T09:00:00+01:00", "2026-11-23T10:00:00+01:00", 10, { positions: [
+      { refuel: { refueledLiters: 30 }, location: { timestamp: "2026-11-23T09:30:00+01:00", formattedAddress: null } },
+      { refuel: { refueledLiters: 12 }, location: { timestamp: "2026-11-23T09:50:00+01:00", lat: 0, lng: 0 } },
+      { refuel: { refueledLiters: 8 }, location: null },
+    ] })] });
+    expect(g.rifDett).toEqual([{ ora: "09:30", litri: 30, dove: null, lat: null, lng: null }, { ora: "09:50", litri: 12, dove: null, lat: null, lng: null }, { ora: "", litri: 8, dove: null, lat: null, lng: null }]);
+    expect(g.rifDett.every((r) => "lat" in r && "lng" in r)).toBe(true);
+    expect(JSON.parse(JSON.stringify(g.rifDett))[0]).toHaveProperty("lat", null);
   });
   it("Targa: mezzo fermo tutto il giorno → 0 km, nessun orario", () => {
     const g = giornoDaTarga({ totalMileage: 0, dateUsageBegin: "2026-11-23T00:00:00+01:00", usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T23:59:59+01:00", 0)] });
@@ -88,13 +98,13 @@ import { bloccato, menuPer, paginaIniziale } from "@/components/navModel";
 import { riservato } from "@/lib/telematica/riservato";
 
 describe("menu per utente (flag del super admin)", () => {
-  const TELE = ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata"];
+  const TELE = ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata", "/telematica/carburante"];
   it("le voci nascoste spariscono dal menu, le altre restano", () => {
     const tutte = menuPer("ADMIN").flatMap((g) => g.items.map((i) => i.href));
     const sue = menuPer("ADMIN", TELE).flatMap((g) => g.items.map((i) => i.href));
     expect(tutte).toEqual(expect.arrayContaining(TELE));
     expect(sue.filter((h) => h.startsWith("/telematica"))).toEqual([]);
-    expect(sue).toContain("/portali"); expect(sue.length).toBe(tutte.length - 4);
+    expect(sue).toContain("/portali"); expect(sue.length).toBe(tutte.length - TELE.length);
   });
   it("le pagine nascoste e le loro chiamate non si aprono", () => {
     for (const p of ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata", "/api/telematica/posizioni", "/api/telematica/mese"]) expect(bloccato(p, TELE)).toBe(true);

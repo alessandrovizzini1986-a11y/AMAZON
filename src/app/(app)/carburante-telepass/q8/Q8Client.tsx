@@ -9,7 +9,8 @@ import { elaboraQ8, type EsitoQ8 } from "@/domain/telepass/q8";
 import { leggiFile, PAGINA } from "@/lib/telepass/riconosci";
 import { excelQ8 } from "@/lib/telepass/excelQ8";
 import { scarica } from "@/lib/presenze/excelUtil";
-import { salvaQ8Run } from "../actions";
+import { transazioniDaEsito, type Q8TransazioneIn } from "@/domain/carburante/q8Righe";
+import { salvaQ8Run, salvaTransazioniQ8 } from "../actions";
 import type { RunRiga } from "../dati";
 import { Dropzone } from "@/components/Dropzone";
 import { Griglia } from "../Griglia";
@@ -18,6 +19,11 @@ import { Spiega } from "@/components/Spiega";
 import { Aiuto } from "@/components/Aiuto";
 
 const eur = (x: number) => x.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// useGrouping "always": in italiano i numeri di 4 cifre altrimenti restano senza punto (2000 invece di 2.000)
+const intero = (x: number) => x.toLocaleString("it-IT", { useGrouping: "always" });
+/** transazioni mandate al server per ogni chiamata */
+const PEZZO = 1000;
+type InvioTx = { stato: "invio" | "fatto" | "errore"; fatte: number; totale: number; parte: number; errore?: string };
 
 export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; runs: RunRiga[]; canRun: boolean }) {
   const router = useRouter();
@@ -26,11 +32,12 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
   const [e, setE] = useState<(EsitoQ8 & { origine: string; hash: string }) | null>(null);
   const [filtro, setFiltro] = useState("GLS");
   const [salvata, setSalvata] = useState(false);
+  const [tx, setTx] = useState<InvioTx | null>(null);
   const giaFatto = e ? runs.find((r) => r.anno === e.anno && r.mese === e.mese) : undefined;
 
   const carica = async (files: File[]) => {
     if (!files.length) return;
-    setLavoro(true); setErrore(null); setE(null); setSalvata(false);
+    setLavoro(true); setErrore(null); setE(null); setSalvata(false); setTx(null);
     try {
       const f = await leggiFile(files[0]);
       if (f.tipo !== "Q8") {
@@ -55,6 +62,26 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
     });
     setSalvata(true);
     router.refresh();
+    await inviaTransazioni(0);
+  };
+  /** Transazioni riga per riga per l'incrocio con la telematica, a pezzi da PEZZO; se un pezzo non va, si riprende da lì. */
+  const inviaTransazioni = async (daParte: number) => {
+    if (!e) return;
+    let righe: Q8TransazioneIn[];
+    try { righe = transazioniDaEsito(e); }
+    catch (x) { setTx({ stato: "errore", fatte: 0, totale: 0, parte: 0, errore: x instanceof Error ? x.message : String(x) }); return; }
+    const totaleParti = Math.max(1, Math.ceil(righe.length / PEZZO));
+    for (let parte = daParte; parte < totaleParti; parte++) {
+      const fatte = Math.min(parte * PEZZO, righe.length);
+      setTx({ stato: "invio", fatte, totale: righe.length, parte });
+      try {
+        await salvaTransazioniQ8({ anno: e.anno, mese: e.mese, parte, totaleParti, righe: righe.slice(parte * PEZZO, (parte + 1) * PEZZO) });
+      } catch (x) {
+        setTx({ stato: "errore", fatte, totale: righe.length, parte, errore: x instanceof Error ? x.message : String(x) });
+        return;
+      }
+    }
+    setTx({ stato: "fatto", fatte: righe.length, totale: righe.length, parte: totaleParti });
   };
   const nScartate = e ? e.scartate.reduce((s, x) => s + x.n, 0) : 0;
 
@@ -102,6 +129,14 @@ export function Q8Client({ censimento, runs, canRun }: { censimento: Carta[]; ru
               <button type="button" className="btn-primary h-10" disabled={lavoro} onClick={genera}>Genera Excel</button> <Aiuto k="telepass.excel" />
               {canRun && <button type="button" className="btn-secondary h-10" disabled={salvata} onClick={salva}>{salvata ? "Salvata ✓" : "Salva elaborazione"}</button>}
             </div>
+            {tx?.stato === "invio" && <p className="mb-2 text-sm text-ink-muted" role="status">Salvo le transazioni per l&apos;incrocio con la telematica: {intero(tx.fatte)} su {intero(tx.totale)}…</p>}
+            {tx?.stato === "fatto" && <p className="mb-2 text-sm text-ok" role="status">Transazioni salvate per l&apos;incrocio con la telematica: {intero(tx.totale)}.</p>}
+            {tx?.stato === "errore" && (
+              <p className="mb-2 flex flex-wrap items-center gap-2 rounded-control bg-warn-soft px-4 py-3 text-sm text-warn" role="alert">
+                <span>Elaborazione salvata, ma le transazioni per l&apos;incrocio con la telematica si sono fermate a {intero(tx.fatte)} su {intero(tx.totale)}: {tx.errore}</span>
+                {tx.totale > 0 && <button type="button" className="btn-secondary h-9" onClick={() => inviaTransazioni(tx.parte)}>Riprova</button>}
+              </p>
+            )}
             {giaFatto && !salvata && <p className="mb-2 text-sm text-warn">{MESI[e.mese]} {e.anno} è già stato elaborato il {new Date(giaFatto.eseguitoIl).toLocaleDateString("it-IT")} da {giaFatto.eseguitoDa}: salvando ne registri una nuova versione.</p>}
             <Griglia titolo="STATION" settimane={e.settimane} stazioni={e.stazioni} totali={e.totali} perStation={e.perStation} totale={e.totale} />
           </section>

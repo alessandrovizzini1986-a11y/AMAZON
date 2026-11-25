@@ -115,9 +115,22 @@ function testo(v: Cell, max: number): string | null {
 
 const norm = (s: string) => s.normalize("NFC").trim();
 
+/** Impronta (FNV-1a, due semi) di un testo: la chiave non porta il numero intero della carta, che arriva fino al browser. */
+export function impronta(s: string): string {
+  let a = 0x811c9dc5, b = 0x01000193 ^ 0x9e3779b9;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x5bd1e995) >>> 0;
+  }
+  return a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0");
+}
+
 /**
  * Righe dell'elaborazione Q8 → transazioni da salvare. Colonne cercate per nome nell'intestazione.
- * Scarta le righe senza una data valida o senza litri. Righe identiche nello stesso file restano tutte, con "#2", "#3"… nella chiave.
+ * Scarta le righe senza una data valida o senza litri. Uno storno (litri negativi) toglie il pagamento che annulla: stessa carta,
+ * stessi litri e stesso importo, il più vicino prima dello storno. Righe identiche nello stesso file restano tutte, con "#2", "#3"…
+ * La chiave è: ultime 4 cifre della carta | giorno | ora | litri | importo | impronta dell'intera riga.
  */
 export function transazioniDaEsito(e: { anno: number; mese: number; intestazione: string[]; righe: Cell[][] }): Q8TransazioneIn[] {
   const hdr = e.intestazione.map((h) => norm(String(h ?? "")));
@@ -136,11 +149,17 @@ export function transazioniDaEsito(e: { anno: number; mese: number; intestazione
 
   const visti = new Map<string, number>();
   const out: Q8TransazioneIn[] = [];
+  const storni: { pan: string; litri: number; importo: number; quando: string }[] = [];
   for (const r of e.righe) {
     if (!r) continue;
     const data = leggiDataOra(cella(r, iData));
     if (!data.giorno) continue;
     const litriGrezzi = numeroQ8(cella(r, iVolume));
+    if (litriGrezzi !== null && litriGrezzi < 0) {
+      const oraS = leggiDataOra(cella(r, iOra)).ora ?? data.ora ?? "00:00:00";
+      storni.push({ pan: testo(cella(r, iPan), LUNGHEZZE_Q8.pan) ?? "", litri: r2(-litriGrezzi), importo: r2(Math.abs(numeroQ8(cella(r, iImp)) ?? 0)), quando: `${data.giorno} ${oraS}` });
+      continue;
+    }
     if (litriGrezzi === null || !(litriGrezzi > 0)) continue;
     const litri = r2(litriGrezzi);
     if (!(litri > 0)) continue;
@@ -152,7 +171,8 @@ export function transazioniDaEsito(e: { anno: number; mese: number; intestazione
     const km = kmGrezzi !== null && Math.round(kmGrezzi) > 0 && Math.round(kmGrezzi) < KM_MAX ? Math.round(kmGrezzi) : null;
     const targa = testo(cella(r, iTarga), 200)?.toUpperCase().replace(/\s+/g, "").slice(0, LUNGHEZZE_Q8.targaQ8) || null;
 
-    const base = `${pan}|${data.giorno}|${ora}|${litri.toFixed(2)}|${importo.toFixed(2)}`;
+    const completa = `${pan}|${data.giorno}|${ora}|${litri.toFixed(2)}|${importo.toFixed(2)}`;
+    const base = `${pan.slice(-4)}|${data.giorno}|${ora}|${litri.toFixed(2)}|${importo.toFixed(2)}|${impronta(completa)}`;
     const n = (visti.get(base) ?? 0) + 1;
     visti.set(base, n);
     out.push({
@@ -163,6 +183,12 @@ export function transazioniDaEsito(e: { anno: number; mese: number; intestazione
       impianto: testo(cella(r, iImpianto), LUNGHEZZE_Q8.impianto), indirizzo: testo(cella(r, iIndirizzo), LUNGHEZZE_Q8.indirizzo),
       citta: testo(cella(r, iCitta), LUNGHEZZE_Q8.citta), km,
     });
+  }
+  // ogni storno annulla un pagamento uguale (stessa carta, litri e importo), il più vicino prima dello storno
+  for (const s of storni) {
+    const candidati = out.map((t, i) => ({ t, i })).filter(({ t }) => t.pan === s.pan && t.litri === s.litri && (s.importo === 0 || t.importo === s.importo) && `${t.giorno} ${t.ora}` <= s.quando);
+    const scelto = candidati.sort((x, y) => `${y.t.giorno} ${y.t.ora}`.localeCompare(`${x.t.giorno} ${x.t.ora}`))[0];
+    if (scelto) out.splice(scelto.i, 1);
   }
   return out;
 }

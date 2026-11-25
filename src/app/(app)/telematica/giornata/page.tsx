@@ -6,7 +6,7 @@ import { GiornataClient } from "./GiornataClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function GiornataPage({ searchParams }: { searchParams: Promise<{ station?: string; giorno?: string }> }) {
+export default async function GiornataPage({ searchParams }: { searchParams: Promise<{ station?: string; giorno?: string; targa?: string }> }) {
   await requireRole("ADMIN");
   const q = await searchParams;
   const stations = await stationConTelematica();
@@ -17,7 +17,7 @@ export default async function GiornataPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-4">
       <PageHeader eyebrow="Strumenti" title="Giornata di consegna" subtitle="Cosa ha fatto ogni furgone in un giorno: partenza, rientro, km, soste, e le cose da guardare. Di fianco, le rotte Amazon dello stesso giorno." action={<a href="/telematica/mese" className="btn-secondary">Il mese</a>} />
-      <GiornataClient dati={dati} stations={stations} oggi={oggi} />
+      <GiornataClient dati={dati} stations={stations} oggi={oggi} evidenzia={q.targa?.trim().slice(0, 12) || null} />
     </div>
   );
 }

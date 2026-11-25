@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui";
 import { datiRiconciliazione, meseIniziale } from "@/lib/carburante/riconciliazione";
 import { isMeseValido, leggiFiltro } from "@/lib/carburante/filtro";
 import { CarburanteClient, PulsantiIntestazione } from "./CarburanteClient";
-import { CHIAVE_GUIDA } from "./testi";
+import { CHIAVE_GUIDA, perVista } from "./testi";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,7 +28,7 @@ export default async function CarburantePage({ searchParams }: { searchParams: P
         subtitle="Ogni pagamento con le carte Q8 di DER2 e GLS confrontato con il gasolio che la telematica Targa ha visto entrare nei furgoni: ora, litri e luogo."
         action={<PulsantiIntestazione />}
       />
-      <CarburanteClient dati={dati} filtroIniziale={filtro} guidaVista={!!visto} />
+      <CarburanteClient key={mese} dati={perVista(dati)} filtroIniziale={filtro} guidaVista={!!visto} />
     </div>
   );
 }

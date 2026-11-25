@@ -1,5 +1,14 @@
 /** Costanti e piccoli formati della pagina "Carburante: Q8 e telematica" (server e browser). */
 import { ETICHETTA_STATO, type Stato } from "@/domain/carburante/riconciliazione";
+import type { DatiRiconciliazione, RigaPagina } from "@/lib/carburante/riconciliazione";
+
+/** riga come arriva al browser: senza i rifornimenti grezzi e con il minimo dei pagamenti Q8 (pagina più leggera) */
+export type RigaVista = Omit<RigaPagina, "eventi" | "q8"> & { q8: { identificativo: string | null; impianto: string | null; prodotto: string | null }[] };
+export type DatiVista = Omit<DatiRiconciliazione, "righe"> & { righe: RigaVista[] };
+export const perVista = (d: DatiRiconciliazione): DatiVista => ({
+  ...d,
+  righe: d.righe.map(({ eventi: _e, q8, ...r }) => ({ ...r, q8: q8.map((x) => ({ identificativo: x.identificativo, impianto: x.impianto, prodotto: x.prodotto })) })),
+});
 
 /** chiave in TourVisto e in localStorage della guida di questa pagina */
 export const CHIAVE_GUIDA = "guida:carburante";

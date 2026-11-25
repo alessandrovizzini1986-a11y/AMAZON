@@ -14,10 +14,21 @@ const n0 = (x: number) => Math.round(x).toLocaleString("it-IT");
 const PACCHI_ROTTA = 20;
 type Filtro = "TUTTI" | "AVVISI" | "USATI" | "FERMI";
 
-export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stations: string[]; oggi: string }) {
+/** targa scritta in modo uniforme per il confronto (maiuscole, senza spazi) */
+const uniforme = (t: string) => t.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+export function GiornataClient({ dati, stations, oggi, evidenzia = null }: { dati: Giornata; stations: string[]; oggi: string; evidenzia?: string | null }) {
   const router = useRouter();
-  const [aperta, setAperta] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState<Filtro>("USATI");
+  // arrivando da un altro elenco (?targa=…) quel furgone è evidenziato, aperto e portato in vista
+  const scelta = evidenzia ? dati.righe.find((r) => uniforme(r.targa) === uniforme(evidenzia)) ?? null : null;
+  const [aperta, setAperta] = useState<string | null>(scelta?.targa ?? null);
+  const [filtro, setFiltro] = useState<Filtro>(scelta && scelta.km < 1 ? "TUTTI" : "USATI");
+  const sceltaTarga = scelta?.targa ?? null;
+  useEffect(() => {
+    if (!sceltaTarga) return;
+    const t = setTimeout(() => document.getElementById(`furgone-${sceltaTarga}`)?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 100);
+    return () => clearTimeout(t);
+  }, [sceltaTarga]);
   const [amazon, setAmazon] = useState<FlexRow[] | null>(null);
   const vai = (station: string, giorno: string) => router.push(`/telematica/giornata?station=${station}&giorno=${giorno}`);
 
@@ -77,6 +88,9 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
             <Dato titolo="Furgoni da guardare" valore={String(conAvvisi.length)} nota={`${conAvvisi.reduce((a, r) => a + r.avvisi.filter((x) => !x.info).length, 0)} segnalazioni`} />
           </div>
           {dati.conTelematica < dati.inFlotta && <p className="text-xs text-slate-500">Solo {dati.conTelematica} dei {dati.inFlotta} furgoni di {dati.station} hanno la telematica: i furgoni usati qui sotto non sono tutti quelli usciti, quindi il confronto con le rotte è indicativo.</p>}
+          {evidenzia && (scelta
+            ? <p className="text-sm text-slate-700">Evidenziato il furgone <b>{scelta.targa}</b>: il dettaglio della giornata è già aperto.</p>
+            : <p className="text-sm text-amber-700">Il furgone {evidenzia} non compare tra quelli con telematica di {dati.station} in questo giorno.</p>)}
           {dati.basi.length > 0 && <p className="text-xs text-slate-500">Base di {dati.station} (ricavata da dove partono i furgoni nel mese): {dati.basi.join(" · ")}.</p>}
 
           <div className="flex flex-wrap gap-2 text-sm">
@@ -93,8 +107,8 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
               <tbody>
                 {righe.map((r) => (
                   <Fragment key={r.targa}>
-                    <tr className="cursor-pointer border-t border-slate-100 align-top hover:bg-slate-50" onClick={() => setAperta(aperta === r.targa ? null : r.targa)}>
-                      <td className="whitespace-nowrap px-3 py-1.5 font-medium">{aperta === r.targa ? "▾" : "▸"} {r.targa}</td>
+                    <tr id={`furgone-${r.targa}`} className={`cursor-pointer scroll-mt-28 border-t border-slate-100 align-top ${r.targa === sceltaTarga ? "bg-amber-50" : "hover:bg-slate-50"}`} onClick={() => setAperta(aperta === r.targa ? null : r.targa)}>
+                      <td className={`whitespace-nowrap px-3 py-1.5 font-medium ${r.targa === sceltaTarga ? "border-l-4 border-l-amber-500" : ""}`}>{aperta === r.targa ? "▾" : "▸"} {r.targa}</td>
                       <td className="px-2 py-1.5 tabular-nums">{r.partenza ?? "—"}</td>
                       <td className="px-2 py-1.5 tabular-nums">{r.rientro ?? "—"}</td>
                       <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.partenza ? oreMinuti(r.fuoriMin) : "—"}</td>
@@ -105,7 +119,7 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
                       <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.rifornimenti ? `${r.litri.toLocaleString("it-IT")} l` : "—"}</td>
                       <td className="px-2 py-1.5">{r.avvisi.length ? <ul className="flex flex-col gap-0.5">{r.avvisi.map((a) => <li key={a.codice} className={a.info ? "text-slate-600" : "text-amber-800"}>{a.testo}</li>)}</ul> : r.km >= 1 ? <span className="text-emerald-700">Niente</span> : <span className="text-slate-400">Fermo</span>}</td>
                     </tr>
-                    {aperta === r.targa && <tr className="border-t border-slate-100 bg-slate-50"><td colSpan={10} className="px-3 py-3"><Dettaglio r={r} noti={noti} segna={segna} /></td></tr>}
+                    {aperta === r.targa && <tr className={`border-t border-slate-100 ${r.targa === sceltaTarga ? "bg-amber-50" : "bg-slate-50"}`}><td colSpan={10} className={`px-3 py-3 ${r.targa === sceltaTarga ? "border-l-4 border-l-amber-500" : ""}`}><Dettaglio r={r} noti={noti} segna={segna} /></td></tr>}
                   </Fragment>
                 ))}
                 {righe.length === 0 && <tr><td colSpan={10} className="px-3 py-4 text-slate-500">Nessun furgone in questo elenco.</td></tr>}

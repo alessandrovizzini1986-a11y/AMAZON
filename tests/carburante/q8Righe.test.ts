@@ -19,7 +19,7 @@ describe("transazioni Q8 riga per riga", () => {
     const [t, ...resto] = transazioniDaEsito(esito([riga(base)]));
     expect(resto).toEqual([]);
     expect(t).toEqual({
-      chiave: "7000000000000000001|2026-08-31|19:33:32|36.76|79.00", mese: "2026-08", giorno: "2026-08-31", ora: "19:33:32", station: "DER2",
+      chiave: expect.stringMatching(/^0001\|2026-08-31\|19:33:32\|36\.76\|79\.00\|[0-9a-f]{16}$/), mese: "2026-08", giorno: "2026-08-31", ora: "19:33:32", station: "DER2",
       pan: "7000000000000000001", identificativo: "AMZ726", targaQ8: "AMZ726", prodotto: "GASOLIO", litri: 36.76, importo: 79, importoNoIva: 64.75,
       impianto: "1365", indirizzo: "VIA DI PROVA 1", citta: "CESENA", km: 5324,
     });
@@ -50,12 +50,25 @@ describe("transazioni Q8 riga per riga", () => {
 
   it("righe uguali nello stesso file: chiave con #2, #3", () => {
     const t = transazioniDaEsito(esito([riga(base), riga(base), riga({ ...base, Volume: 10 }), riga(base)]));
-    expect(t.map((x) => x.chiave)).toEqual([
-      "7000000000000000001|2026-08-31|19:33:32|36.76|79.00",
-      "7000000000000000001|2026-08-31|19:33:32|36.76|79.00#2",
-      "7000000000000000001|2026-08-31|19:33:32|10.00|79.00",
-      "7000000000000000001|2026-08-31|19:33:32|36.76|79.00#3",
-    ]);
+    const k = t.map((x) => x.chiave);
+    expect(k[1]).toBe(`${k[0]}#2`);
+    expect(k[3]).toBe(`${k[0]}#3`);
+    expect(k[2]).not.toBe(k[0]);
+    expect(k.every((x) => !x.includes("7000000000000000001"))).toBe(true);
+    // due carte con le stesse ultime 4 cifre non si confondono
+    const [x] = transazioniDaEsito(esito([riga({ ...base, "PAN Carta": "7999999999999990001" })]));
+    expect(x.chiave.slice(0, 4)).toBe(k[0].slice(0, 4));
+    expect(x.chiave).not.toBe(k[0]);
+  });
+
+  it("uno storno annulla il pagamento uguale della stessa carta", () => {
+    const t = transazioniDaEsito(esito([
+      riga({ ...base, Data: new Date("2026-08-10T08:00:00Z"), Ora: new Date("2026-08-10T08:00:00Z") }),
+      riga({ ...base, Data: new Date("2026-08-10T09:00:00Z"), Ora: new Date("2026-08-10T09:00:00Z") }),
+      riga({ ...base, Data: new Date("2026-08-10T09:05:00Z"), Ora: new Date("2026-08-10T09:05:00Z"), Volume: -36.76, "Imp. Scontato": -79 }),
+      riga({ ...base, "PAN Carta": "7000000000000000002", Data: new Date("2026-08-10T09:00:00Z"), Ora: new Date("2026-08-10T09:00:00Z") }),
+    ]));
+    expect(t.map((x) => [x.pan.slice(-1), x.ora])).toEqual([["1", "08:00:00"], ["2", "09:00:00"]]);
   });
 
   it("scarta le righe senza data valida o senza litri; km non validi e testi vuoti diventano null", () => {

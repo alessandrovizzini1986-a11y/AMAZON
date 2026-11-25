@@ -57,7 +57,7 @@ export function MeseClient({ mese, riepilogo, calendario, spazioMb, rifSenzaDett
           <button className="btn-primary" disabled={!!stato || mancanti.length === 0} onClick={() => scarica(mancanti)}>{mancanti.length ? `Scarica i ${mancanti.length} giorni che mancano` : "Mese già scaricato"}</button>
           <button className="btn-secondary" disabled={!!stato || calendario.length === 0} onClick={() => scarica(calendario.map((g) => g.giorno))}>Riscarica tutto il mese</button>
           <a className="btn-secondary" href={`/api/telematica/mese?mese=${mese}`}>Scarica Excel</a>
-          {rifSenzaDettaglio > 0 && <button className="btn-secondary" disabled={!!stato || (!!rif && rif.startsWith("Scarico il"))} onClick={dettaglioRifornimenti}>Scarica il dettaglio di {rifSenzaDettaglio} rifornimenti</button>}
+          {rifSenzaDettaglio > 0 && <button className="btn-secondary" disabled={!!stato || (!!rif && rif.startsWith("Scarico il"))} onClick={dettaglioRifornimenti}>Scarica ora, luogo e coordinate di {rifSenzaDettaglio} rifornimenti</button>}
         </div>
         {rif && <p className="text-sm text-slate-700">{rif}</p>}
         {stato && <p className="text-sm text-slate-700">Sto scaricando il giorno {stato.giorno.slice(8)}/{stato.giorno.slice(5, 7)} ({stato.fatti + 1} di {stato.totale}). Lascia aperta la pagina: ogni giorno richiede circa mezzo minuto.</p>}
