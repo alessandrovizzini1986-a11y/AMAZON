@@ -1319,6 +1319,7 @@ model PersonaleMese {
   ggLavorati     Int     @default(0) // giorni lavorati (più di 4 ore) dal calendario della busta, tutto il personale
   ggMalattia     Int     @default(0)
   ggInfortunio   Int     @default(0)
+  ggAltre        Int     @default(0) // assenze non retribuite, ingiustificate e malattia figlio (ANR, PNR, AN, AI, AIG, MF)
   ggFerie        Int     @default(0)
   ggRol          Int     @default(0)
   ggExfest       Int     @default(0)
@@ -1340,6 +1341,7 @@ model PersonaleAssenzaPersona {
   ggLavorati   Int    @default(0)
   ggMalattia   Int    @default(0)
   ggInfortunio Int    @default(0)
+  ggAltre      Int    @default(0)
 
   @@id([mese, station, gruppo, codice])
 }
