@@ -210,8 +210,8 @@ export function tabellaTassi(tutte: RigaMese[], vista: Vista): { mesi: string[];
 // ---------------------------------------------------------------------------------------------------------------------
 // Chi è stato più assente: per persona, in un mese o da inizio anno.
 
-export type RigaPersona = { mese: string; station: string; gruppo: Gruppo; codice: string; nome: string; ggLavorati: number; ggMalattia: number; ggInfortunio: number; ggAltre: number };
-export type Assente = { chiave: string; nome: string; station: string; gruppo: Gruppo; malattia: number; infortunio: number; altre: number; giorni: number; lavorati: number; /** % sui giorni dovuti */ pct: number | null; /** mesi con almeno un giorno di assenza */ mesi: number };
+export type RigaPersona = { mese: string; station: string; gruppo: Gruppo; codice: string; nome: string; ggLavorati: number; ggMalattia: number; ggInfortunio: number; ggAltre: number; /** le tre parti delle altre assenze */ ggNonRetribuite?: number; ggIngiustificate?: number; ggMalattiaFiglio?: number };
+export type Assente = { chiave: string; nome: string; station: string; gruppo: Gruppo; malattia: number; infortunio: number; altre: number; nonRetribuite: number; ingiustificate: number; malattiaFiglio: number; giorni: number; lavorati: number; /** % sui giorni dovuti */ pct: number | null; /** mesi con almeno un giorno di assenza */ mesi: number };
 export type OrdineAssenti = "giorni" | "malattia" | "infortunio" | "altre";
 
 /** Persone con almeno un giorno di assenza nel periodo, dalla più assente. `mese` vuoto = tutto il periodo. */
@@ -220,8 +220,8 @@ export function piuAssenti(righe: RigaPersona[], f: { vista: Vista; station?: st
   for (const r of righe) {
     if ((f.vista !== "TOTALE" && r.gruppo !== f.vista) || (f.station && r.station !== f.station) || (f.mese && r.mese !== f.mese)) continue;
     const chiave = `${r.station}|${r.gruppo}|${r.codice}`;
-    const a = per.get(chiave) ?? { chiave, nome: r.nome || `matricola ${r.codice}`, station: r.station, gruppo: r.gruppo, malattia: 0, infortunio: 0, altre: 0, giorni: 0, lavorati: 0, pct: null, mesi: 0 };
-    a.malattia += r.ggMalattia; a.infortunio += r.ggInfortunio; a.altre += r.ggAltre; a.lavorati += r.ggLavorati; if (r.ggMalattia + r.ggInfortunio + r.ggAltre > 0) a.mesi++;
+    const a = per.get(chiave) ?? { chiave, nome: r.nome || `matricola ${r.codice}`, station: r.station, gruppo: r.gruppo, malattia: 0, infortunio: 0, altre: 0, nonRetribuite: 0, ingiustificate: 0, malattiaFiglio: 0, giorni: 0, lavorati: 0, pct: null, mesi: 0 };
+    a.malattia += r.ggMalattia; a.infortunio += r.ggInfortunio; a.altre += r.ggAltre; a.nonRetribuite += r.ggNonRetribuite ?? 0; a.ingiustificate += r.ggIngiustificate ?? 0; a.malattiaFiglio += r.ggMalattiaFiglio ?? 0; a.lavorati += r.ggLavorati; if (r.ggMalattia + r.ggInfortunio + r.ggAltre > 0) a.mesi++;
     per.set(chiave, a);
   }
   const k = f.ordine ?? "giorni", out: Assente[] = [];

@@ -1342,6 +1342,10 @@ model PersonaleAssenzaPersona {
   ggMalattia   Int    @default(0)
   ggInfortunio Int    @default(0)
   ggAltre      Int    @default(0)
+  // di cui (un giorno con due codici conta una volta sola in ggAltre)
+  ggNonRetribuite  Int @default(0)
+  ggIngiustificate Int @default(0)
+  ggMalattiaFiglio Int @default(0)
 
   @@id([mese, station, gruppo, codice])
 }
