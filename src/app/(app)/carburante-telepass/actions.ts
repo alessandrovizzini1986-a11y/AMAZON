@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { confrontaImport, type EsitoImport } from "@/domain/telepass/anagrafiche";
+import { LUNGHEZZE_Q8, type Q8TransazioneIn } from "@/domain/carburante/q8Righe";
 
 const BASE = "/carburante-telepass";
 const s = (max = 200) => z.string().max(max).nullable();
@@ -141,4 +142,43 @@ export async function salvaQ8Run(input: unknown): Promise<{ id: string }> {
   await audit({ userId: user.id, action: "q8.run", entity: "Q8Run", entityId: run.id, meta: { mese: `${r.anno}-${r.mese}`, tenute: r.tenute, totale: r.totale } });
   revalidatePath(BASE, "layout");
   return { id: run.id };
+}
+
+const L = LUNGHEZZE_Q8;
+const importoQ8 = z.number().finite().min(-1_000_000).max(1_000_000);
+const transazioneQ8 = z.object({
+  chiave: z.string().min(1).max(L.chiave), mese: z.string().regex(/^\d{4}-\d{2}$/), giorno: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), ora: z.string().regex(/^\d{2}:\d{2}:\d{2}$/),
+  station: s(L.station), pan: z.string().max(L.pan), identificativo: s(L.identificativo), targaQ8: s(L.targaQ8), prodotto: s(L.prodotto),
+  litri: z.number().finite().positive().max(100_000), importo: importoQ8, importoNoIva: importoQ8,
+  impianto: s(L.impianto), indirizzo: s(L.indirizzo), citta: s(L.citta), km: z.number().int().positive().max(2_000_000_000).nullable(),
+});
+const MAX_RIGHE_PARTE = 1500;
+
+/**
+ * Transazioni Q8 riga per riga (per l'incrocio con la telematica), mandate a pezzi dalla pagina Q8 dopo salvaQ8Run.
+ * La prima parte cancella le righe già salvate per il mese del file; le righe già presenti (stessa chiave) si saltano.
+ */
+export async function salvaTransazioniQ8(input: { anno: number; mese: number; parte: number; totaleParti: number; righe: Q8TransazioneIn[] }): Promise<{ salvate: number }> {
+  const user = await requireUser();
+  assertCan(user, "telepass.run");
+  const r = z.object({
+    anno: z.number().int().min(2020).max(2100), mese: z.number().int().min(1).max(12),
+    parte: z.number().int().min(0), totaleParti: z.number().int().min(1).max(1000),
+    righe: z.array(transazioneQ8).max(MAX_RIGHE_PARTE),
+  }).refine((x) => x.parte < x.totaleParti, { message: "parte fuori dal totale delle parti" }).parse(input);
+  const meseFile = `${r.anno}-${String(r.mese).padStart(2, "0")}`;
+  if (r.righe.some((x) => x.mese !== meseFile)) throw new Error(`Le transazioni devono essere tutte del mese del file (${meseFile}).`);
+
+  const crea = db.q8Transazione.createMany({ data: r.righe, skipDuplicates: true });
+  const salvate = r.parte === 0
+    ? (await db.$transaction([db.q8Transazione.deleteMany({ where: { mese: meseFile } }), crea]))[1].count
+    : (await crea).count;
+
+  if (r.parte === r.totaleParti - 1) {
+    const nelMese = await db.q8Transazione.count({ where: { mese: meseFile } });
+    await audit({ userId: user.id, action: "q8.transazioni", entity: "Q8Transazione", meta: { mese: meseFile, parti: r.totaleParti, transazioni: nelMese } });
+    revalidatePath(`${BASE}/q8`);
+    revalidatePath("/telematica/carburante");
+  }
+  return { salvate };
 }
