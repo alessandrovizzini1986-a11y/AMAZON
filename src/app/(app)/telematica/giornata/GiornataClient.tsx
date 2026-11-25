@@ -88,7 +88,7 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
           <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead><tr className="text-left text-slate-500">
-                <th className="px-3 py-2">Targa</th><th className="px-2 py-2">Partenza</th><th className="px-2 py-2">Rientro</th><th className="px-2 py-2 text-right">Fuori</th><th className="px-2 py-2 text-right">Km</th><th className="px-2 py-2 text-right">Soste</th><th className="px-2 py-2">Sosta più lunga</th><th className="px-2 py-2 text-right">Vel. max</th><th className="px-2 py-2">Da guardare</th>
+                <th className="px-3 py-2">Targa</th><th className="px-2 py-2">Partenza</th><th className="px-2 py-2">Rientro</th><th className="px-2 py-2 text-right">Fuori</th><th className="px-2 py-2 text-right">Km</th><th className="px-2 py-2 text-right">Soste</th><th className="px-2 py-2">Sosta più lunga</th><th className="px-2 py-2 text-right">Vel. max</th><th className="px-2 py-2 text-right">Rifornimento</th><th className="px-2 py-2">Da guardare</th>
               </tr></thead>
               <tbody>
                 {righe.map((r) => (
@@ -102,12 +102,13 @@ export function GiornataClient({ dati, stations, oggi }: { dati: Giornata; stati
                       <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.soste ? `${r.soste} · ${oreMinuti(r.sosteMin)}` : "—"}</td>
                       <td className="px-2 py-1.5">{r.sostaLunga ? <>{oreMinuti(r.sostaLunga.min)} <span className="text-slate-500">alle {r.sostaLunga.da}</span></> : "—"}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{r.velMax ?? "—"}</td>
+                      <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{r.rifornimenti ? `${r.litri.toLocaleString("it-IT")} l` : "—"}</td>
                       <td className="px-2 py-1.5">{r.avvisi.length ? <ul className="flex flex-col gap-0.5">{r.avvisi.map((a) => <li key={a.codice} className={a.info ? "text-slate-600" : "text-amber-800"}>{a.testo}</li>)}</ul> : r.km >= 1 ? <span className="text-emerald-700">Niente</span> : <span className="text-slate-400">Fermo</span>}</td>
                     </tr>
-                    {aperta === r.targa && <tr className="border-t border-slate-100 bg-slate-50"><td colSpan={9} className="px-3 py-3"><Dettaglio r={r} noti={noti} segna={segna} /></td></tr>}
+                    {aperta === r.targa && <tr className="border-t border-slate-100 bg-slate-50"><td colSpan={10} className="px-3 py-3"><Dettaglio r={r} noti={noti} segna={segna} /></td></tr>}
                   </Fragment>
                 ))}
-                {righe.length === 0 && <tr><td colSpan={9} className="px-3 py-4 text-slate-500">Nessun furgone in questo elenco.</td></tr>}
+                {righe.length === 0 && <tr><td colSpan={10} className="px-3 py-4 text-slate-500">Nessun furgone in questo elenco.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -146,9 +147,17 @@ function Dettaglio({ r, noti, segna }: { r: RigaGiornata; noti: Set<string>; seg
     <div className="flex flex-col gap-2 text-sm">
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-slate-700">
         <span>Guida: <b>{oreMinuti(r.guidaMin)}</b></span><span>Fermo a motore acceso: <b>{oreMinuti(r.fermoAccesoMin)}</b></span>
-        {r.rifornimenti > 0 && <span>Rifornimento: <b>{r.litri.toLocaleString("it-IT")} litri</b></span>}
+
         {r.parteDa && <span>Parte da: <b>{r.parteDa}</b></span>}{r.finisceA && <span>La sera è in: <b>{r.finisceA}</b></span>}
       </div>
+      {r.rifornimenti > 0 && (
+        <div className="text-slate-700">
+          <b>Rifornimenti rilevati: {r.litri.toLocaleString("it-IT")} litri</b>
+          {r.rifDett?.length ? (
+            <ul className="mt-0.5 flex flex-col">{r.rifDett.map((x, i) => <li key={i}><span className="tabular-nums">{x.ora || "ora non rilevata"}</span> · {x.litri.toLocaleString("it-IT")} litri{x.dove ? <span className="text-slate-500"> · {x.dove}</span> : null}</li>)}</ul>
+          ) : <span className="text-slate-500"> — ora e posto non ancora scaricati: vai in «Furgoni: il mese» e premi «Scarica il dettaglio dei rifornimenti».</span>}
+        </div>
+      )}
       {ignoti.map((l) => (
         <div key={l} className="flex flex-wrap items-center gap-2 text-slate-700">
           <span>Conosci <b>{l}</b>?</span>

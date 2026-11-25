@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { provaFonte } from "@/lib/telematica/prova";
-import { scaricaGiorno } from "@/lib/telematica/scarico";
+import { riscaricaRifornimenti, scaricaGiorno } from "@/lib/telematica/scarico";
 
 /** Entra nel portale con l'utente salvato e fa le letture di base. Solo ADMIN. */
 export async function provaCollegamento(fonte: string) {
@@ -37,4 +37,10 @@ export async function segnaLuogoTelematica(input: { station: string; luogo: stri
   else await db.telematicaLuogo.upsert({ where: chiave, create: { station: x.station, luogo: x.luogo, tipo: x.tipo, nota: x.nota || null, creatoDa: user.name }, update: { tipo: x.tipo, nota: x.nota || null, creatoDa: user.name } });
   await audit({ userId: user.id, action: "telematica.luogo", entity: "TelematicaLuogo", meta: { station: x.station, luogo: x.luogo, tipo: x.tipo } });
   revalidatePath("/telematica/giornata");
+}
+
+/** Dettaglio dei rifornimenti (ora, litri, posto) per i giorni del mese scaricati prima che il sito lo salvasse. Solo ADMIN. */
+export async function aggiornaRifornimentiTelematica(mese: string) {
+  await requireRole("ADMIN");
+  return riscaricaRifornimenti(z.string().regex(/^\d{4}-\d\d$/).parse(mese));
 }

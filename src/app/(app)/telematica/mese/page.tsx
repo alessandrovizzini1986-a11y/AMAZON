@@ -15,7 +15,7 @@ export default async function MeseTelematicaPage({ searchParams }: { searchParam
   return (
     <div className="flex flex-col gap-4">
       <PageHeader eyebrow="Strumenti" title="Furgoni: il mese" subtitle="Cosa ha fatto ogni targa nel mese: km, ore di guida, soste, rifornimenti e consumi. I dati arrivano da Targa Telematics e FlottaWeb, un giorno per volta." action={<a href="/telematica/giornata" className="btn-secondary">Giornata di consegna</a>} />
-      <MeseClient mese={mese} riepilogo={d.riepilogo} calendario={d.calendario} spazioMb={d.spazioMb} />
+      <MeseClient mese={mese} riepilogo={d.riepilogo} calendario={d.calendario} spazioMb={d.spazioMb} rifSenzaDettaglio={d.rifSenzaDettaglio} />
     </div>
   );
 }
