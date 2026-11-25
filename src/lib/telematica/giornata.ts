@@ -1,11 +1,11 @@
 /** Giornata di consegna di una station: ogni furgone con telematica, cosa ha fatto quel giorno e cosa c'è da guardare. */
 import { db } from "@/lib/db";
-import { avvisiMezzo, basi, giornataMezzo, luogo, mediana, tappeDelGiorno, type Avviso, type Tappa } from "@/domain/telematica";
+import { avvisiMezzo, basi, giornataMezzo, luogo, mediana, tappeDelGiorno, type Avviso, type Rifornimento, type Tappa } from "@/domain/telematica";
 import { targaPulita } from "./posizioni";
 
 export type RigaGiornata = {
   targa: string; fonte: string; km: number; partenza: string | null; rientro: string | null; fuoriMin: number; guidaMin: number; soste: number; sosteMin: number;
-  sostaLunga: { min: number; dove: string | null; da: string } | null; fermoAccesoMin: number; velMax: number | null; rifornimenti: number; litri: number; parteDa: string | null; finisceA: string | null; avvisi: Avviso[]; tappe: Tappa[];
+  sostaLunga: { min: number; dove: string | null; da: string } | null; fermoAccesoMin: number; velMax: number | null; rifornimenti: number; litri: number; rifDett: Rifornimento[] | null; parteDa: string | null; finisceA: string | null; avvisi: Avviso[]; tappe: Tappa[];
 };
 export type Giornata = {
   station: string; giorno: string; scaricato: boolean; definitivo: boolean; basi: string[]; luoghi: { luogo: string; tipo: string; nota: string | null }[]; inFlotta: number; conTelematica: number; rottePreviste: number | null;
@@ -45,7 +45,7 @@ export async function datiGiornata(station: string, giorno: string): Promise<Gio
     const g = giornataMezzo(r.tappe as Tappa[] | null, basiStation);
     return {
       targa: r.targa, fonte: r.fonte, km: r.km, partenza: g.partenza, rientro: g.rientro, fuoriMin: g.fuoriMin, guidaMin: Math.round(r.guidaSec / 60), soste: g.soste, sosteMin: g.sosteMin, sostaLunga: g.sostaLunga,
-      fermoAccesoMin: Math.round(r.fermoMotoreAccSec / 60), velMax: r.velMax, rifornimenti: r.rifornimenti, litri: r.litri, parteDa: g.parteDa, finisceA: g.finisceA,
+      fermoAccesoMin: Math.round(r.fermoMotoreAccSec / 60), velMax: r.velMax, rifornimenti: r.rifornimenti, litri: r.litri, rifDett: (r.rifornimentiDett as Rifornimento[] | null) ?? null, parteDa: g.parteDa, finisceA: g.finisceA,
       avvisi: avvisiMezzo({ km: r.km, velMax: r.velMax, fermoMotoreAccSec: r.fermoMotoreAccSec }, g, basiStation, medianaKm, officine, case_), tappe: r.km >= 1 ? g.tappe : [],
     };
   });

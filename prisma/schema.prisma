@@ -1257,6 +1257,7 @@ model TelematicaGiorno {
   soste              Int       @default(0)
   rifornimenti       Int       @default(0)
   litri              Float     @default(0)
+  rifornimentiDett   Json? // un elemento per rifornimento: ora, litri, dove
   kmContatore        Float? // contachilometri a fine giornata
   autista            String?
   tappe              Json?

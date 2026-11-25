@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RiepilogoTarga } from "@/domain/telematica";
-import { scaricaGiornoTelematica } from "../actions";
+import { aggiornaRifornimentiTelematica, scaricaGiornoTelematica } from "../actions";
 
 type Giorno = { giorno: string; scaricato: boolean; definitivo: boolean; errori: number };
 const num = (x: number | null, dec = 0) => (x === null ? "—" : x.toLocaleString("it-IT", { minimumFractionDigits: dec, maximumFractionDigits: dec }));
@@ -13,13 +13,22 @@ const COLONNE: Colonna[] = [
   { k: "guidaOre", nome: "Ore guida", dec: 1 }, { k: "fermoMotoreAccOre", nome: "Fermo a motore acceso (h)", dec: 1 }, { k: "velMax", nome: "Vel. max" }, { k: "rifornimenti", nome: "Rifornimenti" }, { k: "litri", nome: "Litri", dec: 1 }, { k: "litri100km", nome: "L/100 km", dec: 1 },
 ];
 
-export function MeseClient({ mese, riepilogo, calendario, spazioMb }: { mese: string; riepilogo: RiepilogoTarga[]; calendario: Giorno[]; spazioMb: number }) {
+export function MeseClient({ mese, riepilogo, calendario, spazioMb, rifSenzaDettaglio }: { mese: string; riepilogo: RiepilogoTarga[]; calendario: Giorno[]; spazioMb: number; rifSenzaDettaglio: number }) {
   const router = useRouter();
   const [station, setStation] = useState("TUTTE");
   const [ordine, setOrdine] = useState<{ k: keyof RiepilogoTarga; su: boolean }>({ k: "station", su: true });
   const [stato, setStato] = useState<{ fatti: number; totale: number; giorno: string } | null>(null);
   const [avvisi, setAvvisi] = useState<string[]>([]);
 
+  const [rif, setRif] = useState<string | null>(null);
+  const dettaglioRifornimenti = async () => {
+    let restano = rifSenzaDettaglio, errori = 0;
+    try {
+      while (restano > 0) { setRif(`Scarico il dettaglio dei rifornimenti: ne restano ${restano}…`); const e = await aggiornaRifornimentiTelematica(mese); errori += e.errori; if (e.fatte === 0) break; restano = e.restano; }
+      setRif(restano > 0 ? `Non sono riuscito a completare: ne restano ${restano}. Riprova tra un minuto.` : errori ? `Fatto, con ${errori} letture non riuscite.` : null);
+    } catch { setRif("Scarico non riuscito. Riprova tra un minuto."); }
+    router.refresh();
+  };
   const mancanti = calendario.filter((g) => !g.definitivo).map((g) => g.giorno);
   const stations = useMemo(() => [...new Set(riepilogo.map((r) => r.station ?? "Senza station"))].sort(), [riepilogo]);
   const righe = useMemo(() => {
@@ -48,7 +57,9 @@ export function MeseClient({ mese, riepilogo, calendario, spazioMb }: { mese: st
           <button className="btn-primary" disabled={!!stato || mancanti.length === 0} onClick={() => scarica(mancanti)}>{mancanti.length ? `Scarica i ${mancanti.length} giorni che mancano` : "Mese già scaricato"}</button>
           <button className="btn-secondary" disabled={!!stato || calendario.length === 0} onClick={() => scarica(calendario.map((g) => g.giorno))}>Riscarica tutto il mese</button>
           <a className="btn-secondary" href={`/api/telematica/mese?mese=${mese}`}>Scarica Excel</a>
+          {rifSenzaDettaglio > 0 && <button className="btn-secondary" disabled={!!stato || (!!rif && rif.startsWith("Scarico il"))} onClick={dettaglioRifornimenti}>Scarica il dettaglio di {rifSenzaDettaglio} rifornimenti</button>}
         </div>
+        {rif && <p className="text-sm text-slate-700">{rif}</p>}
         {stato && <p className="text-sm text-slate-700">Sto scaricando il giorno {stato.giorno.slice(8)}/{stato.giorno.slice(5, 7)} ({stato.fatti + 1} di {stato.totale}). Lascia aperta la pagina: ogni giorno richiede circa mezzo minuto.</p>}
         <div className="flex flex-wrap gap-1" aria-label="Giorni scaricati">
           {calendario.map((g) => (

@@ -7,7 +7,10 @@ export type Tappa = { t: "G" | "S"; da: string; a: string; km: number; dove: str
 export const GIORNI_TAPPE = 120; // dopo questi giorni le tappe si cancellano, restano i numeri del giorno
 const oraRoma = (iso: string) => new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 const corto = (x: string | null | undefined) => (x ? (x.length > 60 ? x.slice(0, 59) + "…" : x) : null);
+/** un rifornimento rilevato dal portale: ora italiana "HH:MM", litri, indirizzo corto */
+export type Rifornimento = { ora: string; litri: number; dove: string | null };
 export type GiornoMezzo = {
+  rifDett: Rifornimento[];
   km: number; inizio: string | null; fine: string | null; guidaSec: number; motoreSec: number; fermoMotoreAccSec: number;
   velMax: number | null; punteggioSicurezza: number | null; soste: number; rifornimenti: number; litri: number; kmContatore: number | null; autista: string | null; tappe: Tappa[];
 };
@@ -26,12 +29,19 @@ export const giornoRoma = (d: Date) => new Intl.DateTimeFormat("sv-SE", { timeZo
 export const piuGiorni = (giorno: string, k: number) => { const d = new Date(`${giorno}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10); };
 export const giorniDelMese = (mese: string) => { const tot = new Date(Date.UTC(Number(mese.slice(0, 4)), Number(mese.slice(5, 7)), 0)).getUTCDate(); return Array.from({ length: tot }, (_, i) => `${mese}-${String(i + 1).padStart(2, "0")}`); };
 
-type PosTarga = { mileage?: number; refuel?: { refueledLiters?: number } | null };
+type PosTarga = { mileage?: number; refuel?: { refueledLiters?: number } | null; location?: { timestamp?: string; formattedAddress?: string | null } | null };
 type SegTarga = { dateBegin?: string; dateEnd?: string; mileage?: number; reportType?: string; driverName?: string | null; formattedAddressBegin?: string | null; formattedAddressEnd?: string | null; positions?: PosTarga[] };
 type RottaTarga = {
   totalMileage?: number; dateUsageBegin?: string | null; dateUsageEnd?: string | null; totalDriveTime?: number; totalEngineOnTime?: number; totalParkEngineOnTime?: number;
   dailyMaximumSpeed?: number | null; drivingScore?: { safety?: { score?: number | null } | null } | null; usageSegments?: SegTarga[];
 };
+
+/** il primo rifornimento così come lo manda Targa (serve a vedere quali altri dati ci sono: livelli, importi…) */
+export function primoRifornimentoGrezzo(risposta: unknown): unknown {
+  const seg = ((risposta ?? {}) as RottaTarga).usageSegments;
+  for (const s of Array.isArray(seg) ? seg : []) for (const p of s.positions ?? []) if (p.refuel) return p.refuel;
+  return null;
+}
 
 /** Targa: /route/{mezzo} di un giorno → riga del giorno. Le soste contate sono quelle in mezzo alla giornata (non la notte prima e dopo). */
 export function giornoDaTarga(risposta: unknown): GiornoMezzo {
@@ -43,14 +53,15 @@ export function giornoDaTarga(risposta: unknown): GiornoMezzo {
   });
   const soste = giornataMezzo(tappe).soste; // soste di almeno 3 minuti tra la prima partenza e l'ultimo arrivo
   const posizioni = seg.flatMap((s) => s.positions ?? []);
-  const rif = posizioni.map((p) => n(p.refuel?.refueledLiters)).filter((l) => l > 0);
+  const rifDett: Rifornimento[] = posizioni.filter((p) => n(p.refuel?.refueledLiters) > 0).map((p) => ({ ora: p.location?.timestamp ? oraRoma(p.location.timestamp) : "", litri: r1(n(p.refuel!.refueledLiters)), dove: corto(p.location?.formattedAddress) }));
+  const rif = rifDett.map((x) => x.litri);
   const contatori = posizioni.map((p) => n(p.mileage)).filter((k) => k > 0);
   const km = n(r.totalMileage);
   return {
     km: r1(km), inizio: km > 0 ? r.dateUsageBegin ?? null : null, fine: km > 0 ? r.dateUsageEnd ?? null : null,
     guidaSec: Math.round(n(r.totalDriveTime)), motoreSec: Math.round(n(r.totalEngineOnTime)), fermoMotoreAccSec: Math.round(n(r.totalParkEngineOnTime)),
     velMax: r.dailyMaximumSpeed ?? null, punteggioSicurezza: r.drivingScore?.safety?.score ?? null, soste, rifornimenti: rif.length, litri: r1(rif.reduce((a, b) => a + b, 0)),
-    kmContatore: contatori.length ? r1(Math.max(...contatori)) : null, autista: seg.map((s) => s.driverName).find(Boolean) ?? null, tappe,
+    kmContatore: contatori.length ? r1(Math.max(...contatori)) : null, autista: seg.map((s) => s.driverName).find(Boolean) ?? null, tappe, rifDett,
   };
 }
 
@@ -68,7 +79,7 @@ export function giornoDaFlottaweb(risposta: unknown, giorno: string): GiornoMezz
   return {
     km: r1(km), inizio: mossi.length ? iso(mossi[0]) : null, fine: mossi.length ? iso(mossi[mossi.length - 1]) : null, guidaSec: 0, motoreSec: 0, fermoMotoreAccSec: 0,
     velMax: mossi.length ? Math.round(Math.max(...mossi.map((p) => n(p.speed)))) : null, punteggioSicurezza: null, soste: 0, rifornimenti: 0, litri: 0,
-    kmContatore: conta.length ? r1(Math.max(...conta)) : null, autista, tappe: [],
+    kmContatore: conta.length ? r1(Math.max(...conta)) : null, autista, tappe: [], rifDett: [],
   };
 }
 
