@@ -158,3 +158,18 @@ describe("posti conosciuti", () => {
     expect(casa).toEqual([{ codice: "CASA_DRIVER", testo: "La sera è a casa di un driver (Rossi): Via Roma, Cesena" }]);
   });
 });
+
+import { SOLO_SUPER, tutteLeVoci, voceDi, vociDelRuolo } from "@/components/navModel";
+
+describe("statistica d'uso", () => {
+  it("ogni pagina è contata sotto la sua voce di menu", () => {
+    expect(voceDi("/presenze/verifica")).toBe("/presenze"); expect(voceDi("/costi/gls")).toBe("/costi/gls"); expect(voceDi("/costi/meta-mese?x=1")).toBe("/costi");
+    expect(voceDi("/telematica/giornata")).toBe("/telematica/giornata"); expect(voceDi("/account")).toBe("altro:/account"); expect(voceDi("/")).toBe("altro:/");
+  });
+  it("la pagina dell'uso è solo del super admin: non è tra i flag e agli altri è bloccata", () => {
+    expect(SOLO_SUPER).toContain("/uso");
+    expect(vociDelRuolo("ADMIN").flatMap((g) => g.items.map((i) => i.href))).not.toContain("/uso");
+    expect(bloccato("/uso", SOLO_SUPER)).toBe(true); expect(bloccato("/api/uso", SOLO_SUPER)).toBe(true);
+    expect(tutteLeVoci().some((v) => v.href === "/uso")).toBe(true);
+  });
+});

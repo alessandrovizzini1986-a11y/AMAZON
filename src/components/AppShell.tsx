@@ -8,6 +8,7 @@ import { MenuMobile, GruppoMenu } from "./MenuMobile";
 import { MenuAttivoBarra } from "./MenuAttivo";
 import { MarcaScroll } from "./MarcaScroll";
 import { GuardiaStagista } from "./GuardiaStagista";
+import { TracciaUso } from "./TracciaUso";
 
 const ROLE_LABEL: Record<SessionUser["role"], string> = {
   ADMIN: "Fleet Manager",
@@ -37,6 +38,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   return (
     <div className="min-h-screen">
       {user.role === "STAGISTA" && <GuardiaStagista />}
+      <TracciaUso />
       <header className="sticky top-0 z-20 border-b border-line bg-surface-raised print:hidden">
         <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-6 px-4 md:h-[68px] md:gap-8 md:px-8">
           <Link href="/" className="flex items-center gap-3">
