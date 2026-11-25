@@ -46,6 +46,13 @@ export async function GET() {
   // confronto da inizio anno: tutti e tre sugli stessi mesi (quelli con tutti e due i gruppi)
   const comuni = new Set(tassi.TOTALE.mesi), ytdDi = (v: Vista, st?: string) => { const t = tabellaTassi(righe.filter((r) => comuni.has(r.mese) && (!st || r.station === st)), v); return t.network.ytd; };
 
+  const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" } } });
+  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio }));
+  const mesiPers = [...new Set(persone.map((x) => x.mese))].sort();
+  // persone diverse con almeno un giorno di infortunio nei mesi del confronto (non la somma dei mesi)
+  const infortunati = (g: "SIC" | "STD", st?: string) => new Set(persone.filter((x) => x.gruppo === g && (!st || x.station === st) && comuni.has(x.mese) && x.ggInfortunio > 0).map((x) => `${x.station}|${x.codice}`)).size;
+  const per1000 = (n: number, rotte: number) => (rotte ? Math.round((n / rotte) * 10000) / 10 : "");
+
   // ===== 1. Recap
   const rc = wb.addWorksheet("Recap");
   rc.columns = [16, 13, 15, 15, 12, 10, 14, 14, 16].map((width) => ({ width }));
@@ -72,9 +79,9 @@ export async function GET() {
   totale(rc.addRow(["Network", a.network.headcount, a.network.assentiPct / 100, a.network.malattia100, a.network.infortunio100, "", "", ""]));
   rc.addRow([]);
   titolo(rc, "4. SIC contro STD");
-  testa(rc, ["Gruppo", "Persone (media)", "% persone assenti", "Giorni malattia /100", "Giorni infortunio /100", "Giorni di infortunio", "Persone infortunate", "Infortunio ogni 1.000 rotte"]);
-  for (const g of ["SIC", "STD"] as const) { const rr = righe.filter((r) => r.gruppo === g && mesiAss.includes(r.mese)), s = somma(rr), i = indicatori(s); rc.addRow([g, i.headcount, i.assentiPct / 100, i.malattia100, i.infortunio100, s.ggInfortunio, rr.reduce((x, r) => x + r.persInfortunio, 0), i.infortunio1000Rotte]); }
-  rc.addRow(["Persone infortunate: somma dei mesi (chi è in infortunio per due mesi conta due volte)."]).font = { italic: true, color: { argb: "FF64748B" } };
+  testa(rc, ["Gruppo", "Persone (media)", "% persone assenti", "Giorni malattia /100", "Giorni infortunio /100", "Giorni di infortunio", "Persone infortunate", "Giorni di infortunio ogni 1.000 rotte", "Persone infortunate ogni 1.000 rotte"]);
+  for (const g of ["SIC", "STD"] as const) { const rr = righe.filter((r) => r.gruppo === g && mesiAss.includes(r.mese)), s = somma(rr), i = indicatori(s); rc.addRow([g, i.headcount, i.assentiPct / 100, i.malattia100, i.infortunio100, s.ggInfortunio, infortunati(g), i.infortunio1000Rotte, per1000(infortunati(g), s.rotte)]); }
+  rc.addRow(["Persone infortunate: persone diverse con almeno un giorno di infortunio nel periodo. I giorni dicono quanto pesa, le persone quante volte succede."]).font = { italic: true, color: { argb: "FF64748B" } };
   rc.addRow([]);
   titolo(rc, "5. In breve");
   for (const f of frasi) { const r = rc.addRow([`• ${f.testo.replace(/(\d)\.(\d)(?!\d)/g, "$1,$2")}`]); rc.mergeCells(r.number, 1, r.number, 9); r.getCell(1).alignment = { wrapText: true, vertical: "top" }; r.height = f.testo.length > 120 ? 32 : 18; }
@@ -110,13 +117,10 @@ export async function GET() {
   for (const ws of [rc, ay, ...fogliMese]) { ws.views = [{ showGridLines: false }]; ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }; }
 
   // ===== Persone: primi 10 per station, elenco completo da inizio anno, dettaglio per mese
-  const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" } } });
-  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio }));
-  const mesiPers = [...new Set(persone.map((x) => x.mese))].sort();
   const INT_P = ["#", "Persona", "Gruppo", "Giorni malattia", "Giorni infortunio", "Totale giorni", "Giorni lavorati", "Assenteismo", "Mesi con assenze"];
   const top = wb.addWorksheet("Più assenti");
   top.columns = [6, 34, 9, 12, 12, 12, 12, 13, 12].map((width) => ({ width }));
-  titolo(top, `Chi è stato più assente: primi 10 per station (${periodo(mesiPers)})`, "Giorni di malattia e infortunio per persona. Dati personali riservati: non inoltrare oltre chi deve gestirli.");
+  titolo(top, `Chi è stato più assente: primi 10 per station (${periodo(mesiPers)})`, "Giorni di malattia e infortunio per persona. I SIC arrivano a settembre, gli STD partono da febbraio e arrivano a ottobre. Dati personali riservati.");
   for (const st of stations) {
     const e = piuAssenti(persone, { vista: "TOTALE", station: st });
     top.addRow([]); top.addRow([`${st} · ${e.length} persone con almeno un giorno di assenza`]).font = { bold: true, size: 12 };
@@ -143,9 +147,9 @@ export async function GET() {
 
   // ===== 3. Station: SIC e STD
   const sg = wb.addWorksheet("Station SIC e STD");
-  sg.columns = [10, 9, 14, 14, 14, 14, 13, 13, 14, 16].map((width) => ({ width }));
-  testa(sg, ["Station", "Gruppo", "Persone (media)", "% persone assenti", "Giorni malattia /100", "Giorni infortunio /100", "Giorni di malattia", "Giorni di infortunio", "Rotte", "Infortunio ogni 1.000 rotte"]);
-  for (const st of stations) for (const g of ["SIC", "STD"] as const) { const s = somma(righe.filter((r) => r.station === st && r.gruppo === g && mesiAss.includes(r.mese))), i = indicatori(s); if (s.mesi) sg.addRow([st, g, i.headcount, i.assentiPct / 100, i.malattia100, i.infortunio100, s.ggMalattia, s.ggInfortunio, s.rotte, i.infortunio1000Rotte]); }
+  sg.columns = [10, 9, 14, 14, 14, 14, 13, 13, 14, 16, 13, 16].map((width) => ({ width }));
+  testa(sg, ["Station", "Gruppo", "Persone (media)", "% persone assenti", "Giorni malattia /100", "Giorni infortunio /100", "Giorni di malattia", "Giorni di infortunio", "Rotte", "Giorni di infortunio ogni 1.000 rotte", "Persone infortunate", "Persone infortunate ogni 1.000 rotte"]);
+  for (const st of stations) for (const g of ["SIC", "STD"] as const) { const s = somma(righe.filter((r) => r.station === st && r.gruppo === g && mesiAss.includes(r.mese))), i = indicatori(s); if (s.mesi) sg.addRow([st, g, i.headcount, i.assentiPct / 100, i.malattia100, i.infortunio100, s.ggMalattia, s.ggInfortunio, s.rotte, i.infortunio1000Rotte, infortunati(g, st), per1000(infortunati(g, st), s.rotte)]); }
   sg.getColumn(4).numFmt = "0.0%";
 
   // ===== 4. Dettaglio per mese
@@ -171,6 +175,7 @@ export async function GET() {
     ["Priorità (0–100)", "Mette insieme quanto la station è peggio della media del network (60%) e quanto pesa sui giorni persi di tutto il network (40%)."],
     ["Stato", "0–30 sotto controllo · 31–60 attenzione · 61–80 criticità · 81–100 intervento prioritario."],
     ["Ultimi 3 mesi", "Giorni persi ogni 100 lavoratori negli ultimi 3 mesi contro i 3 prima. Oltre ±15% è peggioramento o miglioramento."],
+    ["Infortuni e rotte", "Due misure diverse: i GIORNI di infortunio ogni 1.000 rotte dicono quanto pesano gli infortuni (un solo infortunio lungo li alza molto); le PERSONE infortunate ogni 1.000 rotte dicono quante volte succede. Le rotte dei SIC sono quelle dei driver, i giorni di infortunio sono di tutto il personale SIC."],
     ["Limite", "Uno STD a cui non viene rinnovata la missione dopo un infortunio esce dalle buste: i giorni di infortunio degli STD possono essere sottostimati."],
   ]) { const r = cl.addRow([k, v]); r.getCell(1).font = { bold: true }; r.getCell(2).alignment = { wrapText: true, vertical: "top" }; r.height = v.length > 110 ? 32 : 18; }
 
