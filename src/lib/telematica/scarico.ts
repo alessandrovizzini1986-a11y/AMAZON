@@ -4,7 +4,7 @@
  */
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { GIORNI_TAPPE, fusoRoma, giornoDaFlottaweb, giornoDaTarga, giornoRoma, piuGiorni, primoRifornimentoGrezzo, type GiornoMezzo } from "@/domain/telematica";
+import { GIORNI_TAPPE, giornoDaFlottaweb, giornoDaTarga, giornoRoma, intervalloRoma, piuGiorni, primoRifornimentoGrezzo, type GiornoMezzo } from "@/domain/telematica";
 import { campione } from "./prova";
 import type { Fonte } from "./comune";
 import { accediFlottaweb, leggiFlottaweb } from "./flottaweb";
@@ -29,10 +29,11 @@ async function mezzi(fonte: Fonte, token: string): Promise<Mezzo[]> {
 
 async function giornoDi(m: Mezzo, token: string, giorno: string): Promise<GiornoMezzo> {
   if (m.fonte === "TARGA") {
-    const f = fusoRoma(giorno);
-    const risposta = await leggiTarga(token, `/route/${m.id}`, { begin: `${giorno}T00:00:00.000${f}`, end: `${giorno}T23:59:59.999${f}`, timezone: "Europe/Rome", showIdlingSegments: "true", showDriverName: "true" });
+    // inizio e fine con il loro scarto: nei giorni del cambio dell'ora la giornata dura 23 o 25 ore
+    const { begin, end } = intervalloRoma(giorno);
+    const risposta = await leggiTarga(token, `/route/${m.id}`, { begin, end, timezone: "Europe/Rome", showIdlingSegments: "true", showDriverName: "true" });
     await ricordaRifornimento(risposta);
-    return giornoDaTarga(risposta);
+    return giornoDaTarga(risposta, giorno);
   }
   return giornoDaFlottaweb(await leggiFlottaweb(token, "/gps/getpositions", { unitid: m.id, da: `${giorno} 00:00:00`, a: `${giorno} 23:59:59` }), giorno);
 }
@@ -55,13 +56,37 @@ const datiRiga = (m: { id: string }, g: GiornoMezzo) => ({
 });
 
 /**
- * Dettaglio dei rifornimenti per i giorni già scaricati prima che il sito lo salvasse: rilegge dal portale solo le righe
- * con un rifornimento e senza dettaglio, poche per volta. Torna quante ne restano.
+ * Righe Targa del mese con rifornimenti ma senza dettaglio completo: senza dettaglio (scaricate prima che il sito lo salvasse)
+ * o con il dettaglio vecchio, senza coordinate (il primo elemento non ha la chiave "lat"). Un elenco vuoto vale come fatto.
+ */
+const dettaglioDaRifare = (mese: string) => Prisma.sql`fonte = 'TARGA' and giorno like ${`${mese}%`} and rifornimenti > 0
+  and ("rifornimentiDett" is null or not (("rifornimentiDett")::jsonb -> 0 ? 'lat'))`;
+
+/** quante righe del mese aspettano ora, luogo e coordinate dei rifornimenti */
+export async function rifornimentiDaRiscaricare(mese: string): Promise<number> {
+  const [r] = await db.$queryRaw<{ n: number }[]>`select count(*)::int as n from "TelematicaGiorno" where ${dettaglioDaRifare(mese)}`;
+  return Number(r?.n ?? 0);
+}
+
+/**
+ * Come rifornimentiDaRiscaricare, ma solo per le targhe date (per esempio i furgoni di una flotta): quante giornate del mese
+ * aspettano ancora ora, luogo e coordinate dei rifornimenti. Stessa condizione del riscarico. Nessuna targa → 0.
+ */
+export async function rifornimentiDaRiscaricarePerTarghe(mese: string, targhe: string[]): Promise<number> {
+  const elenco = [...new Set(targhe.map(targaPulita).filter(Boolean))];
+  if (!elenco.length) return 0;
+  const [r] = await db.$queryRaw<{ n: number }[]>`select count(*)::int as n from "TelematicaGiorno" where ${dettaglioDaRifare(mese)} and targa in (${Prisma.join(elenco)})`;
+  return Number(r?.n ?? 0);
+}
+
+/**
+ * Dettaglio dei rifornimenti (ora, luogo, coordinate) per i giorni scaricati prima che il sito lo salvasse: rilegge dal portale
+ * solo le righe con un rifornimento e senza dettaglio completo, poche per volta. Torna quante ne restano.
  */
 export async function riscaricaRifornimenti(mese: string, quante = 60): Promise<{ fatte: number; restano: number; errori: number }> {
-  const dove = { fonte: "TARGA", giorno: { startsWith: mese }, rifornimenti: { gt: 0 }, rifornimentiDett: { equals: Prisma.DbNull } };
-  const righe = await db.telematicaGiorno.findMany({ where: dove, select: { id: true, idMezzo: true, targa: true, giorno: true }, orderBy: { giorno: "asc" }, take: quante });
-  if (!righe.length) return { fatte: 0, restano: 0, errori: 0 };
+  const ids = await db.$queryRaw<{ id: string }[]>`select id from "TelematicaGiorno" where ${dettaglioDaRifare(mese)} order by giorno asc limit ${quante}`;
+  if (!ids.length) return { fatte: 0, restano: 0, errori: 0 };
+  const righe = await db.telematicaGiorno.findMany({ where: { id: { in: ids.map((x) => x.id) } }, select: { id: true, idMezzo: true, targa: true, giorno: true }, orderBy: { giorno: "asc" } });
   const token = await accediTarga();
   let fatte = 0, errori = 0;
   await aGruppi(righe, async (r) => {
@@ -72,7 +97,7 @@ export async function riscaricaRifornimenti(mese: string, quante = 60): Promise<
       fatte++;
     } catch { errori++; }
   });
-  return { fatte, restano: (await db.telematicaGiorno.count({ where: dove })), errori };
+  return { fatte, restano: await rifornimentiDaRiscaricare(mese), errori };
 }
 
 export type EsitoScarico = { giorno: string; mezzi: number; errori: number; messaggi: string[] };

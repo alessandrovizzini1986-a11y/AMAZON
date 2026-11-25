@@ -7,8 +7,13 @@ import { requireUser } from "@/lib/auth";
 import { assertCan } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { confrontaImport, type EsitoImport } from "@/domain/telepass/anagrafiche";
+import { chiaveClientBase, LIMITI_INVIO_Q8, LUNGHEZZE_Q8 } from "@/domain/carburante/q8Righe";
+import { chiaveClientValida, chiaveQ8Da, MAX_CHIAVE_CLIENT, panMascherato, segretoQ8, SegretoMancante } from "@/lib/carburante/chiave";
+import { bloccato } from "@/components/navModel";
 
 const BASE = "/carburante-telepass";
+const PAGINA_Q8 = `${BASE}/q8`;
+const NON_DISPONIBILE = "Pagina non disponibile per il tuo utente";
 const s = (max = 200) => z.string().max(max).nullable();
 const file = z.object({ nomeFile: z.string().min(1).max(300), hash: z.string().regex(/^[0-9a-f]{64}$/) });
 
@@ -131,14 +136,113 @@ export async function salvaTelepassRun(input: unknown): Promise<{ id: string }> 
   return { id: run.id };
 }
 
-export async function salvaQ8Run(input: unknown): Promise<{ id: string }> {
+export async function salvaQ8Run(input: unknown): Promise<{ id: string } | { errore: string }> {
   const user = await requireUser();
   assertCan(user, "telepass.run");
-  const r = z.object({ ...runBase, righeExport: z.number().int(), tenute: z.number().int(), scartate: z.number().int(), nonCensite: z.number().int(), perIdentificativo: z.number().int() }).parse(input);
+  // voce di menu nascosta dal super admin: l'azione non si usa nemmeno chiamandola da un'altra pagina
+  if (bloccato(PAGINA_Q8, user.nascosti ?? [])) return { errore: NON_DISPONIBILE };
+  const p = z.object({ ...runBase, righeExport: z.number().int(), tenute: z.number().int(), scartate: z.number().int(), nonCensite: z.number().int(), perIdentificativo: z.number().int() }).safeParse(input);
+  if (!p.success) return { errore: "Dati dell'elaborazione non validi: ricarica il file e riprova." };
+  const r = p.data;
   const run = await db.q8Run.create({
     data: { anno: r.anno, mese: r.mese, nomeFile: r.nomeFile, hashSha256: r.hash, righeExport: r.righeExport, tenute: r.tenute, scartate: r.scartate, nonCensite: r.nonCensite, perIdentificativo: r.perIdentificativo, totale: r.totale, totaliJson: r.totali, anomalieJson: r.anomalie as object[], eseguitoDa: user.name },
   });
   await audit({ userId: user.id, action: "q8.run", entity: "Q8Run", entityId: run.id, meta: { mese: `${r.anno}-${r.mese}`, tenute: r.tenute, totale: r.totale } });
   revalidatePath(BASE, "layout");
   return { id: run.id };
+}
+
+const L = LUNGHEZZE_Q8;
+const importoQ8 = z.number().finite().min(-1_000_000).max(1_000_000);
+/** chiave client (PAN intero): non si salva, il server la sostituisce con chiaveQ8Da */
+const chiaveClient = z.string().min(1).max(MAX_CHIAVE_CLIENT).refine(chiaveClientValida, "chiave della transazione non valida");
+const transazioneQ8 = z.object({
+  chiave: chiaveClient, mese: z.string().regex(/^\d{4}-\d{2}$/), giorno: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), ora: z.string().regex(/^\d{2}:\d{2}:\d{2}$/),
+  station: s(L.station), pan: z.string().max(L.pan), identificativo: s(L.identificativo), targaQ8: s(L.targaQ8), prodotto: s(L.prodotto),
+  litri: z.number().finite().positive().max(100_000), importo: importoQ8, importoNoIva: importoQ8,
+  impianto: s(L.impianto), indirizzo: s(L.indirizzo), citta: s(L.citta), km: z.number().int().positive().max(2_000_000_000).nullable(),
+}).refine((t) => {
+  // la chiave deve essere quella della transazione (con l'eventuale "#n" delle righe uguali)
+  const base = chiaveClientBase(t);
+  return t.chiave === base || (t.chiave.startsWith(`${base}#`) && /^#[1-9]\d*$/.test(t.chiave.slice(base.length)));
+}, "la chiave non corrisponde alla transazione");
+
+const { righePerParte: MAX_RIGHE_PARTE, transazioniFile: MAX_TRANSAZIONI_FILE } = LIMITI_INVIO_Q8;
+const parteQ8 = z.object({
+  ...file.shape,
+  /** id del caricamento, scelto dalla pagina (crypto.randomUUID): lo stesso per tutte le parti, anche dopo un Riprova */
+  caricamento: z.string().uuid(),
+  anno: z.number().int().min(2020).max(2100), mese: z.number().int().min(1).max(12),
+  parte: z.number().int().min(0), totaleParti: z.number().int().min(1).max(1000),
+  righe: z.array(transazioneQ8).max(MAX_RIGHE_PARTE),
+  /** righe nuove aggiunte dalle parti precedenti (per l'audit) */
+  inseriteFinora: z.number().int().min(0).max(MAX_TRANSAZIONI_FILE).default(0),
+  /** solo nell'ultima parte: le chiavi client di tutte le transazioni del file */
+  chiaviFile: z.array(chiaveClient).min(1).max(MAX_TRANSAZIONI_FILE).optional(),
+}).superRefine((x, ctx) => {
+  if (x.parte >= x.totaleParti) ctx.addIssue({ code: "custom", message: "parte fuori dal totale delle parti" });
+  else if ((x.parte === x.totaleParti - 1) !== !!x.chiaviFile) {
+    ctx.addIssue({ code: "custom", message: x.chiaviFile ? "l'elenco delle chiavi va solo nell'ultima parte" : "manca l'elenco delle transazioni del file" });
+  }
+});
+
+/** Il primo problema trovato da zod, in parole semplici. */
+function spiegaZod(e: z.ZodError): string {
+  const i = e.issues[0];
+  if (!i) return "formato";
+  if (i.code === "custom") return i.message;
+  const campo = i.path.filter((x) => typeof x === "string").at(-1);
+  return campo ? `campo "${campo}"` : "formato";
+}
+
+export type EsitoParteQ8 = { inserite: number; tolte: number | null } | { errore: string };
+
+/**
+ * Transazioni Q8 riga per riga (per l'incrocio con la telematica), mandate a parti dalla pagina Q8 dopo salvaQ8Run.
+ * Le parti 0…n-2 aggiungono le righe (quelle già presenti, stessa chiave, si saltano) senza togliere nulla: se il caricamento
+ * si ferma, nel mese restano le righe di prima più quelle nuove già arrivate. L'ultima parte, in una sola transazione del
+ * database, aggiunge le sue righe, toglie le righe del mese che non sono nel file (chiaviFile = le chiavi di tutto il file)
+ * e scrive l'audit. Il server sostituisce ogni chiave con quella non reversibile e del PAN salva solo le ultime 4 cifre.
+ * Gli errori previsti tornano come { errore } da mostrare così come sono.
+ */
+export async function salvaTransazioniQ8(input: unknown): Promise<EsitoParteQ8> {
+  const user = await requireUser();
+  assertCan(user, "telepass.run");
+  if (bloccato(PAGINA_Q8, user.nascosti ?? [])) return { errore: NON_DISPONIBILE };
+  const p = parteQ8.safeParse(input);
+  if (!p.success) return { errore: `Dati delle transazioni non validi (${spiegaZod(p.error)}): ricarica il file e riprova.` };
+  const r = p.data;
+  const meseFile = `${r.anno}-${String(r.mese).padStart(2, "0")}`;
+  if (r.righe.some((x) => x.mese !== meseFile)) return { errore: `Le transazioni devono essere tutte del mese del file (${meseFile}).` };
+
+  let segreto: string;
+  try { segreto = await segretoQ8(); } catch (e) {
+    if (e instanceof SegretoMancante) return { errore: "Nel database manca la chiave segreta delle transazioni Q8: va applicato l'ultimo aggiornamento del database. Avvisa l'amministratore." };
+    throw e;
+  }
+  const dati = r.righe.map((t) => ({ ...t, chiave: chiaveQ8Da(t.chiave, segreto), pan: panMascherato(t.pan) }));
+
+  if (!r.chiaviFile) {
+    const { count } = await db.q8Transazione.createMany({ data: dati, skipDuplicates: true });
+    return { inserite: count, tolte: null };
+  }
+
+  const nelFile = new Set(r.chiaviFile.map((k) => chiaveQ8Da(k, segreto)));
+  if (dati.some((d) => !nelFile.has(d.chiave))) return { errore: "L'elenco delle transazioni del file è incompleto: ricarica il file e riprova." };
+  const tieni = [...nelFile];
+  const esito = await db.$transaction(async (tx) => {
+    const { count: inserite } = await tx.q8Transazione.createMany({ data: dati, skipDuplicates: true });
+    const { count: tolte } = await tx.q8Transazione.deleteMany({ where: { mese: meseFile, chiave: { notIn: tieni } } });
+    // audit nella stessa transazione: o tutto o niente
+    await tx.auditLog.create({
+      data: {
+        userId: user.id, action: "q8.transazioni", entity: "Q8Transazione",
+        meta: { mese: meseFile, nomeFile: r.nomeFile, hash: r.hash, caricamento: r.caricamento, parti: r.totaleParti, transazioni: tieni.length, inserite: r.inseriteFinora + inserite, tolte },
+      },
+    });
+    return { inserite, tolte };
+  }, { timeout: 60_000 });
+  revalidatePath(PAGINA_Q8);
+  revalidatePath("/telematica/carburante");
+  return esito;
 }

@@ -44,7 +44,7 @@ describe("telematica: posizioni", () => {
   });
 });
 
-import { fusoRoma, giorniDelMese, giornoDaFlottaweb, giornoDaTarga, riepilogoMese, type RigaGiorno } from "@/domain/telematica";
+import { fusoRoma, giorniDelMese, giornoDaFlottaweb, giornoDaTarga, intervalloRoma, riepilogoMese, type RigaGiorno } from "@/domain/telematica";
 import { ultimoPuntoFw } from "@/lib/telematica/posizioni";
 
 describe("telematica: giorno e mese", () => {
@@ -52,12 +52,22 @@ describe("telematica: giorno e mese", () => {
   it("Targa: km, orari, soste in mezzo alla giornata e rifornimenti", () => {
     const g = giornoDaTarga({
       totalMileage: 63.017, dateUsageBegin: "2026-11-23T09:41:45.000+01:00", dateUsageEnd: "2026-11-23T18:03:59.000+01:00", totalDriveTime: 14635, totalEngineOnTime: 17090, totalParkEngineOnTime: 2455, dailyMaximumSpeed: 133, drivingScore: { safety: { score: 5.9 } },
-      usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T09:41:45+01:00", 0), seg("USAGE", "2026-11-23T09:41:45+01:00", "2026-11-23T11:00:00+01:00", 30, { positions: [{ mileage: 14230, refuel: { refueledLiters: 41.5 }, location: { timestamp: "2026-11-23T10:15:00+01:00", formattedAddress: "Via Emilia, 10, Rimini, Rn" } }] }),
+      usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T09:41:45+01:00", 0), seg("USAGE", "2026-11-23T09:41:45+01:00", "2026-11-23T11:00:00+01:00", 30, { positions: [{ mileage: 14230, refuel: { refueledLiters: 41.5 }, location: { timestamp: "2026-11-23T10:15:00+01:00", formattedAddress: "Via Emilia, 10, Rimini, Rn", lat: 44.0612345678, lng: 12.5654321 } }] }),
         seg("INACTIVITY", "2026-11-23T11:00:00+01:00", "2026-11-23T11:20:00+01:00", 0), seg("USAGE", "2026-11-23T11:20:00+01:00", "2026-11-23T18:03:59+01:00", 33, { positions: [{ mileage: 14265.9, refuel: null }] }), seg("INACTIVITY", "2026-11-23T18:03:59+01:00", "2026-11-23T23:59:59+01:00", 0)],
     });
     expect(g).toMatchObject({ km: 63, guidaSec: 14635, fermoMotoreAccSec: 2455, velMax: 133, soste: 1, rifornimenti: 1, litri: 41.5, kmContatore: 14265.9 });
-    expect(g.rifDett).toEqual([{ ora: "10:15", litri: 41.5, dove: "Via Emilia, 10, Rimini, Rn" }]);
+    expect(g.rifDett).toEqual([{ ora: "10:15", litri: 41.5, dove: "Via Emilia, 10, Rimini, Rn", lat: 44.061235, lng: 12.565432 }]);
     expect(g.tappe).toHaveLength(5); expect(g.tappe[1]).toEqual({ t: "G", da: "09:41", a: "11:00", km: 30, dove: "Via B" });
+  });
+  it("Targa: rifornimento senza coordinate → lat e lng null, ma le chiavi ci sono sempre (formato nuovo)", () => {
+    const g = giornoDaTarga({ totalMileage: 10, usageSegments: [seg("USAGE", "2026-11-23T09:00:00+01:00", "2026-11-23T10:00:00+01:00", 10, { positions: [
+      { refuel: { refueledLiters: 30 }, location: { timestamp: "2026-11-23T09:30:00+01:00", formattedAddress: null } },
+      { refuel: { refueledLiters: 12 }, location: { timestamp: "2026-11-23T09:50:00+01:00", lat: 0, lng: 0 } },
+      { refuel: { refueledLiters: 8 }, location: null },
+    ] })] });
+    expect(g.rifDett).toEqual([{ ora: "09:30", litri: 30, dove: null, lat: null, lng: null }, { ora: "09:50", litri: 12, dove: null, lat: null, lng: null }, { ora: "", litri: 8, dove: null, lat: null, lng: null }]);
+    expect(g.rifDett.every((r) => "lat" in r && "lng" in r)).toBe(true);
+    expect(JSON.parse(JSON.stringify(g.rifDett))[0]).toHaveProperty("lat", null);
   });
   it("Targa: mezzo fermo tutto il giorno → 0 km, nessun orario", () => {
     const g = giornoDaTarga({ totalMileage: 0, dateUsageBegin: "2026-11-23T00:00:00+01:00", usageSegments: [seg("INACTIVITY", "2026-11-23T00:00:00+01:00", "2026-11-23T23:59:59+01:00", 0)] });
@@ -70,6 +80,37 @@ describe("telematica: giorno e mese", () => {
   });
   it("fuso italiano e giorni del mese", () => {
     expect(fusoRoma("2026-11-23")).toBe("+01:00"); expect(fusoRoma("2026-07-10")).toBe("+02:00"); expect(giorniDelMese("2026-02")).toHaveLength(28);
+  });
+  it("cambio dell'ora: lo scarto vale all'ora chiesta, non a mezzogiorno", () => {
+    // 29/03/2026: alle 02:00 si passa all'ora legale; 25/10/2026: alle 03:00 si torna all'ora solare
+    expect([fusoRoma("2026-03-29", "00:00:00"), fusoRoma("2026-03-29", "23:59:59")]).toEqual(["+01:00", "+02:00"]);
+    expect([fusoRoma("2026-10-25", "00:00:00"), fusoRoma("2026-10-25", "23:59:59")]).toEqual(["+02:00", "+01:00"]);
+    expect([fusoRoma("2026-03-28", "23:59:59"), fusoRoma("2026-10-26", "00:00:00")]).toEqual(["+01:00", "+01:00"]);
+    expect(fusoRoma("2026-07-10", "00:00:00")).toBe("+02:00");
+  });
+  it("Targa: la giornata chiesta dura 23 ore il 29/03 e 25 ore il 25/10, senza ore del giorno prima o dopo", () => {
+    const ore = (g: string) => { const { begin, end } = intervalloRoma(g); return (Date.parse(end) + 1 - Date.parse(begin)) / 3_600_000; };
+    expect(intervalloRoma("2026-03-29")).toEqual({ begin: "2026-03-29T00:00:00.000+01:00", end: "2026-03-29T23:59:59.999+02:00" });
+    expect(intervalloRoma("2026-10-25")).toEqual({ begin: "2026-10-25T00:00:00.000+02:00", end: "2026-10-25T23:59:59.999+01:00" });
+    expect([ore("2026-03-29"), ore("2026-10-25"), ore("2026-11-23"), ore("2026-07-10")]).toEqual([23, 25, 24, 24]);
+    // l'inizio è la mezzanotte italiana: 22:00 UTC del giorno prima d'estate, 23:00 UTC d'inverno
+    expect(new Date(intervalloRoma("2026-10-25").begin).toISOString()).toBe("2026-10-24T22:00:00.000Z");
+    expect(new Date(intervalloRoma("2026-03-29").begin).toISOString()).toBe("2026-03-28T23:00:00.000Z");
+  });
+  it("Targa: con il giorno, le posizioni di un altro giorno italiano si scartano", () => {
+    const pos = (timestamp: string, litri: number, mileage: number) => ({ mileage, refuel: { refueledLiters: litri }, location: { timestamp, lat: 44.06, lng: 12.56 } });
+    const risposta = (positions: unknown[]) => ({ totalMileage: 50, usageSegments: [seg("USAGE", "2026-10-25T00:00:00+02:00", "2026-10-25T23:59:59+01:00", 50, { positions })] });
+    // 25/10: l'ora 00:00–00:59 (ancora ora legale) è del giorno; le 23:30 del 24 e le 00:10 del 26 no
+    const ott = risposta([pos("2026-10-24T23:30:00+02:00", 20, 1000), pos("2026-10-25T00:30:00+02:00", 30, 1010), pos("2026-10-25T23:30:00+01:00", 10, 1050), pos("2026-10-26T00:10:00+01:00", 5, 1060)]);
+    const g = giornoDaTarga(ott, "2026-10-25");
+    expect(g).toMatchObject({ rifornimenti: 2, litri: 40, kmContatore: 1050 });
+    expect(g.rifDett.map((r) => r.ora)).toEqual(["00:30", "23:30"]);
+    expect(giornoDaTarga(ott).rifornimenti).toBe(4); // senza il giorno: come prima, tutto
+    // 29/03: le 23:30 del 28 (ora solare) non entrano; le 00:10 e le 23:50 del 29 sì
+    const mar = risposta([pos("2026-03-28T23:30:00+01:00", 20, 900), pos("2026-03-29T00:10:00+01:00", 30, 910), pos("2026-03-29T23:50:00+02:00", 10, 950)]);
+    expect(giornoDaTarga(mar, "2026-03-29")).toMatchObject({ rifornimenti: 2, litri: 40, kmContatore: 950 });
+    // posizioni senza ora: non si possono attribuire a un altro giorno, restano
+    expect(giornoDaTarga(risposta([{ refuel: { refueledLiters: 8 }, location: null }]), "2026-10-25").rifornimenti).toBe(1);
   });
   it("riepilogo del mese: medie sui giorni usati e consumo", () => {
     const r = (targa: string, giorno: string, km: number, litri = 0): RigaGiorno => ({ fonte: "TARGA", targa, giorno, km, inizio: null, fine: null, guidaSec: 3600, motoreSec: 0, fermoMotoreAccSec: 1800, velMax: 90, punteggioSicurezza: 6, soste: 2, rifornimenti: litri ? 1 : 0, litri });
@@ -88,13 +129,13 @@ import { bloccato, menuPer, paginaIniziale } from "@/components/navModel";
 import { riservato } from "@/lib/telematica/riservato";
 
 describe("menu per utente (flag del super admin)", () => {
-  const TELE = ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata"];
+  const TELE = ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata", "/telematica/carburante"];
   it("le voci nascoste spariscono dal menu, le altre restano", () => {
     const tutte = menuPer("ADMIN").flatMap((g) => g.items.map((i) => i.href));
     const sue = menuPer("ADMIN", TELE).flatMap((g) => g.items.map((i) => i.href));
     expect(tutte).toEqual(expect.arrayContaining(TELE));
     expect(sue.filter((h) => h.startsWith("/telematica"))).toEqual([]);
-    expect(sue).toContain("/portali"); expect(sue.length).toBe(tutte.length - 4);
+    expect(sue).toContain("/portali"); expect(sue.length).toBe(tutte.length - TELE.length);
   });
   it("le pagine nascoste e le loro chiamate non si aprono", () => {
     for (const p of ["/telematica", "/telematica/mappa", "/telematica/mese", "/telematica/giornata", "/api/telematica/posizioni", "/api/telematica/mese"]) expect(bloccato(p, TELE)).toBe(true);

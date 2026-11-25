@@ -7,8 +7,11 @@ export type Tappa = { t: "G" | "S"; da: string; a: string; km: number; dove: str
 export const GIORNI_TAPPE = 120; // dopo questi giorni le tappe si cancellano, restano i numeri del giorno
 const oraRoma = (iso: string) => new Intl.DateTimeFormat("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 const corto = (x: string | null | undefined) => (x ? (x.length > 60 ? x.slice(0, 59) + "…" : x) : null);
-/** un rifornimento rilevato dal portale: ora italiana "HH:MM", litri, indirizzo corto */
-export type Rifornimento = { ora: string; litri: number; dove: string | null };
+/**
+ * un rifornimento rilevato dal portale: ora italiana "HH:MM", litri, indirizzo corto e coordinate.
+ * Le righe scaricate prima delle coordinate non hanno le chiavi lat/lng: la presenza della chiave "lat" distingue il formato nuovo.
+ */
+export type Rifornimento = { ora: string; litri: number; dove: string | null; lat?: number | null; lng?: number | null };
 export type GiornoMezzo = {
   rifDett: Rifornimento[];
   km: number; inizio: string | null; fine: string | null; guidaSec: number; motoreSec: number; fermoMotoreAccSec: number;
@@ -17,19 +20,40 @@ export type GiornoMezzo = {
 
 const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
 const r1 = (x: number) => Math.round(x * 10) / 10;
+/** latitudine o longitudine valida (0,0 = posizione mancante), a 6 decimali (circa 10 cm); altrimenti null */
+const coordinata = (x: unknown, max: number) => (typeof x === "number" && Number.isFinite(x) && x !== 0 && Math.abs(x) <= max ? Math.round(x * 1e6) / 1e6 : null);
 
-/** scarto italiano rispetto a UTC in quel giorno ("+01:00" d'inverno, "+02:00" con l'ora legale) */
-export function fusoRoma(giorno: string): string {
-  const mezzogiorno = new Date(`${giorno}T12:00:00Z`);
-  const oraRoma = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", hour: "2-digit", hour12: false }).format(mezzogiorno));
-  return `+0${oraRoma - 12}:00`;
+const ORA_ROMA = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+/** minuti di scarto dell'ora italiana rispetto a UTC in un istante (60 d'inverno, 120 con l'ora legale) */
+function scartoMinuti(ms: number): number {
+  const p = Object.fromEntries(ORA_ROMA.formatToParts(new Date(ms)).map((x) => [x.type, Number(x.value)]));
+  return Math.round((Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(ms / 1000) * 1000) / 60_000);
+}
+/**
+ * Scarto italiano rispetto a UTC ("+01:00" d'inverno, "+02:00" con l'ora legale) all'ora `ora` (HH:MM:SS, ora italiana) di
+ * quel giorno. Senza ora vale mezzogiorno. Nei giorni del cambio conta l'ora: il 29/03 a mezzanotte è ancora "+01:00" e alle
+ * 23:59:59 è già "+02:00"; il 25/10 il contrario.
+ */
+export function fusoRoma(giorno: string, ora = "12:00:00"): string {
+  const comeUtc = Date.parse(`${giorno}T${ora}Z`);
+  // vale lo scarto che, tolto all'ora italiana, porta a un istante in cui Roma ha proprio quello scarto
+  const h = [1, 2].find((x) => scartoMinuti(comeUtc - x * 3_600_000) === x * 60) ?? scartoMinuti(comeUtc - 3_600_000) / 60;
+  return `+0${h}:00`;
 }
 /** il giorno italiano di un istante */
 export const giornoRoma = (d: Date) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Rome" }).format(d);
+/**
+ * Inizio e fine del giorno italiano da chiedere a Targa, ognuno con il suo scarto: nei giorni del cambio dell'ora la
+ * giornata dura 23 o 25 ore e lo scarto di mezzogiorno farebbe perdere (25/10) o aggiungere (29/03) un'ora.
+ */
+export const intervalloRoma = (giorno: string) => ({
+  begin: `${giorno}T00:00:00.000${fusoRoma(giorno, "00:00:00")}`,
+  end: `${giorno}T23:59:59.999${fusoRoma(giorno, "23:59:59")}`,
+});
 export const piuGiorni = (giorno: string, k: number) => { const d = new Date(`${giorno}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10); };
 export const giorniDelMese = (mese: string) => { const tot = new Date(Date.UTC(Number(mese.slice(0, 4)), Number(mese.slice(5, 7)), 0)).getUTCDate(); return Array.from({ length: tot }, (_, i) => `${mese}-${String(i + 1).padStart(2, "0")}`); };
 
-type PosTarga = { mileage?: number; refuel?: { refueledLiters?: number } | null; location?: { timestamp?: string; formattedAddress?: string | null } | null };
+type PosTarga = { mileage?: number; refuel?: { refueledLiters?: number } | null; location?: { timestamp?: string; formattedAddress?: string | null; lat?: number | null; lng?: number | null } | null };
 type SegTarga = { dateBegin?: string; dateEnd?: string; mileage?: number; reportType?: string; driverName?: string | null; formattedAddressBegin?: string | null; formattedAddressEnd?: string | null; positions?: PosTarga[] };
 type RottaTarga = {
   totalMileage?: number; dateUsageBegin?: string | null; dateUsageEnd?: string | null; totalDriveTime?: number; totalEngineOnTime?: number; totalParkEngineOnTime?: number;
@@ -43,8 +67,21 @@ export function primoRifornimentoGrezzo(risposta: unknown): unknown {
   return null;
 }
 
-/** Targa: /route/{mezzo} di un giorno → riga del giorno. Le soste contate sono quelle in mezzo alla giornata (non la notte prima e dopo). */
-export function giornoDaTarga(risposta: unknown): GiornoMezzo {
+/** Filtro "l'istante (ISO) cade nel giorno italiano `giorno`": un istante mancante o illeggibile non si scarta. */
+function delGiorno(giorno: string): (iso: string | undefined) => boolean {
+  const { begin, end } = intervalloRoma(giorno);
+  const da = Date.parse(begin), a = Date.parse(end);
+  return (iso) => {
+    const t = iso ? Date.parse(iso) : NaN;
+    return Number.isNaN(t) || (t >= da && t <= a);
+  };
+}
+
+/**
+ * Targa: /route/{mezzo} di un giorno → riga del giorno. Le soste contate sono quelle in mezzo alla giornata (non la notte prima e dopo).
+ * Con `giorno` (AAAA-MM-GG) le posizioni di un altro giorno italiano si scartano: rifornimenti e contachilometri restano del giorno chiesto.
+ */
+export function giornoDaTarga(risposta: unknown, giorno?: string): GiornoMezzo {
   const r = (risposta ?? {}) as RottaTarga;
   const seg = Array.isArray(r.usageSegments) ? r.usageSegments : [];
   const tappe: Tappa[] = seg.filter((s) => s.dateBegin && s.dateEnd).map((s) => {
@@ -52,8 +89,12 @@ export function giornoDaTarga(risposta: unknown): GiornoMezzo {
     return { t: guida ? "G" as const : "S" as const, da: oraRoma(s.dateBegin!), a: oraRoma(s.dateEnd!), km: r1(n(s.mileage)), dove: corto(guida ? s.formattedAddressEnd : s.formattedAddressBegin) };
   });
   const soste = giornataMezzo(tappe).soste; // soste di almeno 3 minuti tra la prima partenza e l'ultimo arrivo
-  const posizioni = seg.flatMap((s) => s.positions ?? []);
-  const rifDett: Rifornimento[] = posizioni.filter((p) => n(p.refuel?.refueledLiters) > 0).map((p) => ({ ora: p.location?.timestamp ? oraRoma(p.location.timestamp) : "", litri: r1(n(p.refuel!.refueledLiters)), dove: corto(p.location?.formattedAddress) }));
+  const nelGiorno = giorno ? delGiorno(giorno) : () => true;
+  const posizioni = seg.flatMap((s) => s.positions ?? []).filter((p) => nelGiorno(p.location?.timestamp));
+  const rifDett: Rifornimento[] = posizioni.filter((p) => n(p.refuel?.refueledLiters) > 0).map((p) => ({
+    ora: p.location?.timestamp ? oraRoma(p.location.timestamp) : "", litri: r1(n(p.refuel!.refueledLiters)), dove: corto(p.location?.formattedAddress),
+    lat: coordinata(p.location?.lat, 90), lng: coordinata(p.location?.lng, 180),
+  }));
   const rif = rifDett.map((x) => x.litri);
   const contatori = posizioni.map((p) => n(p.mileage)).filter((k) => k > 0);
   const km = n(r.totalMileage);

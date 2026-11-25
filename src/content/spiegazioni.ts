@@ -2,7 +2,12 @@
  * Spiegazioni degli indicatori (i numeri nei riquadri): cosa vuol dire, come si calcola, come leggerlo.
  * Italiano semplice, frasi brevi. Si mostrano con <Spiega k="…" /> accanto al titolo del riquadro.
  */
+import { TOLLERANZE } from "@/domain/carburante/riconciliazione";
+
 export type Spiegazione = { cosa: string; come: string; leggi?: string };
+
+/** numeri delle tolleranze del carburante in italiano: 0,05 → "5" (per "5 %") */
+const it = (x: number) => (Math.round(x * 10) / 10).toLocaleString("it-IT");
 
 export const SPIEGAZIONI: Record<string, Spiegazione> = {
   // Forecast: storico e tendenza
@@ -22,6 +27,13 @@ export const SPIEGAZIONI: Record<string, Spiegazione> = {
   "q8.totale": { cosa: "Quanto abbiamo speso di carburante nel mese.", come: "Somma della colonna \"Imp. Scontato no IVA\" dei rifornimenti tenuti.", leggi: "È il costo da confrontare con il carburante che Amazon rimborsa." },
   "q8.nonCensite": { cosa: "Carte usate nel mese che non sono in anagrafica.", come: "Carte che compaiono nel file Q8 ma non nell'elenco delle carte del sito.", leggi: "Se è sopra zero, aggiorna l'anagrafica: quei rifornimenti non hanno una station." },
   "q8.identificativo": { cosa: "Carte riconosciute dalla targa scritta nel file e non dal numero di carta.", come: "Il numero della carta non era in anagrafica, ma l'identificativo (di solito la targa) sì.", leggi: "Funziona, ma conviene sistemare l'anagrafica con il numero giusto." },
+  // Carburante: Q8 e telematica
+  "carburante.transazioni": { cosa: "Quanti pagamenti con le carte Q8 di DER2 e GLS il sito ha confrontato nel mese.", come: "Transazioni del file Q8 del mese per la flotta (e la targa) scelta, comprese quelle già archiviate.", leggi: "Se è zero o molto più basso del solito, il file Q8 del mese manca o è incompleto." },
+  "carburante.anomalie": { cosa: "Le righe da guardare: serbatoio fermo, litri che non tornano, luogo diverso, rifornimenti senza Q8.", come: "Righe di questi quattro tipi, senza quelle già giustificate. Sotto, il numero per tipo.", leggi: "Parti dalle rosse e dalle arancioni: sono quelle in cui mancano litri." },
+  "carburante.litri": { cosa: "Litri pagati con la carta Q8 che non risultano entrati nel serbatoio.", come: "Somma dei litri mancanti delle righe «Carta usata, serbatoio fermo» e «Discrepanza litri», senza quelle archiviate.", leggi: `Piccole differenze sono normali: contano solo quelle oltre la più larga tra ${it(TOLLERANZE.litriAssoluti)} litri e il ${it(TOLLERANZE.litriPercento * 100)} % dei litri pagati.` },
+  "carburante.euro": { cosa: "Quanto valgono, in euro, i litri pagati e non entrati nel serbatoio.", come: "Per ogni riga: litri mancanti per il prezzo al litro pagato, IVA esclusa. Poi la somma.", leggi: "È una stima: prima di contestare, apri la giornata del furgone e verifica." },
+  "carburante.regolari": { cosa: "Pagamenti Q8 che tornano con il rifornimento visto dal furgone.", come: `Stesso furgone entro ${it(TOLLERANZE.finestraMin)} minuti dal pagamento, litri entro la tolleranza e stesso luogo.`, leggi: "Di solito sono nascosti: «mostra» li aggiunge all'elenco." },
+  "carburante.nonVerificabili": { cosa: "Righe che non si possono controllare per mancanza di dati.", come: "Furgone senza telematica, furgoni GLS senza sensore, pochi litri, AdBlue, giorni non scaricati o file Q8 mancante.", leggi: "Il motivo è scritto sotto ogni riga: spesso basta completare i dati." },
   // Telepass
   "telepass.transazioni": { cosa: "Quanti passaggi e addebiti ci sono nel file del mese.", come: "Righe del file Telepass: pedaggi, Area C, parcheggi.", leggi: "Serve a capire se il file è completo rispetto ai mesi scorsi." },
   "telepass.totale": { cosa: "Quanto abbiamo speso con Telepass nel mese.", come: "Somma degli importi del file, IVA esclusa.", leggi: "I pedaggi si confrontano con il rimborso settimanale di Amazon." },
