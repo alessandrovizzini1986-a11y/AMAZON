@@ -24,10 +24,11 @@ export function CopiaMessaggio({ m }: { m: Messaggio }) {
         <span className="font-mono font-semibold">{m.station}</span>
         <span className="text-sm text-ink-muted">{m.nAnomalie} righe</span>
         <span className="ml-auto text-xs font-semibold text-ok">{esito}</span>
-        <button type="button" className="btn-secondary h-9 px-3 text-xs" onClick={copiaTesto}>Copia</button>
-        <button type="button" className="btn-secondary h-9 px-3 text-xs" onClick={copiaTabella}>Copia tabella</button>
+        <button type="button" className="btn-primary h-9 px-3 text-xs" onClick={copiaTabella}>Copia tabella</button>
+        <button type="button" className="btn-secondary h-9 px-3 text-xs" onClick={copiaTesto}>Copia solo testo</button>
       </div>
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-control bg-surface p-3 font-sans text-xs leading-relaxed">{m.testo}</pre>
+      {/* anteprima di quello che si incolla in Teams: l'HTML è composto dal sito (messaggi.ts) con i testi già protetti */}
+      <div className="anteprima-messaggio max-h-72 overflow-auto rounded-control bg-surface p-3 text-xs leading-relaxed" dangerouslySetInnerHTML={{ __html: m.html }} />
     </div>
   );
 }

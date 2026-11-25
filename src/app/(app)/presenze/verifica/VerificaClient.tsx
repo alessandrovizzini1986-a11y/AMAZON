@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { controlloSettimanale, type EsitoSettimanale } from "@/domain/presenze/controlloSettimanale";
-import { componi, TESTI, type Messaggio } from "@/domain/presenze/messaggi";
+import { componiTabellina, puntiVerifica, TESTI, type Messaggio } from "@/domain/presenze/messaggi";
 import { addDays, weekday } from "@/domain/presenze/grid";
 import { STATIONS, type Station } from "@/domain/presenze/regole";
 import { ETICHETTA_STATO, ETICHETTA_TIPO, GRUPPI_TIPO, ORDINE_TIPO, gruppoDi, personeDelMese, richiesteDaAmazon, tettoAccordo, verificaOre, type EsitoVerifica, type Richiesta, type Stato, type TipoRichiesta } from "@/domain/presenze/verifica";
@@ -122,8 +122,9 @@ export function VerificaClient({ utente, giustificativi, dispatcher, mezzi, refe
     .sort((a, b) => a.station.localeCompare(b.station) || ORDINE_TIPO.indexOf(a.tipo as TipoRichiesta) - ORDINE_TIPO.indexOf(b.tipo as TipoRichiesta) || a.driver.localeCompare(b.driver) || a.rif.localeCompare(b.rif));
   const messaggi: Messaggio[] = stationsViste.map((st) => {
     const mie = righe.filter((r) => r.station === st && r.stato === "DA_FARE");
-    return componi(st, TESTI.aperturaVerifica(TESTI.salutoNome(referenti[st] ?? null), st, `${p.mese.slice(5)}/${p.mese.slice(0, 4)}`, it(p.finoA).slice(0, 5)),
-      ORDINE_TIPO.map((t) => ({ titolo: etTipo(t), colonne: ["Driver", "Tipo", "Cosa serve"], righe: mie.filter((r) => r.tipo === t).map((r) => [r.driver, r.pop, r.testo]) })), TESTI.chiusuraVerifica);
+    // una tabellina sola per station: un punto per riga, per driver e giorno (formato chiesto dagli OS)
+    const punti = puntiVerifica(mie);
+    return componiTabellina(st, TESTI.aperturaVerifica(TESTI.salutoNome(referenti[st] ?? null), st, `${p.mese.slice(5)}/${p.mese.slice(0, 4)}`, it(p.finoA).slice(0, 5), punti.length), punti);
   }).filter((m) => m.nAnomalie > 0);
 
   const excel = () => scarica(excelVerifica({ mese: p.mese, finoA: p.finoA, utente, richieste: righe, verifica, avvisi }), `Verifica_tracking_${p.mese}_al_${p.finoA.slice(8)}.xlsx`);

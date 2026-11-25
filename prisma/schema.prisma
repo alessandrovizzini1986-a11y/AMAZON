@@ -592,6 +592,7 @@ model PresenzeRichiesta {
   rif          String // giorno o lunedì della settimana
   periodo      String
   testo        String
+  breve        String? // lo stesso punto in poche parole, per la tabellina da mandare agli OS
   stato        String   @default("DA_FARE") // DA_FARE | RICHIESTA | OK | RISOLTA
   nota         String?
   creataIl     DateTime @default(now())
