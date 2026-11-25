@@ -64,6 +64,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/telematica/mappa", label: "Mappa dei furgoni", icon: "settings", perm: "users.manage", descr: "dove sono adesso i mezzi" },
       { href: "/telematica/giornata", label: "Giornata di consegna", icon: "settings", perm: "users.manage", descr: "cosa ha fatto ogni furgone in un giorno" },
       { href: "/telematica/mese", label: "Furgoni: il mese", icon: "settings", perm: "users.manage", descr: "km, ore, soste e rifornimenti per targa" },
+      { href: "/telematica/carburante", label: "Carburante: Q8 e telematica", icon: "settings", perm: "users.manage", descr: "pagamenti Q8 contro rifornimenti visti dai furgoni" },
       { href: "/telematica", label: "Telematica furgoni", icon: "settings", perm: "users.manage", descr: "collegamento a Targa e FlottaWeb" },
       { href: "/portali", label: "Portali fornitori", icon: "settings", perm: "users.manage", descr: "indirizzi e accessi di noleggiatori, Telepass, Q8" },
       { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" },
