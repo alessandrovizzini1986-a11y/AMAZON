@@ -178,6 +178,8 @@ export type Richiesta = {
   chiave: string; mese: string; station: Station; pop: string; driver: string; tipo: TipoRichiesta;
   /** giorno o lunedì della settimana (AAAA-MM-GG) */
   rif: string; periodo: string; testo: string;
+  /** lo stesso punto in poche parole: è la riga della tabellina che si manda agli OS */
+  breve: string;
 };
 
 export type SettimanaRiga = {
@@ -219,6 +221,7 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
       richieste.push({
         chiave: `${p.mese}|${a.station}|STD+SIC|${chi}|DOPPIO|${p.mese}`, mese: p.mese, station: a.station, pop: "STD+SIC", driver: a.nome, tipo: "DOPPIO", rif: da, periodo: p.mese.split("-").reverse().join("/"),
         testo: `risulta sia nel tracking STD sia in quello SIC (${perche})${insieme.length ? `, con ore in tutti e due il ${insieme.map(ddmm).join(", ")}` : ", in giorni diversi"}: in quale dei due va tenuto?`,
+        breve: `È sia nel tracking STD sia nel SIC${insieme.length ? ` (ore in tutti e due il ${insieme.map(ddmm).join(", ")})` : ""}: in quale va tenuto?`,
       });
     }
   }
@@ -228,22 +231,22 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
     const c = leggiContratto(x.contratto);
     const dispatcher = c.tipo === "DISPATCHER" || disp.has(normName(x.nome));
     const chi = x.cf || x.driverId || normName(x.nome);
-    const nuova = (tipo: TipoRichiesta, rif: string, periodo: string, testo: string) =>
-      richieste.push({ chiave: `${p.mese}|${x.station}|${x.pop}|${chi}|${tipo}|${rif}`, mese: p.mese, station: x.station, pop: x.pop, driver: x.nome, tipo, rif, periodo, testo });
+    const nuova = (tipo: TipoRichiesta, rif: string, periodo: string, testo: string, breve: string) =>
+      richieste.push({ chiave: `${p.mese}|${x.station}|${x.pop}|${chi}|${tipo}|${rif}`, mese: p.mese, station: x.station, pop: x.pop, driver: x.nome, tipo, rif, periodo, testo, breve });
 
     // 7 o più giorni di fila (anche a cavallo del mese, se c'è il tracking del mese prima)
     const lavorati = [...x.giorni.entries()].filter(([d, g]) => d <= p.finoA && lav(g) > 0).map(([d]) => d).sort();
     for (let i = 0; i < lavorati.length;) {
       let j = i; while (j + 1 < lavorati.length && addDays(lavorati[j], 1) === lavorati[j + 1]) j++;
       const n = j - i + 1;
-      if (n >= 7 && lavorati[j] >= da) nuova("7GG", lavorati[i], `${ddmm(lavorati[i])}–${ddmm(lavorati[j])}`, `risultano ${n} giorni di lavoro di fila, dal ${ddmm(lavorati[i])} al ${ddmm(lavorati[j])}: è giusto?`);
+      if (n >= 7 && lavorati[j] >= da) nuova("7GG", lavorati[i], `${ddmm(lavorati[i])}–${ddmm(lavorati[j])}`, `risultano ${n} giorni di lavoro di fila, dal ${ddmm(lavorati[i])} al ${ddmm(lavorati[j])}: è giusto?`, `${n} giorni di lavoro di fila: giusto?`);
       i = j + 1;
     }
 
     // Assenza segnata con la sigla ma senza ore: non è grave, ma senza le ore i conti della settimana non tornano
     for (const [d, sg] of x.sigle ?? []) if (d >= da && d <= p.finoA && assenzaSenzaOre(x, d)) {
       const riga = SIGLE_ASSENZA[sg];
-      nuova("ASS_ORE", d, ddmm(d), `il ${ddmm(d)} c'è «${sg}» nella riga RIPOSO ma mancano le ore nella riga ${riga}: riesci a inserirle?`);
+      nuova("ASS_ORE", d, ddmm(d), `il ${ddmm(d)} c'è «${sg}» nella riga RIPOSO ma mancano le ore nella riga ${riga}: riesci a inserirle?`, `«${sg}» senza ore: inserire le ore nella riga ${riga}`);
     }
 
     // Lo Standard oltre 8h24 in un giorno non si segnala più (deciso da Alessandro il 24/11/2026): conta solo che lo
@@ -284,11 +287,13 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
         if (s.ass > 0 && tot + s.ass > tetto + 8) {
           // ore lavorate + assenze ben oltre una settimana piena: prima di spostare le ore va capito quale delle due è sbagliata
           esito = "ore + assenze troppe";
-          nuova("ASSENZE", l, periodo, `Settimana ${periodo}: ${it(tot)} h lavorate + ${it(s.ass)} h di assenze fanno ${it(tot + s.ass)} h, mi sembrano tante. Sono giuste le ore o le assenze?`);
+          nuova("ASSENZE", l, periodo, `Settimana ${periodo}: ${it(tot)} h lavorate + ${it(s.ass)} h di assenze fanno ${it(tot + s.ass)} h, mi sembrano tante. Sono giuste le ore o le assenze?`, `${it(tot)} h lavorate + ${it(s.ass)} h di assenze = ${it(tot + s.ass)} h: giusto?`);
         } else {
           const diff: string[] = [];
           // frasi per l'OS: dirette, con il giorno preciso da toccare (il riepilogo tecnico "diff" resta nel foglio Settimane)
           const frasi: string[] = [];
+          // gli stessi punti in poche parole, uno per giorno: "12/11: 4 h Straordinario → Supplementare?"
+          const brevi: string[] = [];
           const hh = (n: number) => `${it(r1(n))} h`;
           const ordinarie = pt ? "Supplementare" : "Standard";
           // DER2: i part time sono gestiti come MOG, quindi nel tracking Standard e Supplementare non sono distinti in modo affidabile.
@@ -311,23 +316,25 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
             // lo Straordinario "di troppo" è quello dei primi giorni in cui compare (tolte le ore oltre l'ottava di quel giorno)
             let resta = sposta; const pezzi: string[] = [];
             dd.forEach((d, k) => { const o = g[k]; if (!o || resta <= TOLLERANZA) return; const cand = o.str - Math.min(o.str, Math.max(0, lav(o) - ORE_GIORNO_STR)); const w = Math.min(cand, resta); if (w <= TOLLERANZA) return; resta -= w;
+              brevi.push(w >= o.str - TOLLERANZA ? `${ddmm(d)}: Straordinario ${hh(o.str)} → ${ordinarie}?` : `${ddmm(d)}: Straordinario ${hh(o.str)}, di cui ${hh(w)} → ${ordinarie}?`);
               pezzi.push(w >= o.str - TOLLERANZA ? `il ${ddmm(d)} ci sono ${hh(o.str)} in Straordinario, ma secondo me sono ${ordinarie}` : `il ${ddmm(d)} ci sono ${hh(o.str)} in Straordinario, ma secondo me ${hh(w)} ${Math.abs(w - 1) < TOLLERANZA ? "è" : "sono"} ${ordinarie}`); });
             frasi.push(pezzi.join("; "));
           }
           // Standard oltre le 39 ore di un non part time: le ore in più vanno TUTTE in Straordinario, non divise con l'Accordo
           // (deciso da Alessandro il 24/11/2026: "se ha fatto le 39 ore, la domenica va tutta in straordinario").
           else if (stdOltre && !pt) { /* la riga qui sotto dice già tutto */ }
-          else if (strPoco) { diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`); frasi.push(`con ${hh(tot)} lavorate mi aspettavo ${hh(atteso.str)} in Straordinario, ne vedo ${hh(s.str)}`); }
-          if (supNonPt) { diff.push(`Supplementare ${it(s.sup)} → 0`); frasi.push(`${dd.flatMap((d, k) => (g[k]?.sup ? [`il ${ddmm(d)} ci sono ${hh(g[k]!.sup)} in Supplementare`] : [])).join("; ")}, ma non è un part time: secondo me sono Standard`); }
+          else if (strPoco) { diff.push(`Straordinario ${it(s.str)} → ${it(atteso.str)}`, `Standard${pt ? ", Supplementare" : ""} e Accordo insieme ${it(ord)} → ${it(ordDi(atteso))}`); frasi.push(`con ${hh(tot)} lavorate mi aspettavo ${hh(atteso.str)} in Straordinario, ne vedo ${hh(s.str)}`); brevi.push(`${hh(tot)} lavorate: Straordinario atteso ${hh(atteso.str)}, segnato ${hh(s.str)}`); }
+          if (supNonPt) { diff.push(`Supplementare ${it(s.sup)} → 0`); frasi.push(`${dd.flatMap((d, k) => (g[k]?.sup ? [`il ${ddmm(d)} ci sono ${hh(g[k]!.sup)} in Supplementare`] : [])).join("; ")}, ma non è un part time: secondo me sono Standard`); dd.forEach((d, k) => { if (g[k]?.sup) brevi.push(`${ddmm(d)}: Supplementare ${hh(g[k]!.sup)} → Standard? (non è part time)`); }); }
           if (stdOltre && !pt) { const inPiu = s.std - maxStd; diff.push(`${it(inPiu)} h da Standard a Straordinario: Standard ${it(s.std)} → ${it(maxStd)}, Straordinario ${it(s.str)} → ${it(s.str + inPiu)}`); }
           else if (stdOltre) diff.push(`Standard ${it(s.std)} → ${it(maxStd)} (il resto in Supplementare)`);
           if (stdOltre) {
             const dove = pt ? "Supplementare" : "Straordinario"; let cum = 0; const pezzi: string[] = [];
             dd.forEach((d, k) => { const o = g[k]; if (!o?.std) return; const prima = cum; cum += o.std; const w = Math.max(0, cum - Math.max(maxStd, prima)); if (w <= TOLLERANZA) return;
+              brevi.push(w >= o.std - TOLLERANZA ? `${ddmm(d)}: Standard ${hh(o.std)} → ${dove}?` : `${ddmm(d)}: Standard ${hh(o.std)}, di cui ${hh(w)} → ${dove}?`);
               pezzi.push(w >= o.std - TOLLERANZA ? `le ${hh(o.std)} di Standard del ${ddmm(d)} secondo me vanno in ${dove}` : `il ${ddmm(d)} ci sono ${hh(o.std)} in Standard, ma secondo me ${hh(w)} ${Math.abs(w - 1) < TOLLERANZA ? "va" : "vanno"} in ${dove}`); });
             frasi.push(pezzi.join("; "));
           }
-          if (accOltre) { diff.push(`Accordo ${it(s.acc)} → al massimo ${it(maxAcc)}`); frasi.push(`nella riga Accordo ci sono ${hh(s.acc)}, mi sembrano tante: è giusto?`); }
+          if (accOltre) { diff.push(`Accordo ${it(s.acc)} → al massimo ${it(maxAcc)}`); frasi.push(`nella riga Accordo ci sono ${hh(s.acc)}, mi sembrano tante: è giusto?`); brevi.push(`Accordo ${hh(s.acc)} in settimana: giusto?`); }
           if (diff.length) {
             esito = diff.join(" · ");
             const altro: [TipoRichiesta, string] | null =
@@ -338,16 +345,24 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
               : strPoco ? ["RIPARTO", `oltre le ${tetto} ore della settimana le ore sono Straordinario`]
               : null;
             const frase = frasi.join(". ");
-            if (altro) nuova(altro[0], l, periodo, `Settimana ${periodo}, lavorate ${it(tot)} h${s.ass ? ` + ${it(s.ass)} h di assenze` : ""} (${x.contratto || "contratto non indicato"}): ${frase.charAt(0).toLowerCase() + frase.slice(1)}.`);
+            if (altro) nuova(altro[0], l, periodo, `Settimana ${periodo}, lavorate ${it(tot)} h${s.ass ? ` + ${it(s.ass)} h di assenze` : ""} (${x.contratto || "contratto non indicato"}): ${frase.charAt(0).toLowerCase() + frase.slice(1)}.`, brevi.join(" · "));
           }
         }
-        if (s.str > STR_MAX_SETT + 0.01) nuova("STR_SETT", l, periodo, `Settimana ${periodo}: ci sono ${it(s.str)} h di Straordinario, mi sembrano tante. È giusto?`);
+        if (s.str > STR_MAX_SETT + 0.01) nuova("STR_SETT", l, periodo, `Settimana ${periodo}: ci sono ${it(s.str)} h di Straordinario, mi sembrano tante. È giusto?`, `Straordinario ${it(s.str)} h in settimana: giusto?`);
       }
       settimane.push({ station: x.station, pop: x.pop, driver: x.nome, contratto: x.contratto, lunedi: l, periodo, giorniLavorati: gg, std: r1(s.std), sup: r1(s.sup), acc: r1(s.acc), str: r1(s.str), ass: r1(s.ass), tot: r1(tot), atteso, esito });
     }
   }
   return { richieste, settimane, seiDomenica, nonVerificabili: [...nonVer].sort() };
 }
+
+/** gli stessi punti in poche parole, per la tabellina */
+const IN_BREVE = {
+  "+1": () => "Trasferta senza rotta Amazon: cosa ha fatto?",
+  "-1": (ore: number, pacchi: number | null) => `In rotta su Amazon${pacchi ? ` (${pacchi} pacchi)` : ""}, 0 ore a tracking: manca la giornata?`,
+  H: (ore: number) => `${it(ore)} h a tracking, non è su Amazon: cosa ha fatto?`,
+  A: (ore: number, pacchi: number | null) => `In rotta su Amazon${pacchi ? ` (${pacchi} pacchi)` : ""}, non è nei tracking: prestito, nuovo assunto o errore?`,
+};
 
 const CHIEDI: Record<"+1" | "-1" | "H" | "A", string> = {
   "+1": "ha la trasferta ma Amazon non lo vede in rotta: cosa ha fatto?",
@@ -369,17 +384,18 @@ export function richiesteDaAmazon(e: EsitoSettimanale, mese: string): Richiesta[
       const base = tipo === "+1" || tipo === "-1" || tipo === "H" ? CHIEDI[tipo] : "";
       out.push({ chiave: `${mese}|${e.station}|${r.tipo}|${chi}|${tipo}|${r.data}`, mese, station: e.station, pop: r.tipo, driver: r.driver, tipo, rif: r.data, periodo: ddmm(r.data),
         // +1, −1, H: frase diretta con i numeri tra parentesi; ORE: la nota del controllo (ore del giorno o valore anomalo)
-        testo: base ? `il ${ddmm(r.data)} ${base} (tracking ${it(r.ore)} h${r.pacchi !== null && r.pacchi !== undefined ? `, Amazon ${r.pacchi} pacchi` : ""}).` : `il ${ddmm(r.data)}: ${nota}` });
+        testo: base ? `il ${ddmm(r.data)} ${base} (tracking ${it(r.ore)} h${r.pacchi !== null && r.pacchi !== undefined ? `, Amazon ${r.pacchi} pacchi` : ""}).` : `il ${ddmm(r.data)}: ${nota}`,
+        breve: tipo === "+1" || tipo === "-1" || tipo === "H" ? IN_BREVE[tipo](r.ore, r.pacchi ?? null) : `${nota}: giusto?` });
     }
   }
-  for (const n of e.nonInTracking) if (n.categoria === "A") out.push({ chiave: `${mese}|${e.station}|AMAZON|${n.driverId}|A|${n.data}`, mese, station: e.station, pop: "AMAZON", driver: n.driver, tipo: "A", rif: n.data, periodo: ddmm(n.data), testo: `il ${ddmm(n.data)} ${CHIEDI.A} (Amazon ${n.pacchi} pacchi).` });
+  for (const n of e.nonInTracking) if (n.categoria === "A") out.push({ chiave: `${mese}|${e.station}|AMAZON|${n.driverId}|A|${n.data}`, mese, station: e.station, pop: "AMAZON", driver: n.driver, tipo: "A", rif: n.data, periodo: ddmm(n.data), testo: `il ${ddmm(n.data)} ${CHIEDI.A} (Amazon ${n.pacchi} pacchi).`, breve: IN_BREVE.A(0, n.pacchi) });
   return out;
 }
 
 export type Stato = "DA_FARE" | "RICHIESTA" | "OK" | "RISOLTA";
 export const ETICHETTA_STATO: Record<Stato, string> = { DA_FARE: "Da chiedere", RICHIESTA: "Chiesta, aspetto risposta", OK: "OK, chiusa", RISOLTA: "Sparita da sola" };
 
-export type RichiestaSalvata = { chiave: string; stato: Stato; testo: string };
+export type RichiestaSalvata = { chiave: string; stato: Stato; testo: string; breve?: string | null };
 
 /**
  * Unisce le richieste appena trovate con quelle già salvate.
@@ -389,16 +405,17 @@ export type RichiestaSalvata = { chiave: string; stato: Stato; testo: string };
 export function fondiRichieste(salvate: RichiestaSalvata[], trovate: Richiesta[], stationControllate: string[], mese: string) {
   const by = new Map(salvate.map((s) => [s.chiave, s]));
   const viste = new Set<string>();
-  const crea: Richiesta[] = [], aggiorna: { chiave: string; stato: Stato; testo: string; riaperta: boolean }[] = [];
+  const crea: Richiesta[] = [], aggiorna: { chiave: string; stato: Stato; testo: string; breve?: string; riaperta: boolean }[] = [];
   for (const t of trovate) {
     if (viste.has(t.chiave)) continue;
     viste.add(t.chiave);
     const s = by.get(t.chiave);
     if (!s) { crea.push(t); continue; }
     const cambiato = s.testo !== t.testo;
-    if (s.stato === "RISOLTA") aggiorna.push({ chiave: t.chiave, stato: "DA_FARE", testo: t.testo, riaperta: true });
-    else if (s.stato === "OK" && cambiato) aggiorna.push({ chiave: t.chiave, stato: "DA_FARE", testo: t.testo, riaperta: true });
-    else if (cambiato) aggiorna.push({ chiave: t.chiave, stato: s.stato, testo: t.testo, riaperta: false });
+    if (s.stato === "RISOLTA") aggiorna.push({ chiave: t.chiave, stato: "DA_FARE", testo: t.testo, breve: t.breve, riaperta: true });
+    else if (s.stato === "OK" && cambiato) aggiorna.push({ chiave: t.chiave, stato: "DA_FARE", testo: t.testo, breve: t.breve, riaperta: true });
+    // il testo breve è solo un altro modo di scrivere lo stesso punto: se cambia solo quello, lo stato non si tocca
+    else if (cambiato || (s.breve ?? "") !== t.breve) aggiorna.push({ chiave: t.chiave, stato: s.stato, testo: t.testo, breve: t.breve, riaperta: false });
   }
   const ambito = new Set(stationControllate);
   for (const s of salvate) {

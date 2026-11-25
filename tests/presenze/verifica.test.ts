@@ -99,18 +99,18 @@ describe("verifica delle settimane", () => {
 });
 
 describe("le richieste tengono lo stato tra un controllo e l'altro", () => {
-  const r = (chiave: string, testo = "t"): Richiesta => ({ chiave, mese: "2026-11", station: "DER1", pop: "SIC", driver: "X", tipo: "+1", rif: "2026-11-03", periodo: "03/11", testo });
+  const r = (chiave: string, testo = "t"): Richiesta => ({ chiave, mese: "2026-11", station: "DER1", pop: "SIC", driver: "X", tipo: "+1", rif: "2026-11-03", periodo: "03/11", testo, breve: "b" });
   it("nuova = da creare; già OK resta; sparita = risolta; OK con dati cambiati si riapre", () => {
     const salvate = [
       { chiave: "2026-11|DER1|a", stato: "OK" as const, testo: "t" }, { chiave: "2026-11|DER1|b", stato: "RICHIESTA" as const, testo: "t" },
       { chiave: "2026-11|DER1|c", stato: "OK" as const, testo: "vecchio" }, { chiave: "2026-11|DER2|d", stato: "DA_FARE" as const, testo: "t" },
       { chiave: "2026-11|DER1|e", stato: "OK" as const, testo: "t" }, { chiave: "2026-11|DER1|f", stato: "RISOLTA" as const, testo: "t" },
     ];
-    const f = fondiRichieste(salvate, [r("2026-11|DER1|a"), r("2026-11|DER1|c", "nuovo"), r("2026-11|DER1|n"), r("2026-11|DER1|f")], ["DER1"], "2026-11");
+    const f = fondiRichieste(salvate.map((x) => ({ ...x, breve: "b" })), [r("2026-11|DER1|a"), r("2026-11|DER1|c", "nuovo"), r("2026-11|DER1|n"), r("2026-11|DER1|f")], ["DER1"], "2026-11");
     expect(f.crea.map((x) => x.chiave)).toEqual(["2026-11|DER1|n"]);
     expect(f.aggiorna).toEqual([
-      { chiave: "2026-11|DER1|c", stato: "DA_FARE", testo: "nuovo", riaperta: true },
-      { chiave: "2026-11|DER1|f", stato: "DA_FARE", testo: "t", riaperta: true },
+      { chiave: "2026-11|DER1|c", stato: "DA_FARE", testo: "nuovo", breve: "b", riaperta: true },
+      { chiave: "2026-11|DER1|f", stato: "DA_FARE", testo: "t", breve: "b", riaperta: true },
       { chiave: "2026-11|DER1|b", stato: "RISOLTA", testo: "t", riaperta: false },
     ]); // DER2 non è stata controllata: resta com'è; "e" era OK e resta OK
   });
@@ -238,8 +238,8 @@ describe("DER2: i part time sono trattati come MOG", () => {
 describe("messaggio per l'OS", () => {
   it("saluto con il solo nome, frasi dirette e una sola formula finale", async () => {
     const { componi, TESTI } = await import("@/domain/presenze/messaggi");
-    const m = componi("DER1", TESTI.aperturaVerifica(TESTI.salutoNome("Mario Rossi"), "DER1", "11/2026", "22/11"), [{ titolo: "Straordinario prima delle 39 ore", colonne: ["Driver", "Tipo", "Cosa serve"], righe: [["A", "STD", "x"], ["B", "STD", "y"]] }], TESTI.chiusuraVerifica);
-    expect(m.testo.split("\n")[0]).toBe("Ciao Mario, ti mando le richieste per i controlli dei tracking di DER1 di 11/2026 (fino al 22/11).");
+    const m = componi("DER1", TESTI.aperturaVerifica(TESTI.salutoNome("Mario Rossi"), "DER1", "11/2026", "22/11", 2), [{ titolo: "Straordinario prima delle 39 ore", colonne: ["Driver", "Tipo", "Cosa serve"], righe: [["A", "STD", "x"], ["B", "STD", "y"]] }], TESTI.chiusuraVerifica);
+    expect(m.testo.split("\n")[0]).toBe("Ciao Mario, ci sono 2 punti da verificare sui tracking di DER1 di 11/2026 (fino al 22/11):");
     expect(m.testo.match(/Puoi verificare e farmi sapere\?/g)!.length).toBe(1);
     expect(m.testo.trim().endsWith("Puoi verificare e farmi sapere? Grazie!")).toBe(true);
     expect(TESTI.salutoNome(null)).toBe("Ciao");
@@ -265,5 +265,29 @@ describe("lo stesso lavoratore in tutti e due i tracking", () => {
   it("in giorni diversi (passaggio da un contratto all'altro) lo segnala comunque, dicendolo", () => {
     const r = v([persona("CTI FT", [null, null, null, g(8), g(8), null, null], LUN, "SIC"), persona("MOG 35", [g(8), g(8), null, null, null, null, null], LUN, "STD")]);
     expect(r[0].testo).toContain("in giorni diversi");
+  });
+});
+
+describe("tabellina per gli OS", () => {
+  it("un punto per riga, per driver e giorno; la settimana con più giorni si divide", async () => {
+    const { componiTabellina, puntiVerifica, TESTI } = await import("@/domain/presenze/messaggi");
+    const punti = puntiVerifica([
+      { driver: "ROSSI MARIO", pop: "SIC", periodo: "09/11–15/11", testo: "lungo", breve: "14/11: Straordinario 4 h → Standard? · 12/11: Straordinario 8 h, di cui 2 h → Standard?" },
+      { driver: "BIANCHI ANNA", pop: "STD", periodo: "10/11", testo: "lungo", breve: "Trasferta senza rotta Amazon: cosa ha fatto?" },
+      { driver: "ROSSI MARIO", pop: "SIC", periodo: "03/11", testo: "vecchia riga senza testo breve", breve: null },
+    ]);
+    expect(punti.map((x) => `${x.driver}|${x.quando}|${x.cosa}`)).toEqual([
+      "BIANCHI ANNA|10/11|Trasferta senza rotta Amazon: cosa ha fatto?", "ROSSI MARIO|03/11|vecchia riga senza testo breve",
+      "ROSSI MARIO|12/11|Straordinario 8 h, di cui 2 h → Standard?", "ROSSI MARIO|14/11|Straordinario 4 h → Standard?",
+    ]);
+    const m = componiTabellina("DER1", TESTI.aperturaVerifica("Ciao Mario", "DER1", "11/2026", "22/11", punti.length), punti);
+    expect(m.nAnomalie).toBe(4);
+    expect(m.testo.split("\n")).toEqual(["Ciao Mario, ci sono 4 punti da verificare sui tracking di DER1 di 11/2026 (fino al 22/11):", "", "BIANCHI ANNA (STD)", "  • 10/11 — Trasferta senza rotta Amazon: cosa ha fatto?", "ROSSI MARIO (SIC)", "  • 03/11 — vecchia riga senza testo breve", "  • 12/11 — Straordinario 8 h, di cui 2 h → Standard?", "  • 14/11 — Straordinario 4 h → Standard?", "", "Puoi verificare e farmi sapere? Grazie!"]);
+    expect(m.html.match(/<tr>/g)).toHaveLength(5); expect(m.html.match(/<b>ROSSI MARIO<\/b>/g)).toHaveLength(1);
+  });
+  it("cambiare solo il testo breve non riapre e non cambia lo stato", () => {
+    const base = { chiave: "2026-11|DER1|SIC|X|+1|2026-11-03", mese: "2026-11", station: "DER1" as const, pop: "SIC", driver: "X", tipo: "+1" as const, rif: "2026-11-03", periodo: "03/11", testo: "t", breve: "nuovo" };
+    const f = fondiRichieste([{ chiave: base.chiave, stato: "OK", testo: "t", breve: null }], [base], ["DER1"], "2026-11");
+    expect(f.crea).toEqual([]); expect(f.aggiorna).toEqual([{ chiave: base.chiave, stato: "OK", testo: "t", breve: "nuovo", riaperta: false }]);
   });
 });

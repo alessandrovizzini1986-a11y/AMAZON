@@ -89,11 +89,11 @@ const meseRe = z.string().regex(/^\d{4}-\d{2}$/);
 const statoRichiesta = z.enum(["DA_FARE", "RICHIESTA", "OK", "RISOLTA"]);
 const richiesta = z.object({
   chiave: z.string().min(5).max(300), mese: meseRe, station, pop: z.string().max(20), driver: z.string().max(200), tipo: z.string().max(20),
-  rif: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodo: z.string().max(30), testo: z.string().max(1000),
+  rif: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodo: z.string().max(30), testo: z.string().max(1000), breve: z.string().max(600),
 });
-export type RichiestaVista = { chiave: string; mese: string; station: string; pop: string; driver: string; tipo: string; rif: string; periodo: string; testo: string; stato: Stato; nota: string; aggiornataIl: string; aggiornataDa: string | null };
+export type RichiestaVista = { chiave: string; mese: string; station: string; pop: string; driver: string; tipo: string; rif: string; periodo: string; testo: string; breve: string | null; stato: Stato; nota: string; aggiornataIl: string; aggiornataDa: string | null };
 
-const vista = (r: { chiave: string; mese: string; station: string; pop: string; driver: string; tipo: string; rif: string; periodo: string; testo: string; stato: string; nota: string | null; aggiornataIl: Date; aggiornataDa: string | null }): RichiestaVista =>
+const vista = (r: { chiave: string; mese: string; station: string; pop: string; driver: string; tipo: string; rif: string; periodo: string; testo: string; breve: string | null; stato: string; nota: string | null; aggiornataIl: Date; aggiornataDa: string | null }): RichiestaVista =>
   ({ ...r, stato: r.stato as Stato, nota: r.nota ?? "", aggiornataIl: r.aggiornataIl.toISOString() });
 
 /** Richieste salvate di un mese (per riaprire la pagina senza rifare il controllo). */
@@ -112,11 +112,11 @@ export async function sincronizzaRichieste(input: { mese: string; stations: stri
   assertCan(user, "presenze.run");
   const mese = meseRe.parse(input.mese), stations = z.array(station).max(7).parse(input.stations);
   const trovate = z.array(richiesta).max(20000).parse(input.trovate).filter((t) => t.mese === mese);
-  const salvate = await db.presenzeRichiesta.findMany({ where: { mese }, select: { chiave: true, stato: true, testo: true } });
+  const salvate = await db.presenzeRichiesta.findMany({ where: { mese }, select: { chiave: true, stato: true, testo: true, breve: true } });
   const f = fondiRichieste(salvate.map((s) => ({ ...s, stato: s.stato as Stato })), trovate as never, stations, mese);
   await db.$transaction(async (tx) => {
     if (f.crea.length) await tx.presenzeRichiesta.createMany({ data: f.crea.map((c) => ({ ...c, aggiornataDa: user.name })), skipDuplicates: true });
-    for (const a of f.aggiorna) await tx.presenzeRichiesta.update({ where: { chiave: a.chiave }, data: { stato: a.stato, testo: a.testo, ...(a.riaperta ? { nota: "riaperta: i dati sono cambiati" } : {}) } });
+    for (const a of f.aggiorna) await tx.presenzeRichiesta.update({ where: { chiave: a.chiave }, data: { stato: a.stato, testo: a.testo, ...(a.breve !== undefined ? { breve: a.breve } : {}), ...(a.riaperta ? { nota: "riaperta: i dati sono cambiati" } : {}) } });
   }, { timeout: 60_000 });
   const sparite = f.aggiorna.filter((a) => a.stato === "RISOLTA").length, riaperte = f.aggiorna.filter((a) => a.riaperta).length;
   await audit({ userId: user.id, action: "presenze.verifica", entity: "PresenzeRichiesta", meta: { mese, stations, trovate: trovate.length, nuove: f.crea.length, riaperte, sparite } });
