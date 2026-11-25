@@ -134,7 +134,7 @@ export function AssenzeClient({ righe, persone, gls = false }: { righe: RigaMese
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
           <li><b>Fonte:</b> le buste paga (LUL) di SIC e STD. Sul sito ci sono solo i totali per station, mese e gruppo: nessun nome, nessun importo.</li>
           <li><b>Giorni, non ore:</b> le ore in busta non sono confrontabili (una giornata di un somministrato part time vale 3–4 ore, quella di un SIC quasi 8).</li>
-          <li><b>Assenteismo %:</b> giorni di assenza diviso i giorni in cui si doveva lavorare (lavorati + assenze). Le assenze sono malattia, infortunio e altre assenze (non retribuite, ingiustificate, malattia figlio). Ferie, ROL, ex festività e permessi retribuiti non contano. Un giorno lavorato è un giorno del calendario della busta con più di 4 ore.</li>
+          <li><b>Assenteismo %:</b> giorni di assenza diviso i giorni in cui si doveva lavorare (lavorati + assenze). Le assenze sono malattia, infortunio e altre assenze (non retribuite e ingiustificate). Ferie, ROL, ex festività, permessi retribuiti, scioperi e congedi di legge (parentale, maternità, paternità) non contano. Il ricovero in ospedale conta come malattia. Un giorno lavorato è un giorno del calendario della busta con più di 4 ore.</li>
           <li><b>Persone assenti:</b> persone con almeno un giorno di malattia o infortunio nel mese, in percentuale delle persone in busta.</li>
           <li><b>Rischio (0–100):</b> ogni misura si confronta con il network: uguale = 50, il doppio o più = 100. Pesi: malattia (% dei giorni dovuti) {PESI_RISCHIO.malattia * 100}%, numero di infortuni (persone infortunate ogni 1.000 rotte) {PESI_RISCHIO.frequenza * 100}%, durata degli infortuni (giorni per infortunato) {PESI_RISCHIO.gravita * 100}%.</li>
           <li><b>Peso (0–100):</b> quota dei giorni persi del network; la station che pesa di più vale 100.</li>
@@ -273,7 +273,7 @@ function Tassi({ righe, vista, persone }: { righe: RigaMese[]; vista: Vista; per
   const p = (v: number | null) => (v === null ? "—" : `${n1(v)}%`);
   const nomeVista = vista === "TOTALE" ? "SIC + STD" : vista;
   return (
-    <Riquadro titolo={`Assenteismo ${nomeVista}: station per mese e da inizio anno`} sotto="Giorni di assenza sui giorni in cui si doveva lavorare. Malattia + infortunio + altre assenze (non retribuite, ingiustificate, malattia figlio) = assenteismo. Più rosso = più alto.">
+    <Riquadro titolo={`Assenteismo ${nomeVista}: station per mese e da inizio anno`} sotto="Giorni di assenza sui giorni in cui si doveva lavorare. Malattia + infortunio + altre assenze (non retribuite e ingiustificate) = assenteismo. Più rosso = più alto.">
       <div className="flex flex-wrap gap-2 text-sm">
         {([["pct", "Assenteismo"], ["malattiaPct", "di cui malattia"], ["infortunioPct", "di cui infortunio"], ["altrePct", "di cui altre assenze"]] as const).map(([k, nome]) => <button key={k} className={misura === k ? "btn-primary" : "btn-secondary"} onClick={() => setMisura(k)}>{nome}</button>)}
       </div>
@@ -324,7 +324,7 @@ function Assenti({ persone, vista, fissa }: { persone: RigaPersona[]; vista: Vis
   const valore = (a: Assente) => a[ordine];
   const righeStation = station ? elenco(station) : [];
   return (
-    <Riquadro titolo="Chi è stato più assente" sotto={`Persone con più giorni di ${ordine === "giorni" ? "assenza (malattia, infortunio, altre)" : ordine === "altre" ? "altre assenze (non retribuite, ingiustificate, malattia figlio)" : ordine} ${meseOk ? `a ${mb(meseOk)}` : "da inizio anno"}. Dati personali: li vedi solo tu.`}>
+    <Riquadro titolo="Chi è stato più assente" sotto={`Persone con più giorni di ${ordine === "giorni" ? "assenza (malattia, infortunio, altre)" : ordine === "altre" ? "altre assenze (non retribuite e ingiustificate)" : ordine} ${meseOk ? `a ${mb(meseOk)}` : "da inizio anno"}. Dati personali: li vedi solo tu.`}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <select className={fissa ? "hidden" : "input w-auto"} value={station} onChange={(e) => { setStation(e.target.value); setTutti(false); }} aria-label="Station"><option value="">Tutte le station (primi 5)</option>{stations.map((s) => <option key={s}>{s}</option>)}</select>
         <select className="input w-auto" value={meseOk} onChange={(e) => setMese(e.target.value)} aria-label="Periodo"><option value="">Da inizio anno</option>{mesi.map((m) => <option key={m} value={m}>{MESI[Number(m.slice(5)) - 1]} {m.slice(0, 4)}</option>)}</select>
@@ -374,7 +374,7 @@ function TassiUnici({ righe, persone }: { righe: RigaMese[]; persone: RigaPerson
   const max = Math.max(1, ...n.perMese.map((x) => x.pct ?? 0));
   const voci = [["Assenteismo", "pct"], ["di cui malattia", "malattiaPct"], ["di cui infortunio", "infortunioPct"], ["di cui altre assenze", "altrePct"]] as const;
   return (
-    <Riquadro titolo="Assenteismo degli autisti: mese per mese e da inizio anno" sotto="Giorni di assenza sui giorni in cui si doveva lavorare. Malattia + infortunio + altre assenze (non retribuite, ingiustificate, malattia figlio) = assenteismo. Scioperi, ferie e permessi retribuiti non contano.">
+    <Riquadro titolo="Assenteismo degli autisti: mese per mese e da inizio anno" sotto="Giorni di assenza sui giorni in cui si doveva lavorare. Malattia + infortunio + altre assenze (non retribuite e ingiustificate) = assenteismo. Scioperi, ferie e permessi retribuiti non contano.">
       <div className="overflow-x-auto">
         <table className="w-full border-separate text-sm" style={{ borderSpacing: 2 }}>
           <thead><tr className="text-slate-500"><th />{t.mesi.map((m) => <th key={m} className="px-1 font-normal">{mb(m)}</th>)}<th className="px-2 font-semibold text-slate-700">Da inizio anno</th></tr></thead>
@@ -405,17 +405,17 @@ function Dettaglio({ persone, vista, station, mese, mesi, chiudi, autisti = fals
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-slate-300 bg-slate-50 p-3">
       <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">{station ?? "Tutte le station"} · {mese ? `${MESI_LUNGHI[Number(mese.slice(5)) - 1]} ${mese.slice(0, 4)}` : "da inizio anno"}: {tot.malattia + tot.infortunio + tot.altre} giorni di assenza, {elenco.length} persone</h3><button className="btn-secondary text-xs" onClick={chiudi}>Chiudi</button></div>
-      <div className="grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <Voce nome="Malattia" n={tot.malattia} chi={conta((x) => x.malattia)} /><Voce nome="Infortunio" n={tot.infortunio} chi={conta((x) => x.infortunio)} />
-        <Voce nome="Altre: malattia figlio (MF)" n={tot.mf} chi={conta((x) => x.malattiaFiglio)} /><Voce nome="Altre: ingiustificate" n={tot.ing} chi={conta((x) => x.ingiustificate)} /><Voce nome="Altre: non retribuite" n={tot.nr} chi={conta((x) => x.nonRetribuite)} />
+        <Voce nome="Altre: ingiustificate" n={tot.ing} chi={conta((x) => x.ingiustificate)} /><Voce nome="Altre: non retribuite" n={tot.nr} chi={conta((x) => x.nonRetribuite)} />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3 font-normal">Persona</th>{!station && <th className="py-1 pr-3 font-normal">Station</th>}{!autisti && <th className="py-1 pr-3 font-normal">Gruppo</th>}<th className="py-1 pr-3 text-right font-normal">Malattia</th><th className="py-1 pr-3 text-right font-normal">Infortunio</th><th className="py-1 pr-3 text-right font-normal">Malattia figlio</th><th className="py-1 pr-3 text-right font-normal">Ingiustificate</th><th className="py-1 pr-3 text-right font-normal">Non retribuite</th><th className="py-1 pr-3 text-right font-normal">Totale</th><th className="py-1 text-right font-normal">Lavorati</th></tr></thead>
+          <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3 font-normal">Persona</th>{!station && <th className="py-1 pr-3 font-normal">Station</th>}{!autisti && <th className="py-1 pr-3 font-normal">Gruppo</th>}<th className="py-1 pr-3 text-right font-normal">Malattia</th><th className="py-1 pr-3 text-right font-normal">Infortunio</th><th className="py-1 pr-3 text-right font-normal">Ingiustificate</th><th className="py-1 pr-3 text-right font-normal">Non retribuite</th><th className="py-1 pr-3 text-right font-normal">Totale</th><th className="py-1 text-right font-normal">Lavorati</th></tr></thead>
           <tbody>
             {elenco.slice(0, tutti ? undefined : 12).map((x) => { const z = (v: number) => (v ? v : <span className="text-slate-300">·</span>); return (
               <tr key={x.chiave} className="border-t border-slate-200"><td className="py-1 pr-3 font-medium">{x.nome}</td>{!station && <td className="py-1 pr-3">{x.station}</td>}{!autisti && <td className="py-1 pr-3 text-xs text-slate-600">{x.gruppo}</td>}
-                <td className="py-1 pr-3 text-right tabular-nums">{z(x.malattia)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.infortunio)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.malattiaFiglio)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.ingiustificate)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.nonRetribuite)}</td><td className="py-1 pr-3 text-right font-semibold tabular-nums">{x.giorni}</td><td className="py-1 text-right tabular-nums">{x.lavorati}</td></tr>); })}
+                <td className="py-1 pr-3 text-right tabular-nums">{z(x.malattia)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.infortunio)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.ingiustificate)}</td><td className="py-1 pr-3 text-right tabular-nums">{z(x.nonRetribuite)}</td><td className="py-1 pr-3 text-right font-semibold tabular-nums">{x.giorni}</td><td className="py-1 text-right tabular-nums">{x.lavorati}</td></tr>); })}
             {elenco.length === 0 && <tr><td colSpan={10} className="py-2 text-slate-500">Nessuna assenza.</td></tr>}
           </tbody>
         </table>

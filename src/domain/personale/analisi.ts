@@ -9,7 +9,7 @@ export type RigaMese = {
   mese: string; station: string; gruppo: Gruppo; teste: number; calendario: boolean; rotte: number | null; rotteTd: number;
   /** giorni lavorati dal calendario della busta (0 se la busta non ha il calendario) */
   ggLavorati: number;
-  /** altre assenze: non retribuite, ingiustificate, malattia figlio */
+  /** altre assenze: non retribuite e ingiustificate */
   ggAltre: number;
   ggMalattia: number; ggInfortunio: number; persMalattia: number; persInfortunio: number; persAssenti: number;
 };
@@ -186,7 +186,7 @@ export function riepilogo(a: ReturnType<typeof analisi>, tutte: RigaMese[], vist
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Tasso di assenteismo: giorni di malattia e infortunio sui giorni in cui si doveva lavorare
-// (lavorati + malattia + infortunio + altre assenze). Altre assenze = non retribuite, ingiustificate, malattia figlio.
+// (lavorati + malattia + infortunio + altre assenze). Altre assenze = non retribuite e ingiustificate.
 // Ferie, ROL, ex festività e permessi retribuiti non contano né sopra né sotto.
 
 export type Tasso = { lavorati: number; malattia: number; infortunio: number; altre: number; /** % con un decimale; null se non ci sono giorni */ pct: number | null; malattiaPct: number | null; infortunioPct: number | null; altrePct: number | null };
