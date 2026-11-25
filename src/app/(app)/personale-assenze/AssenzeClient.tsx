@@ -30,7 +30,7 @@ export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: 
 
   const tuttiMesi = useMemo(() => mesiValidi(righe, vista), [righe, vista]);
   const mesi = useMemo(() => (periodo === "ANNO" ? tuttiMesi : tuttiMesi.slice(-Number(periodo))), [tuttiMesi, periodo]);
-  const a = useMemo(() => analisi(righe, vista, mesi), [righe, vista, mesi]);
+  const a = useMemo(() => analisi(righe, vista, mesi, persone), [righe, vista, mesi, persone]);
   const frasi = useMemo(() => riepilogo(a, righe, vista, mesi), [a, righe, vista, mesi]);
   const ultimo = mesi[mesi.length - 1], penultimo = mesi[mesi.length - 2];
   const delMese = (m?: string) => (m ? indicatori(somma((vista === "TOTALE" ? righe : righe.filter((r) => r.gruppo === vista)).filter((r) => r.mese === m))) : null);
@@ -62,7 +62,7 @@ export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: 
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <Tessera titolo="Assenteismo" valore={tn.pct === null ? "—" : `${n1(tn.pct)}%`} nota={`malattia ${n1(tn.malattiaPct ?? 0)}% · infortunio ${n1(tn.infortunioPct ?? 0)}% · ${a.network.headcount} persone`} />
+        <Tessera titolo="Assenteismo" valore={tn.pct === null ? "—" : `${n1(tn.pct)}%`} nota={`malattia ${n1(tn.malattiaPct ?? 0)}% · infortunio ${n1(tn.infortunioPct ?? 0)}% · altre ${n1(tn.altrePct ?? 0)}%`} />
         <Tessera titolo="Persone assenti" valore={`${n1(a.network.assentiPct)}%`} ora={iu?.assentiPct} prima={ip?.assentiPct} unita="%" />
         <Tessera titolo="Giorni di malattia ogni 100" valore={n1(a.network.malattia100)} ora={iu?.malattia100} prima={ip?.malattia100} />
         <Tessera titolo="Giorni di infortunio ogni 100" valore={n1(a.network.infortunio100)} ora={iu?.infortunio100} prima={ip?.infortunio100} />
@@ -83,18 +83,19 @@ export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: 
       <Riquadro titolo="Dove intervenire: classifica per priorità" sotto={`Priorità = rischio × ${PESI_PRIORITA.rischio} + peso sul network × ${PESI_PRIORITA.peso}. Rischio 50 = come la media del network.`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3">Station</th><th className="py-1 pr-3">Priorità</th><th className="py-1 pr-3 text-right">Rischio</th><th className="py-1 pr-3 text-right">Peso</th><th className="py-1 pr-3 text-right">Persone</th><th className="py-1 pr-3 text-right">Assenti</th><th className="py-1 pr-3 text-right">Malattia /100</th><th className="py-1 pr-3 text-right">Infortunio /100</th><th className="py-1 pr-3">Ultimi 3 mesi</th><th className="py-1">Stato</th></tr></thead>
+            <thead><tr className="text-left text-slate-500"><th className="py-1 pr-3">Station</th><th className="py-1 pr-3">Priorità</th><th className="py-1 pr-3 text-right">Rischio</th><th className="py-1 pr-3 text-right">Peso</th><th className="py-1 pr-3 text-right">Persone</th><th className="py-1 pr-3 text-right">Malattia</th><th className="py-1 pr-3 text-right">Persone infortunate</th><th className="py-1 pr-3 text-right">ogni 1.000 rotte</th><th className="py-1 pr-3 text-right">Giorni per infortunato</th><th className="py-1 pr-3">Ultimi 3 mesi</th><th className="py-1">Stato</th></tr></thead>
             <tbody>
               {a.stations.map((s) => (
                 <tr key={s.station} className="border-t border-slate-100">
                   <td className="py-1.5 pr-3 font-semibold">{s.station}</td>
                   <td className="py-1.5 pr-3"><div className="flex items-center gap-2"><div className="h-3 w-28 rounded-sm bg-slate-100"><div className="h-3 rounded-r" style={{ width: `${s.priorita}%`, background: STATO[s.livello].colore }} /></div><span className="tabular-nums font-medium">{s.priorita}</span></div></td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums" title={`assenti ${s.parti.assenti}, malattia ${s.parti.malattia}, infortunio ${s.parti.infortunio}`}>{s.rischio}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums" title={`malattia ${s.parti.malattia}, numero di infortuni ${s.parti.frequenza}, durata degli infortuni ${s.parti.gravita} (50 = come il network)`}>{s.rischio}</td>
                   <td className="py-1.5 pr-3 text-right tabular-nums" title={`${s.quotaGiorni}% dei giorni persi con il ${s.quotaPersone}% delle persone`}>{s.peso}</td>
                   <td className="py-1.5 pr-3 text-right tabular-nums">{s.ind.headcount}</td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums">{n1(s.ind.assentiPct)}%</td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums">{n1(s.ind.malattia100)}</td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums">{n1(s.ind.infortunio100)}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{n1(s.mis.malattiaPct)}%</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{s.mis.infortunati}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{s.mis.frequenza.toLocaleString("it-IT", { maximumFractionDigits: 2 })}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{n1(s.mis.gravita)}</td>
                   <td className="whitespace-nowrap py-1.5 pr-3">{s.tendenza ? <span style={{ color: s.tendenza.verso === "PEGGIORA" ? "#B91C1C" : s.tendenza.verso === "MIGLIORA" ? "#15803D" : INK2 }}>{s.tendenza.verso === "PEGGIORA" ? "▲ peggiora" : s.tendenza.verso === "MIGLIORA" ? "▼ migliora" : "= stabile"} {s.tendenza.variazione > 0 ? "+" : ""}{s.tendenza.variazione}%</span> : <span className="text-slate-400">—</span>}</td>
                   <td className="py-1.5"><Chip l={s.livello} /></td>
                 </tr>
@@ -130,9 +131,9 @@ export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: 
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
           <li><b>Fonte:</b> le buste paga (LUL) di SIC e STD. Sul sito ci sono solo i totali per station, mese e gruppo: nessun nome, nessun importo.</li>
           <li><b>Giorni, non ore:</b> le ore in busta non sono confrontabili (una giornata di un somministrato part time vale 3–4 ore, quella di un SIC quasi 8).</li>
-          <li><b>Assenteismo %:</b> giorni di malattia e infortunio diviso i giorni in cui si doveva lavorare (lavorati + malattia + infortunio). Ferie, ROL, ex festività e permessi non contano. Un giorno lavorato è un giorno del calendario della busta con più di 4 ore.</li>
+          <li><b>Assenteismo %:</b> giorni di assenza diviso i giorni in cui si doveva lavorare (lavorati + assenze). Le assenze sono malattia, infortunio e altre assenze (non retribuite, ingiustificate, malattia figlio). Ferie, ROL, ex festività e permessi retribuiti non contano. Un giorno lavorato è un giorno del calendario della busta con più di 4 ore.</li>
           <li><b>Persone assenti:</b> persone con almeno un giorno di malattia o infortunio nel mese, in percentuale delle persone in busta.</li>
-          <li><b>Rischio (0–100):</b> ogni misura si confronta con il network: uguale = 50, il doppio o più = 100. Pesi: assenti {PESI_RISCHIO.assenti * 100}%, malattia {PESI_RISCHIO.malattia * 100}%, infortunio {PESI_RISCHIO.infortunio * 100}%.</li>
+          <li><b>Rischio (0–100):</b> ogni misura si confronta con il network: uguale = 50, il doppio o più = 100. Pesi: malattia (% dei giorni dovuti) {PESI_RISCHIO.malattia * 100}%, numero di infortuni (persone infortunate ogni 1.000 rotte) {PESI_RISCHIO.frequenza * 100}%, durata degli infortuni (giorni per infortunato) {PESI_RISCHIO.gravita * 100}%.</li>
           <li><b>Peso (0–100):</b> quota dei giorni persi del network; la station che pesa di più vale 100.</li>
           <li><b>Stato:</b> 0–30 sotto controllo, 31–60 attenzione, 61–80 criticità, 81–100 intervento prioritario.</li>
           <li><b>Tendenza:</b> giorni persi ogni 100 lavoratori negli ultimi 3 mesi contro i 3 prima; oltre ±15% è peggioramento o miglioramento.</li>
@@ -259,7 +260,7 @@ function Calore({ righe, vista, mesi, stations }: { righe: RigaMese[]; vista: Vi
 
 /** Assenteismo %: station per mese e da inizio anno, con la scelta totale / malattia / infortunio. */
 function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
-  const [misura, setMisura] = useState<"pct" | "malattiaPct" | "infortunioPct">("pct");
+  const [misura, setMisura] = useState<"pct" | "malattiaPct" | "infortunioPct" | "altrePct">("pct");
   const t = useMemo(() => tabellaTassi(righe, vista), [righe, vista]);
   const comuni = useMemo(() => new Set(tabellaTassi(righe, "TOTALE").mesi), [righe]);
   const gruppi = useMemo(() => (["TOTALE", "SIC", "STD"] as Vista[]).map((v) => tabellaTassi(righe.filter((r) => comuni.has(r.mese)), v)), [righe, comuni]);
@@ -268,9 +269,9 @@ function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
   const p = (v: number | null) => (v === null ? "—" : `${n1(v)}%`);
   const nomeVista = vista === "TOTALE" ? "SIC + STD" : vista;
   return (
-    <Riquadro titolo={`Assenteismo ${nomeVista}: station per mese e da inizio anno`} sotto="Giorni di malattia e infortunio sui giorni in cui si doveva lavorare. Malattia + infortunio = assenteismo. Più rosso = più alto.">
+    <Riquadro titolo={`Assenteismo ${nomeVista}: station per mese e da inizio anno`} sotto="Giorni di assenza sui giorni in cui si doveva lavorare. Malattia + infortunio + altre assenze (non retribuite, ingiustificate, malattia figlio) = assenteismo. Più rosso = più alto.">
       <div className="flex flex-wrap gap-2 text-sm">
-        {([["pct", "Assenteismo"], ["malattiaPct", "di cui malattia"], ["infortunioPct", "di cui infortunio"]] as const).map(([k, nome]) => <button key={k} className={misura === k ? "btn-primary" : "btn-secondary"} onClick={() => setMisura(k)}>{nome}</button>)}
+        {([["pct", "Assenteismo"], ["malattiaPct", "di cui malattia"], ["infortunioPct", "di cui infortunio"], ["altrePct", "di cui altre assenze"]] as const).map(([k, nome]) => <button key={k} className={misura === k ? "btn-primary" : "btn-secondary"} onClick={() => setMisura(k)}>{nome}</button>)}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-separate text-sm" style={{ borderSpacing: 2 }}>
@@ -279,8 +280,8 @@ function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
             {[...t.stations, t.network].map((s) => (
               <tr key={s.station} className={s.station === "Network" ? "font-semibold" : ""}>
                 <th className="whitespace-nowrap pr-2 text-left font-semibold">{s.station}</th>
-                {s.perMese.map((x, i) => <td key={i} className="rounded px-1 py-1.5 text-center tabular-nums" style={{ background: s.station === "Network" ? "#F1F5F9" : fondo(x[misura]) }} title={`${s.station} ${mb(t.mesi[i])}: ${x.malattia} giorni di malattia e ${x.infortunio} di infortunio su ${x.lavorati + x.malattia + x.infortunio} giorni dovuti`}>{p(x[misura])}</td>)}
-                <td className="rounded px-2 py-1.5 text-center font-semibold tabular-nums" style={{ background: "#E2E8F0" }} title={`${s.ytd.malattia} giorni di malattia e ${s.ytd.infortunio} di infortunio su ${s.ytd.lavorati + s.ytd.malattia + s.ytd.infortunio} giorni dovuti`}>{p(s.ytd[misura])}</td>
+                {s.perMese.map((x, i) => <td key={i} className="rounded px-1 py-1.5 text-center tabular-nums" style={{ background: s.station === "Network" ? "#F1F5F9" : fondo(x[misura]) }} title={`${s.station} ${mb(t.mesi[i])}: ${x.malattia} giorni di malattia, ${x.infortunio} di infortunio e ${x.altre} di altre assenze su ${x.lavorati + x.malattia + x.infortunio + x.altre} giorni dovuti`}>{p(x[misura])}</td>)}
+                <td className="rounded px-2 py-1.5 text-center font-semibold tabular-nums" style={{ background: "#E2E8F0" }} title={`${s.ytd.malattia} giorni di malattia, ${s.ytd.infortunio} di infortunio e ${s.ytd.altre} di altre assenze su ${s.ytd.lavorati + s.ytd.malattia + s.ytd.infortunio + s.ytd.altre} giorni dovuti`}>{p(s.ytd[misura])}</td>
               </tr>
             ))}
           </tbody>
@@ -290,14 +291,14 @@ function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr><th />{["SIC + STD", "SIC", "STD"].map((g) => <th key={g} colSpan={3} className="border-b border-slate-200 px-2 py-1 text-center">{g === "SIC + STD" ? g : <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: SERIE[g as "SIC" | "STD"] }} />{g}</span>}</th>)}</tr>
-            <tr className="text-slate-500"><th className="py-1 text-left font-normal">Station</th>{[0, 1, 2].flatMap((g) => ["Assenteismo", "Malattia", "Infortunio"].map((n) => <th key={`${g}${n}`} className={`px-2 py-1 text-right font-normal ${n === "Assenteismo" ? "border-l border-slate-200" : ""}`}>{n}</th>))}</tr>
+            <tr><th />{["SIC + STD", "SIC", "STD"].map((g) => <th key={g} colSpan={4} className="border-b border-slate-200 px-2 py-1 text-center">{g === "SIC + STD" ? g : <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: SERIE[g as "SIC" | "STD"] }} />{g}</span>}</th>)}</tr>
+            <tr className="text-slate-500"><th className="py-1 text-left font-normal">Station</th>{[0, 1, 2].flatMap((g) => ["Assenteismo", "Malattia", "Infortunio", "Altre"].map((n) => <th key={`${g}${n}`} className={`px-2 py-1 text-right font-normal ${n === "Assenteismo" ? "border-l border-slate-200" : ""}`}>{n}</th>))}</tr>
           </thead>
           <tbody>
             {[...gruppi[0].stations.map((s) => s.station), "Network"].map((st) => (
               <tr key={st} className={`border-t border-slate-100 ${st === "Network" ? "bg-slate-50 font-semibold" : ""}`}>
                 <td className="py-1.5 font-semibold">{st}</td>
-                {gruppi.flatMap((g, gi) => { const y: Tasso | undefined = st === "Network" ? g.network.ytd : g.stations.find((s) => s.station === st)?.ytd; return [<td key={`${gi}a`} className="border-l border-slate-200 px-2 text-right font-semibold tabular-nums">{p(y?.pct ?? null)}</td>, <td key={`${gi}m`} className="px-2 text-right tabular-nums">{p(y?.malattiaPct ?? null)}</td>, <td key={`${gi}i`} className="px-2 text-right tabular-nums">{p(y?.infortunioPct ?? null)}</td>]; })}
+                {gruppi.flatMap((g, gi) => { const y: Tasso | undefined = st === "Network" ? g.network.ytd : g.stations.find((s) => s.station === st)?.ytd; return [<td key={`${gi}a`} className="border-l border-slate-200 px-2 text-right font-semibold tabular-nums">{p(y?.pct ?? null)}</td>, <td key={`${gi}m`} className="px-2 text-right tabular-nums">{p(y?.malattiaPct ?? null)}</td>, <td key={`${gi}i`} className="px-2 text-right tabular-nums">{p(y?.infortunioPct ?? null)}</td>, <td key={`${gi}x`} className="px-2 text-right tabular-nums">{p(y?.altrePct ?? null)}</td>]; })}
               </tr>
             ))}
           </tbody>
@@ -318,11 +319,11 @@ function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
   const valore = (a: Assente) => a[ordine];
   const righeStation = station ? elenco(station) : [];
   return (
-    <Riquadro titolo="Chi è stato più assente" sotto={`Persone con più giorni di ${ordine === "giorni" ? "malattia e infortunio" : ordine} ${meseOk ? `a ${mb(meseOk)}` : "da inizio anno"}. Dati personali: li vedi solo tu.`}>
+    <Riquadro titolo="Chi è stato più assente" sotto={`Persone con più giorni di ${ordine === "giorni" ? "assenza (malattia, infortunio, altre)" : ordine === "altre" ? "altre assenze (non retribuite, ingiustificate, malattia figlio)" : ordine} ${meseOk ? `a ${mb(meseOk)}` : "da inizio anno"}. Dati personali: li vedi solo tu.`}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <select className="input w-auto" value={station} onChange={(e) => { setStation(e.target.value); setTutti(false); }} aria-label="Station"><option value="">Tutte le station (primi 5)</option>{stations.map((s) => <option key={s}>{s}</option>)}</select>
         <select className="input w-auto" value={meseOk} onChange={(e) => setMese(e.target.value)} aria-label="Periodo"><option value="">Da inizio anno</option>{mesi.map((m) => <option key={m} value={m}>{MESI[Number(m.slice(5)) - 1]} {m.slice(0, 4)}</option>)}</select>
-        {([["giorni", "Tutte le assenze"], ["malattia", "Malattia"], ["infortunio", "Infortunio"]] as [OrdineAssenti, string][]).map(([k, nome]) => <button key={k} className={ordine === k ? "btn-primary" : "btn-secondary"} onClick={() => setOrdine(k)}>{nome}</button>)}
+        {([["giorni", "Tutte le assenze"], ["malattia", "Malattia"], ["infortunio", "Infortunio"], ["altre", "Altre assenze"]] as [OrdineAssenti, string][]).map(([k, nome]) => <button key={k} className={ordine === k ? "btn-primary" : "btn-secondary"} onClick={() => setOrdine(k)}>{nome}</button>)}
       </div>
       {!station ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -331,7 +332,7 @@ function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
               <button className="mb-1 flex w-full items-baseline justify-between text-left" onClick={() => setStation(st)} title="Apri l'elenco completo della station"><span className="font-semibold">{st}</span><span className="text-xs text-slate-500">{e.length} persone ›</span></button>
               {e.length === 0 ? <p className="text-xs text-slate-500">Nessuna assenza.</p> : (
                 <ol className="flex flex-col gap-1 text-sm">
-                  {e.slice(0, 5).map((a) => <li key={a.chiave} className="flex items-baseline justify-between gap-2" title={`${a.malattia} giorni di malattia, ${a.infortunio} di infortunio, ${a.lavorati} lavorati${a.pct === null ? "" : ` · ${n1(a.pct)}% di assenteismo`}`}><span className="min-w-0 truncate">{a.nome} <Gr g={a.gruppo} /></span><span className="shrink-0 font-semibold tabular-nums">{valore(a)} gg</span></li>)}
+                  {e.slice(0, 5).map((a) => <li key={a.chiave} className="flex items-baseline justify-between gap-2" title={`${a.malattia} giorni di malattia, ${a.infortunio} di infortunio, ${a.altre} di altre assenze, ${a.lavorati} lavorati${a.pct === null ? "" : ` · ${n1(a.pct)}% di assenteismo`}`}><span className="min-w-0 truncate">{a.nome} <Gr g={a.gruppo} /></span><span className="shrink-0 font-semibold tabular-nums">{valore(a)} gg</span></li>)}
                 </ol>
               )}
             </div>); })}
@@ -340,16 +341,16 @@ function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="text-left text-slate-500"><th className="py-1 pr-2 font-normal">#</th><th className="py-1 pr-3 font-normal">Persona</th><th className="py-1 pr-3 font-normal">Gruppo</th><th className="py-1 pr-3 text-right font-normal">Malattia</th><th className="py-1 pr-3 text-right font-normal">Infortunio</th><th className="py-1 pr-3 text-right font-normal">Totale giorni</th><th className="py-1 pr-3 text-right font-normal">Giorni lavorati</th><th className="py-1 pr-3 text-right font-normal">Assenteismo</th>{!meseOk && <th className="py-1 text-right font-normal">Mesi con assenze</th>}</tr></thead>
+              <thead><tr className="text-left text-slate-500"><th className="py-1 pr-2 font-normal">#</th><th className="py-1 pr-3 font-normal">Persona</th><th className="py-1 pr-3 font-normal">Gruppo</th><th className="py-1 pr-3 text-right font-normal">Malattia</th><th className="py-1 pr-3 text-right font-normal">Infortunio</th><th className="py-1 pr-3 text-right font-normal">Altre</th><th className="py-1 pr-3 text-right font-normal">Totale giorni</th><th className="py-1 pr-3 text-right font-normal">Giorni lavorati</th><th className="py-1 pr-3 text-right font-normal">Assenteismo</th>{!meseOk && <th className="py-1 text-right font-normal">Mesi con assenze</th>}</tr></thead>
               <tbody>
                 {righeStation.slice(0, tutti ? undefined : 10).map((a, i) => (
                   <tr key={a.chiave} className="border-t border-slate-100">
                     <td className="py-1.5 pr-2 tabular-nums text-slate-500">{i + 1}</td><td className="py-1.5 pr-3 font-medium">{a.nome}</td><td className="py-1.5 pr-3"><Gr g={a.gruppo} /></td>
-                    <td className="py-1.5 pr-3 text-right tabular-nums">{a.malattia}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.infortunio}</td><td className="py-1.5 pr-3 text-right font-semibold tabular-nums">{a.giorni}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{a.malattia}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.infortunio}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.altre}</td><td className="py-1.5 pr-3 text-right font-semibold tabular-nums">{a.giorni}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums">{a.lavorati}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.pct === null ? "—" : `${n1(a.pct)}%`}</td>{!meseOk && <td className="py-1.5 text-right tabular-nums">{a.mesi}</td>}
                   </tr>
                 ))}
-                {righeStation.length === 0 && <tr><td colSpan={9} className="py-2 text-slate-500">Nessuna assenza nel periodo.</td></tr>}
+                {righeStation.length === 0 && <tr><td colSpan={10} className="py-2 text-slate-500">Nessuna assenza nel periodo.</td></tr>}
               </tbody>
             </table>
           </div>
