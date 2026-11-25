@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
     ["SIC e STD", "SIC = assunti da noi, a tempo indeterminato o determinato, contati insieme. STD = somministrati."],
     ["Mese", "Il mese in cui si è lavorato. La busta dei SIC paga le trasferte del mese prima, quindi i SIC arrivano con un mese di ritardo."],
     ["Assenteismo %", "Giorni di assenza diviso i giorni in cui si doveva lavorare (lavorati + assenze). Assenze = malattia + infortunio + altre assenze. Ferie, ROL, ex festività e permessi retribuiti non contano né sopra né sotto."],
-    ["Altre assenze", "Assenze e permessi non retribuiti (STD: ANR, PNR; SIC: AN, PN) e assenze ingiustificate (AI, AIG). Il codice ARR delle buste STD non è contato: è in verifica."],
+    ["Altre assenze", "Assenze e permessi non retribuiti (STD: ANR, PNR; SIC: AN, PN) e assenze ingiustificate (AI, AIG). Il codice ARR delle buste STD non è contato: è l'arretrato di un permesso di legge (per esempio nascita figlio)."],
     ["Malattia", "Comprende il ricovero in ospedale (MO)."],
     ["Non contati", "Ferie, ROL, ex festività, permessi retribuiti, scioperi e congedi di legge (parentale MF, maternità, paternità): non sono né assenze né giorni lavorati."],
     ["Rischio (0–100)", "Tre misure rispetto al network (50 = uguale, 100 = il doppio o più): malattia in % dei giorni dovuti (peso 50%), persone infortunate ogni 1.000 rotte (25%), giorni per infortunato (25%)."],
