@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { analisi, ETICHETTA_LIVELLO, indicatori, mesiValidi, riepilogo, somma, tabellaTassi, type Livello, type RigaMese, type Tasso, type Vista } from "@/domain/personale/analisi";
+import { piuAssenti, type RigaPersona, analisi, ETICHETTA_LIVELLO, indicatori, mesiValidi, riepilogo, somma, tabellaTassi, type Livello, type RigaMese, type Tasso, type Vista } from "@/domain/personale/analisi";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +109,31 @@ export async function GET() {
   }
   for (const ws of [rc, ay, ...fogliMese]) { ws.views = [{ showGridLines: false }]; ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }; }
 
+  // ===== Persone: primi 10 per station, elenco completo da inizio anno, dettaglio per mese
+  const pp = await db.personaleAssenzaPersona.findMany({ where: { mese: { gte: "2026-01" } } });
+  const persone: RigaPersona[] = pp.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", codice: r.codice, nome: r.nome, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio }));
+  const mesiPers = [...new Set(persone.map((x) => x.mese))].sort();
+  const INT_P = ["#", "Persona", "Gruppo", "Giorni malattia", "Giorni infortunio", "Totale giorni", "Giorni lavorati", "Assenteismo", "Mesi con assenze"];
+  const top = wb.addWorksheet("Più assenti");
+  top.columns = [6, 34, 9, 12, 12, 12, 12, 13, 12].map((width) => ({ width }));
+  titolo(top, `Chi è stato più assente: primi 10 per station (${periodo(mesiPers)})`, "Giorni di malattia e infortunio per persona. Dati personali riservati: non inoltrare oltre chi deve gestirli.");
+  for (const st of stations) {
+    const e = piuAssenti(persone, { vista: "TOTALE", station: st });
+    top.addRow([]); top.addRow([`${st} · ${e.length} persone con almeno un giorno di assenza`]).font = { bold: true, size: 12 };
+    const h = testa(top, INT_P); let ultimo = h.number;
+    e.slice(0, 10).forEach((x, i) => { const r = top.addRow([i + 1, x.nome, x.gruppo, x.malattia, x.infortunio, x.giorni, x.lavorati, fr(x.pct), x.mesi]); r.getCell(8).numFmt = "0.0%"; r.getCell(6).font = { bold: true }; ultimo = r.number; });
+    riquadra(top, h.number, ultimo, 9);
+  }
+  top.views = [{ showGridLines: false }]; top.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+  const el = wb.addWorksheet("Persone da inizio anno");
+  el.columns = [10, 34, 9, 12, 12, 12, 12, 13, 12].map((width) => ({ width }));
+  testa(el, ["Station", ...INT_P.slice(1)]);
+  for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st })) el.addRow([st, x.nome, x.gruppo, x.malattia, x.infortunio, x.giorni, x.lavorati, fr(x.pct), x.mesi]).getCell(8).numFmt = "0.0%";
+  const pm = wb.addWorksheet("Persone per mese");
+  pm.columns = [16, 10, 34, 9, 12, 12, 12, 12, 13].map((width) => ({ width }));
+  testa(pm, ["Mese", "Station", "Persona", "Gruppo", "Giorni malattia", "Giorni infortunio", "Totale giorni", "Giorni lavorati", "Assenteismo"]);
+  for (const m of mesiPers) for (const st of stations) for (const x of piuAssenti(persone, { vista: "TOTALE", station: st, mese: m })) pm.addRow([nomeMese(m), st, x.nome, x.gruppo, x.malattia, x.infortunio, x.giorni, x.lavorati, fr(x.pct)]).getCell(9).numFmt = "0.0%";
+
   // ===== 2. Rotte per mese
   const rm = wb.addWorksheet("Rotte per mese");
   rm.columns = [16, 10, 10, 10, 10, 10, 52].map((width) => ({ width }));
@@ -134,7 +159,8 @@ export async function GET() {
   cl.columns = [{ width: 28 }, { width: 110 }];
   testa(cl, ["Voce", "Cosa vuol dire"]);
   for (const [k, v] of [
-    ["Fonte", "Buste paga (LUL) di SIC e STD. Solo totali per station, mese e gruppo: nessun nome, nessun importo."],
+    ["Fonte", "Buste paga (LUL) di SIC e STD. Nessun importo. I nomi sono solo nei fogli \"Più assenti\", \"Persone da inizio anno\" e \"Persone per mese\"."],
+    ["Mesi con assenze", "In quanti mesi la persona ha avuto almeno un giorno di malattia o infortunio: distingue un solo evento lungo da assenze che si ripetono."],
     ["Rotta", "Una giornata di consegna. SIC: i giorni di trasferta pagati in busta. STD: i giorni lavorati per più di 4 ore sul calendario della busta."],
     ["SIC e STD", "SIC = assunti da noi, a tempo indeterminato o determinato, contati insieme. STD = somministrati."],
     ["Mese", "Il mese in cui si è lavorato. La busta dei SIC paga le trasferte del mese prima, quindi i SIC arrivano con un mese di ritardo."],
@@ -148,7 +174,7 @@ export async function GET() {
     ["Limite", "Uno STD a cui non viene rinnovata la missione dopo un infortunio esce dalle buste: i giorni di infortunio degli STD possono essere sottostimati."],
   ]) { const r = cl.addRow([k, v]); r.getCell(1).font = { bold: true }; r.getCell(2).alignment = { wrapText: true, vertical: "top" }; r.height = v.length > 110 ? 32 : 18; }
 
-  for (const ws of [rm, sg, dm]) { ws.views = [{ state: "frozen", ySplit: 1 }]; ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } }; ws.eachRow((r, n) => { if (n > 1) r.eachCell((c) => { if (typeof c.value === "number" && !c.numFmt) c.numFmt = Number.isInteger(c.value) ? "#,##0" : "#,##0.0"; }); }); }
+  for (const ws of [rm, sg, dm, el, pm]) { ws.views = [{ state: "frozen", ySplit: 1 }]; ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } }; ws.eachRow((r, n) => { if (n > 1) r.eachCell((c) => { if (typeof c.value === "number" && !c.numFmt) c.numFmt = Number.isInteger(c.value) ? "#,##0" : "#,##0.0"; }); }); }
   const buf = await wb.xlsx.writeBuffer();
   return new NextResponse(buf as ArrayBuffer, { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="Rotte_e_assenze_SIC_STD_${mesiRotte[mesiRotte.length - 1] ?? "2026"}.xlsx"`, "Cache-Control": "no-store" } });
 }
