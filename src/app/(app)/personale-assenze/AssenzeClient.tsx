@@ -57,6 +57,7 @@ export function AssenzeClient({ righe }: { righe: RigaMese[] }) {
         <span className="mx-1 h-6 w-px bg-slate-200" />
         {([["ANNO", "Da inizio anno"], ["6", "Ultimi 6 mesi"], ["3", "Ultimi 3 mesi"]] as [Periodo, string][]).map(([k, nome]) => <button key={k} className={periodo === k ? "btn-primary" : "btn-secondary"} onClick={() => setPeriodo(k)}>{nome}</button>)}
         <span className="text-slate-500">{mesi.length ? `${mb(mesi[0])} – ${mb(ultimo)} ${ultimo.slice(0, 4)} · ${mesi.length} mesi` : "nessun mese"}</span>
+        <a className="btn-secondary ml-auto" href="/api/personale/assenze" title="Excel con il recap (rotte SIC e STD, assenze, in breve) e i fogli di dettaglio. Scarica sempre tutto il periodo, non segue i filtri.">Scarica Excel</a>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
