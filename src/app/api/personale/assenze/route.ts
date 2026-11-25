@@ -90,7 +90,7 @@ export async function GET() {
     g.eachCell((c, n) => { if (n > 1) { c.font = { bold: true, color: { argb: "FFFFFFFF" } }; c.alignment = { horizontal: "center" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: n < 5 ? BLU : n < 8 ? "FF257DE0" : "FF00916E" } }; } });
     const h = testa(ay, ["Station", ...Array(3).fill(["Assenteismo", "Malattia", "Infortunio"]).flat()]); h.eachCell((c) => { c.alignment = { horizontal: "center" }; });
     const riga = (nome: string, st?: string) => { const r = ay.addRow([nome, ...(["TOTALE", "SIC", "STD"] as Vista[]).flatMap((v) => { const t = ytdDi(v, st); return [fr(t.pct), fr(t.malattiaPct), fr(t.infortunioPct)]; })]); percento(r, 2); for (const c0 of [2, 5, 8]) r.getCell(c0).font = { bold: true }; return r; };
-    for (const st of stations) riga(st); const u = riga("Network"); totale(u); riquadra(ay, g.number, u.number, 10);
+    for (const st of stations) riga(st, st); const u = riga("Network"); totale(u); riquadra(ay, g.number, u.number, 10);
     for (const c0 of ["B", "E", "H"]) ay.addConditionalFormatting({ ref: `${c0}${h.number + 1}:${c0}${u.number - 1}`, rules: [{ type: "colorScale", priority: 1, cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "FFFFFFFF" }, { argb: "FFF4A6A6" }] }] }); }
   ay.addRow([]); ay.addRow(["Come leggere: 8% vuol dire che su 100 giorni in cui si doveva lavorare, 8 sono stati di malattia o infortunio. Malattia + infortunio = assenteismo."]).font = { italic: true, color: { argb: "FF64748B" } };
   ay.addRow(["I tre gruppi sono confrontati sugli stessi mesi. I fogli seguenti hanno il mese per mese."]).font = { italic: true, color: { argb: "FF64748B" } };
