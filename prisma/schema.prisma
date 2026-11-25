@@ -1349,3 +1349,41 @@ model PersonaleAssenzaPersona {
 
   @@id([mese, station, gruppo, codice])
 }
+
+// Una transazione delle carte Q8, riga per riga (dall'elaborazione mensile del file Q8). Serve all'incrocio con i
+// rifornimenti della telematica. Data e ora sono quelle italiane scritte nel file.
+model Q8Transazione {
+  id             String   @id @default(cuid())
+  chiave         String   @unique // pan|giorno|ora|litri|importo: lo stesso file ricaricato non crea doppioni
+  mese           String // AAAA-MM del file
+  giorno         String // AAAA-MM-GG
+  ora            String // HH:MM:SS
+  station        String? // dal censimento delle fuel card (DER2, GLS, ...)
+  pan            String
+  identificativo String? // AMZxxx / GLSxxx
+  targaQ8        String? // colonna Targa del file (spesso è il codice della carta, non una targa)
+  prodotto       String?
+  litri          Float
+  importo        Float // Imp. Scontato (IVA compresa)
+  importoNoIva   Float // Imp. Scontato no IVA
+  impianto       String? // codice del distributore Q8
+  indirizzo      String?
+  citta          String?
+  km             Int? // km scritti alla pompa
+  caricatoIl     DateTime @default(now())
+
+  @@index([mese])
+  @@index([station, giorno])
+}
+
+// Anomalie della riconciliazione carburante già verificate: spariscono dall'elenco (si rivedono con "Mostra archiviate").
+model CarburanteGiustifica {
+  chiave   String   @id // Q8:<chiave transazione> oppure TG:<targa>|<giorno>|<ora>|<litri>
+  mese     String
+  motivo   String
+  nota     String?
+  creatoDa String
+  creatoIl DateTime @default(now())
+
+  @@index([mese])
+}
