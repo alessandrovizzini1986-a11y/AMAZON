@@ -92,10 +92,48 @@ const ordineGiorno = (q: string) => { const m = /^(\d\d)\/(\d\d)/.exec(q); retur
  * Dalle richieste ai punti della tabellina: un punto per riga, ordinati per driver e giorno.
  * Una richiesta di settimana con più giorni ("12/11: … · 14/11: …") diventa una riga per giorno.
  */
+/**
+ * Le richieste salvate prima del testo breve hanno solo la frase lunga ("Settimana …, lavorate … (contratto): il 20/11 ci sono
+ * 8 h in Standard, ma secondo me 1 h va in Straordinario."). Qui la stessa frase diventa il punto breve, giorno per giorno,
+ * così la tabellina esce giusta anche senza rifare la verifica.
+ */
+export function breveDaTesto(testo: string): string {
+  const corpo = testo.replace(/^Settimana [^,:]+(?:, lavorate[^:]*)?:\s*/i, "").replace(/\.\s*$/, "");
+  const pezzi = corpo.split(/;\s+/).map((x) => {
+    let m = /^il (\d\d\/\d\d) ci sono ([\d,.]+ h) in ([^,]+), ma secondo me ([\d,.]+ h) (?:sono|è|va|vanno)(?: in)? (.+)$/i.exec(x);
+    if (m) return `${m[1]}: ${m[3]} ${m[2]}, di cui ${m[4]} → ${m[5]}?`;
+    m = /^il (\d\d\/\d\d) ci sono ([\d,.]+ h) in ([^,]+), ma secondo me (?:sono|è|va|vanno)(?: in)? (.+)$/i.exec(x);
+    if (m) return `${m[1]}: ${m[3]} ${m[2]} → ${m[4]}?`;
+    m = /^le ([\d,.]+ h) di (\S+) del (\d\d\/\d\d) secondo me vanno in (.+)$/i.exec(x);
+    if (m) return `${m[3]}: ${m[2]} ${m[1]} → ${m[4]}?`;
+    m = /^il (\d\d\/\d\d) c'è «([^»]+)» nella riga RIPOSO ma mancano le ore nella riga ([^:]+): riesci a inserirle\??$/i.exec(x);
+    if (m) return `${m[1]}: «${m[2]}» senza ore: inserire le ore nella riga ${m[3]}`;
+    m = /^il (\d\d\/\d\d) ha la trasferta ma Amazon non lo vede in rotta/i.exec(x);
+    if (m) return `${m[1]}: Trasferta senza rotta Amazon: cosa ha fatto?`;
+    m = /^il (\d\d\/\d\d) Amazon lo vede in rotta ma nel tracking ha 0 ore.*?(?:Amazon (\d+) pacchi)?\)?$/i.exec(x);
+    if (m) return `${m[1]}: In rotta su Amazon${m[2] ? ` (${m[2]} pacchi)` : ""}, 0 ore a tracking: manca la giornata?`;
+    m = /^il (\d\d\/\d\d) ha ore nel tracking ma non è su Amazon.*?\(tracking ([\d,.]+ h)/i.exec(x);
+    if (m) return `${m[1]}: ${m[2]} a tracking, non è su Amazon: cosa ha fatto?`;
+    m = /^il (\d\d\/\d\d) è in rotta su Amazon ma non lo trovo nei tracking.*?(?:Amazon (\d+) pacchi)?\)?$/i.exec(x);
+    if (m) return `${m[1]}: In rotta su Amazon${m[2] ? ` (${m[2]} pacchi)` : ""}, non è nei tracking: prestito, nuovo assunto o errore?`;
+    m = /^il (\d\d\/\d\d):? (.+)$/i.exec(x);
+    return m ? `${m[1]}: ${m[2].charAt(0).toUpperCase()}${m[2].slice(1)}` : x.charAt(0).toUpperCase() + x.slice(1);
+  });
+  return pezzi.join(" · ");
+}
+
+/** "26/10–01/11" resta com'è ma con il trattino che non va a capo; "11/2026" diventa "nel mese" */
+const quandoPulito = (periodo: string) => (/^\d\d\/\d{4}$/.test(periodo) ? "nel mese" : periodo.replace(/[–-]/g, "‑"));
+
+/**
+ * Dalle richieste ai punti della tabellina: un punto per riga, ordinati per driver e giorno, con la data del giorno nel "Quando".
+ * Una richiesta di settimana con più giorni ("12/11: … · 14/11: …") diventa una riga per giorno; la settimana intera compare
+ * solo quando il punto riguarda davvero tutta la settimana.
+ */
 export function puntiVerifica(richieste: { driver: string; pop: string; periodo: string; testo: string; breve?: string | null }[]): PuntoVerifica[] {
-  const punti = richieste.flatMap((r) => (r.breve || r.testo).split(" · ").map((pezzo) => {
+  const punti = richieste.flatMap((r) => (r.breve || breveDaTesto(r.testo)).split(" · ").map((pezzo) => {
     const m = /^(\d\d\/\d\d): (.+)$/.exec(pezzo);
-    return { driver: r.driver, tracking: r.pop, quando: m ? m[1] : /^\d\d\/\d{4}$/.test(r.periodo) ? "nel mese" : r.periodo, cosa: m ? m[2] : pezzo };
+    return { driver: r.driver, tracking: r.pop, quando: m ? m[1] : quandoPulito(r.periodo), cosa: m ? m[2] : pezzo };
   }));
   return punti.sort((a, b) => a.driver.localeCompare(b.driver) || ordineGiorno(a.quando).localeCompare(ordineGiorno(b.quando)) || a.quando.localeCompare(b.quando));
 }
@@ -107,8 +145,8 @@ export function componiTabellina(station: string, apertura: string, punti: Punto
   const testo = [apertura, "", ...punti.flatMap((p, i) => [...(primo(i) ? [`${p.driver} (${p.tracking})`] : []), `  • ${p.quando} — ${p.cosa}`]), "", chiusura].join("\n");
   const html = [
     `<p>${esc(apertura)}</p>`,
-    `<table cellspacing="0" style="border-collapse:collapse;font-size:13px"><thead><tr>${["Driver", "Tracking", "Quando", "Da verificare"].map((c) => `<th style="${cella};text-align:left;background:#f0f0f0">${c}</th>`).join("")}</tr></thead><tbody>`,
-    ...punti.map((p, i) => `<tr><td style="${cella}">${primo(i) ? `<b>${esc(p.driver)}</b>` : ""}</td><td style="${cella}">${primo(i) ? esc(p.tracking) : ""}</td><td style="${cella};white-space:nowrap">${esc(p.quando)}</td><td style="${cella}">${esc(p.cosa)}</td></tr>`),
+    `<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-size:13px"><thead><tr>${[["Driver", 170], ["Tracking", 70], ["Quando", 80], ["Da verificare", 460]].map(([c, w]) => `<th align="left" bgcolor="#1f3a5f" width="${w}" style="${cella};text-align:left;background:#1f3a5f;color:#ffffff"><strong><font color="#ffffff">${c}</font></strong></th>`).join("")}</tr></thead><tbody>`,
+    ...punti.map((p, i) => `<tr><td style="${cella}">${primo(i) ? `<strong>${esc(p.driver)}</strong>` : ""}</td><td style="${cella}">${primo(i) ? esc(p.tracking) : ""}</td><td nowrap style="${cella};white-space:nowrap"><strong>${esc(p.quando)}</strong></td><td style="${cella}">${esc(p.cosa)}</td></tr>`),
     `</tbody></table>`,
     `<p>${esc(chiusura)}</p>`,
   ].join("");

@@ -138,13 +138,27 @@ describe("quale file leggere per un mese", () => {
 describe("assenza segnata con la sigla ma senza ore", () => {
   // come nel tracking vero: part time 60%, 39 ore lavorate in 5 giorni, giovedì «F» nella riga RIPOSO senza ore di ferie, sabato in Straordinario
   const sett = [g(0, { sup: 7.8 }), g(7.8), g(7.8), null, g(0, { sup: 7.8 }), g(0, { str: 7.8 }), null];
-  it("le ferie senza ore contano lo stesso nelle 39: lo Straordinario del sabato non è un errore, si chiede solo di scrivere le ore", () => {
+  it("part time: le ferie senza ore contano nelle 39 (lo Straordinario del sabato non è un errore) e non si chiede di scrivere le ore", () => {
     const p = { ...persona("STD PT 60", sett, LUN, "STD"), sigle: new Map([[addDays(LUN, 3), "F"], [addDays(LUN, 0), "L1"]]) };
-    const e = run(p);
+    expect(run(p).richieste).toEqual([]);
+  });
+  it("tempo pieno con la settimana non piena: si chiede di scrivere le ore", () => {
+    const ft = [g(8), g(8), g(8), null, g(8), null, null];
+    const e = run({ ...persona("CTI FT", ft), sigle: new Map([[addDays(LUN, 3), "F"]]) });
     expect(e.richieste.map((r) => r.tipo)).toEqual(["ASS_ORE"]);
     expect(e.richieste[0].rif).toBe(addDays(LUN, 3));
-    expect(e.richieste[0].testo).toContain("«F»");
-    expect(e.richieste[0].testo).toContain("riga FERIE");
+    expect(e.richieste[0].testo).toContain("«F»"); expect(e.richieste[0].testo).toContain("riga FERIE");
+    expect(e.richieste[0].breve).toBe("«F» senza ore: inserire le ore nella riga FERIE");
+  });
+  it("non è da contratto: MOG, tempo pieno con 5 giorni già pieni, domenica e festivo → nessuna richiesta", () => {
+    const quattro = [g(8), g(8), g(8), null, g(8), null, null];
+    expect(run({ ...persona("MOG 35", quattro, LUN, "STD"), sigle: new Map([[addDays(LUN, 3), "M"]]) }).richieste).toEqual([]);
+    const cinque = [g(7.8), g(7.8), g(7.8), g(7.8), g(7.8), null, null];
+    expect(run({ ...persona("CTI FT", cinque), sigle: new Map([[addDays(LUN, 5), "M"]]) }).richieste).toEqual([]);
+    expect(run({ ...persona("CTI FT", quattro), sigle: new Map([[addDays(LUN, 6), "M"]]) }).richieste).toEqual([]);
+    // 1° novembre 2026 è domenica; l'8 dicembre no: prova con una festa in mezzo alla settimana
+    const e = verificaOre([{ ...persona("CTI FT", quattro, "2026-12-07"), sigle: new Map([["2026-12-08", "F"]]) }], coperti("DER1|SIC"), { mese: "2026-12", finoA: "2026-12-13" });
+    expect(e.richieste.filter((r) => r.tipo === "ASS_ORE")).toEqual([]);
   });
   it("senza la sigla lo stesso Straordinario resta un errore", () => {
     expect(run(persona("STD PT 60", sett, LUN, "STD")).richieste.map((r) => r.tipo)).toEqual(["STR_PRIMA"]);
@@ -277,17 +291,60 @@ describe("tabellina per gli OS", () => {
       { driver: "ROSSI MARIO", pop: "SIC", periodo: "03/11", testo: "vecchia riga senza testo breve", breve: null },
     ]);
     expect(punti.map((x) => `${x.driver}|${x.quando}|${x.cosa}`)).toEqual([
-      "BIANCHI ANNA|10/11|Trasferta senza rotta Amazon: cosa ha fatto?", "ROSSI MARIO|03/11|vecchia riga senza testo breve",
+      "BIANCHI ANNA|10/11|Trasferta senza rotta Amazon: cosa ha fatto?", "ROSSI MARIO|03/11|Vecchia riga senza testo breve",
       "ROSSI MARIO|12/11|Straordinario 8 h, di cui 2 h → Standard?", "ROSSI MARIO|14/11|Straordinario 4 h → Standard?",
     ]);
     const m = componiTabellina("DER1", TESTI.aperturaVerifica("Ciao Mario", "DER1", "11/2026", "22/11", punti.length), punti);
     expect(m.nAnomalie).toBe(4);
-    expect(m.testo.split("\n")).toEqual(["Ciao Mario, ci sono 4 punti da verificare sui tracking di DER1 di 11/2026 (fino al 22/11):", "", "BIANCHI ANNA (STD)", "  • 10/11 — Trasferta senza rotta Amazon: cosa ha fatto?", "ROSSI MARIO (SIC)", "  • 03/11 — vecchia riga senza testo breve", "  • 12/11 — Straordinario 8 h, di cui 2 h → Standard?", "  • 14/11 — Straordinario 4 h → Standard?", "", "Puoi verificare e farmi sapere? Grazie!"]);
-    expect(m.html.match(/<tr>/g)).toHaveLength(5); expect(m.html.match(/<b>ROSSI MARIO<\/b>/g)).toHaveLength(1);
+    expect(m.testo.split("\n")).toEqual(["Ciao Mario, ci sono 4 punti da verificare sui tracking di DER1 di 11/2026 (fino al 22/11):", "", "BIANCHI ANNA (STD)", "  • 10/11 — Trasferta senza rotta Amazon: cosa ha fatto?", "ROSSI MARIO (SIC)", "  • 03/11 — Vecchia riga senza testo breve", "  • 12/11 — Straordinario 8 h, di cui 2 h → Standard?", "  • 14/11 — Straordinario 4 h → Standard?", "", "Puoi verificare e farmi sapere? Grazie!"]);
+    expect(m.html.match(/<tr>/g)).toHaveLength(5); expect(m.html.match(/<strong>ROSSI MARIO<\/strong>/g)).toHaveLength(1);
   });
   it("cambiare solo il testo breve non riapre e non cambia lo stato", () => {
     const base = { chiave: "2026-11|DER1|SIC|X|+1|2026-11-03", mese: "2026-11", station: "DER1" as const, pop: "SIC", driver: "X", tipo: "+1" as const, rif: "2026-11-03", periodo: "03/11", testo: "t", breve: "nuovo" };
     const f = fondiRichieste([{ chiave: base.chiave, stato: "OK", testo: "t", breve: null }], [base], ["DER1"], "2026-11");
     expect(f.crea).toEqual([]); expect(f.aggiorna).toEqual([{ chiave: base.chiave, stato: "OK", testo: "t", breve: "nuovo", riaperta: false }]);
+  });
+});
+
+describe("ID di un altro driver nel blocco", () => {
+  it("diventa una richiesta per l'OS, con il testo breve per la tabellina", async () => {
+    const { richiesteDaAmazon } = await import("@/domain/presenze/verifica");
+    const e = { station: "DVN1", dettaglio: [], nonInTracking: [], anomalie: [{ file: "STD", riga: 888, driver: "Verdi Luca", codice: "ID_ALTRUI", breve: "Nel suo blocco c'è l'ID di Rossi Mario alla riga 900 (Indennità Trasferta): va corretto", anomalia: "Nel blocco c'è l'ID di un altro driver (Rossi Mario) alla riga 900 (Indennità Trasferta) e manca il suo: ID ignorato, driver cercato per nome" }, { file: "STD", riga: 3, driver: "X", anomalia: "altro" }] };
+    const r = richiesteDaAmazon(e as never, "2026-11");
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ tipo: "ID", pop: "STD", driver: "Verdi Luca", station: "DVN1", periodo: "11/2026", breve: "Nel suo blocco c'è l'ID di Rossi Mario alla riga 900 (Indennità Trasferta): va corretto" });
+  });
+});
+
+describe("di chi è un ID: lo dice Amazon", () => {
+  it("stessa persona anche con nome e cognome invertiti o un secondo nome; righe in breve", async () => {
+    const { stessaPersona, righeInBreve } = await import("@/domain/presenze/controlloSettimanale");
+    expect(stessaPersona("ROSSI MARIO", "Mario Rossi")).toBe(true); expect(stessaPersona("Luigi Junior Leone", "LEONE LUIGI")).toBe(true);
+    expect(stessaPersona("Rossi Mario", "Rossi Maria")).toBe(false); expect(stessaPersona("", "Rossi")).toBe(false);
+    expect(righeInBreve([901, 902, 903, 904, 905, 906])).toBe("901–906"); expect(righeInBreve([913, 901, 902])).toBe("901–902, 913");
+  });
+});
+
+describe("dispatcher e addetti ai mezzi scritti in modo diverso nel tracking", () => {
+  it("vale anche senza un pezzo del nome o in un altro ordine, ma non con una parola sola", async () => {
+    const { nomeInElenco } = await import("@/domain/presenze/controlloSettimanale");
+    const elenco = new Set(["NAVAS CASTILLO FREDDY HERNAN", "LEONE LUIGI JUNIOR"]);
+    expect(nomeInElenco(elenco, "FREDDY HERNAN")).toBe(true); expect(nomeInElenco(elenco, "Luigi Junior Leone")).toBe(true);
+    expect(nomeInElenco(elenco, "FREDDY")).toBe(false); expect(nomeInElenco(elenco, "LEONE MARCO")).toBe(false);
+  });
+});
+
+describe("richieste salvate prima del testo breve", () => {
+  it("la frase lunga diventa il punto breve, con la data del giorno nel Quando", async () => {
+    const { breveDaTesto, puntiVerifica } = await import("@/domain/presenze/messaggi");
+    expect(breveDaTesto("Settimana 26/10–01/11, lavorate 40 h (MOG 35%): il 01/11 ci sono 8 h in Standard, ma secondo me 1 h va in Straordinario.")).toBe("01/11: Standard 8 h, di cui 1 h → Straordinario?");
+    expect(breveDaTesto("Settimana 26/10–01/11, lavorate 48 h (CTI FT): le 8 h di Standard del 01/11 secondo me vanno in Straordinario.")).toBe("01/11: Standard 8 h → Straordinario?");
+    expect(breveDaTesto("Settimana 09/11–15/11, lavorate 35,4 h (STD PT 60): il 12/11 ci sono 4 h in Straordinario, ma secondo me sono Supplementare; il 14/11 ci sono 7,8 h in Straordinario, ma secondo me 5 h sono Supplementare.")).toBe("12/11: Straordinario 4 h → Supplementare? · 14/11: Straordinario 7,8 h, di cui 5 h → Supplementare?");
+    expect(breveDaTesto("il 02/11 c'è «M» nella riga RIPOSO ma mancano le ore nella riga MALATTIA: riesci a inserirle?")).toBe("02/11: «M» senza ore: inserire le ore nella riga MALATTIA");
+    expect(breveDaTesto("il 19/11 ha la trasferta ma Amazon non lo vede in rotta: cosa ha fatto? (tracking 7,8 h, Amazon 9 pacchi).")).toBe("19/11: Trasferta senza rotta Amazon: cosa ha fatto?");
+    expect(breveDaTesto("il 09/11 ha ore nel tracking ma non è su Amazon, senza trasferta né giustificativo: cosa ha fatto? (tracking 2 h).")).toBe("09/11: 2 h a tracking, non è su Amazon: cosa ha fatto?");
+    expect(breveDaTesto("il 08/11 è in rotta su Amazon ma non lo trovo nei tracking della station: è un prestito, un nuovo assunto o un errore? (Amazon 26 pacchi).")).toBe("08/11: In rotta su Amazon (26 pacchi), non è nei tracking: prestito, nuovo assunto o errore?");
+    const p = puntiVerifica([{ driver: "X", pop: "SIC", periodo: "16/11–22/11", testo: "Settimana 16/11–22/11, lavorate 41 h (CTI FT): il 20/11 ci sono 8 h in Standard, ma secondo me 1 h va in Straordinario.", breve: null }, { driver: "Y", pop: "STD", periodo: "16/11–22/11", testo: "Settimana 16/11–22/11: ci sono 14 h di Straordinario, mi sembrano tante. È giusto?", breve: null }]);
+    expect(p.map((x) => `${x.quando}|${x.cosa}`)).toEqual(["20/11|Standard 8 h, di cui 1 h → Straordinario?", "16/11‑22/11|Ci sono 14 h di Straordinario, mi sembrano tante. È giusto?"]);
   });
 });

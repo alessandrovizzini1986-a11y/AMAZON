@@ -22,6 +22,7 @@ import {
   SOGLIA_ORE,
   SOGLIA_PACCHI,
   type Station,
+  CODICI_SAME,
 } from "./regole";
 import { cellNote, findTrackingSheet, headerCol, isFormula, trackingBlocks, type TrackingSheet } from "./tracking";
 import type { SheetGrid } from "./grid";
@@ -53,7 +54,7 @@ type Rec = {
 
 type Info = { nome: string; cf: string; contratto: string; tipo: string; riga: number; id: string };
 
-export type Anomalia = { file: string; riga: number | ""; driver: string; anomalia: string };
+export type Anomalia = { file: string; riga: number | ""; driver: string; anomalia: string; /** ID_ALTRUI = nel blocco del driver c'è l'ID di un altro: diventa una richiesta per l'OS */ codice?: "ID_ALTRUI"; breve?: string };
 
 export type EsitoBase = "OK" | "ALERT +1" | "ALERT -1" | "CHECK formula" | "N/D";
 export type Categoria = "+1" | "-1" | "H" | "A" | "ORE" | "ACC" | "ok" | "?" | "";
@@ -113,7 +114,34 @@ export type ParametriSettimanale = {
 
 // ------------------------------------------------------------------ tracking (v2)
 
-function parseTrackingV2(input: TrackingInput, p: { da: string; a: string; sogliaOre: number; idRigoroso?: boolean }, amIds: Set<string>) {
+/**
+ * Il nome è in un elenco (dispatcher, addetti ai mezzi)? Vale anche se nel tracking è scritto in un altro ordine o senza un pezzo
+ * (es. "FREDDY HERNAN" per "NAVAS CASTILLO FREDDY HERNAN"), purché entrambi abbiano almeno due parole: una parola sola è troppo poco.
+ */
+export function nomeInElenco(elenco: Set<string>, nome: string): boolean {
+  const n = normName(nome);
+  if (elenco.has(n)) return true;
+  if (n.split(" ").length < 2) return false;
+  for (const e of elenco) if (e.split(" ").length >= 2 && stessaPersona(e, n)) return true;
+  return false;
+}
+
+/** [901,902,903,906] → "901–903, 906" */
+export function righeInBreve(rr: number[]): string {
+  const s = [...new Set(rr)].sort((a, b) => a - b), out: string[] = [];
+  for (let i = 0; i < s.length;) { let j = i; while (j + 1 < s.length && s[j + 1] === s[j] + 1) j++; out.push(j > i ? `${s[i]}–${s[j]}` : `${s[i]}`); i = j + 1; }
+  return out.join(", ");
+}
+
+/** Due nomi sono la stessa persona se le parole del più corto stanno tutte nel più lungo (l'ordine nome/cognome non conta). */
+export function stessaPersona(a: string, b: string): boolean {
+  const pa = normName(a).split(" ").filter(Boolean), pb = normName(b).split(" ").filter(Boolean);
+  if (!pa.length || !pb.length) return false;
+  const [corto, lungo] = pa.length <= pb.length ? [pa, new Set(pb)] : [pb, new Set(pa)];
+  return corto.every((w) => lungo.has(w));
+}
+
+function parseTrackingV2(input: TrackingInput, p: { da: string; a: string; sogliaOre: number; idRigoroso?: boolean }, amIds: Set<string>, amNome: Map<string, string> = new Map()) {
   const [yy, mmFrom] = p.da.split("-").map(Number);
   const mmTo = Number(p.a.split("-")[1]);
   const mese = mmFrom !== mmTo ? mmTo : mmFrom;
@@ -142,18 +170,46 @@ function parseTrackingV2(input: TrackingInput, p: { da: string; a: string; sogli
   const blocchi = trackingBlocks(ts);
   // ID scritto nella prima riga (Standard) di ogni blocco: è l'ID "ufficiale" di quel driver
   const idPrimaRiga = new Set(blocchi.map((b) => (okId(cell(b.rows[0], idc)) ? text(cell(b.rows[0], idc)).trim().toUpperCase() : "")).filter(Boolean));
+  const nomiBlocchi = blocchi.map((b) => text(cell(b.rows[0], namec)).trim()).filter(Boolean);
+  const nomeDiId = new Map(blocchi.flatMap((b) => (okId(cell(b.rows[0], idc)) ? [[text(cell(b.rows[0], idc)).trim().toUpperCase(), text(cell(b.rows[0], namec)).trim()] as [string, string]] : [])));
   for (const b of blocchi) {
     const r0 = b.rows[0];
     const nome = text(cell(r0, namec)).trim();
-    const id0 = okId(cell(r0, idc)) ? text(cell(r0, idc)).trim().toUpperCase() : null;
+    const id0Letto = okId(cell(r0, idc)) ? text(cell(r0, idc)).trim().toUpperCase() : null;
     // Un ID che compare in una riga del blocco ma è l'ID ufficiale di un ALTRO driver è una cella finita nella riga sbagliata
     // (tipico: l'ultima riga del blocco con l'ID del driver sotto): non va usato, altrimenti due persone diventano una e le ore si sommano.
-    const ids = b.rows.filter((r) => okId(cell(r, idc))).map((r) => text(cell(r, idc)).trim().toUpperCase()).filter((i) => !p.idRigoroso || i === id0 || !idPrimaRiga.has(i));
-    const idAltrui = b.rows.filter((r) => okId(cell(r, idc))).map((r) => text(cell(r, idc)).trim().toUpperCase()).some((i) => i !== id0 && idPrimaRiga.has(i));
-    if (p.idRigoroso && idAltrui && !id0) anomalie.push({ file: tipoFile, riga: r0 + 1, driver: nome, anomalia: "Nel blocco c'è l'ID di un altro driver e manca il suo: ID ignorato, driver cercato per nome" });
+    // Controllo con Amazon, che vale più della posizione nel blocco (chiesto da Alessandro il 25/11/2026: "va fatto sempre"):
+    // se Amazon conosce un ID con il nome di un ALTRO driver di questo tracking, quell'ID non è di questo blocco, in qualunque riga sia
+    // (anche nella prima). Se conosce un ID con il nome di questo driver, quello è il suo, anche se sta nella riga della trasferta.
+    const tuttiId = b.rows.filter((r) => okId(cell(r, idc))).map((r) => ({ r, id: text(cell(r, idc)).trim().toUpperCase() }));
+    const diUnAltro = (i: string) => { const n = amNome.get(i); return !!n && !stessaPersona(n, nome) && nomiBlocchi.some((x) => x !== nome && stessaPersona(n, x)); };
+    const suoPerAmazon = p.idRigoroso ? [...new Set(tuttiId.map((x) => x.id))].filter((i) => { const n = amNome.get(i); return !!n && stessaPersona(n, nome); }) : [];
+    const altruiAmazon = p.idRigoroso ? tuttiId.filter((x) => diUnAltro(x.id)) : [];
+    if (altruiAmazon.length) {
+      // un pezzo per ogni proprietario vero: "nelle righe 901–906 c'è l'ID che su Amazon è di …"
+      const perChi = new Map<string, number[]>();
+      for (const x of altruiAmazon) perChi.set(amNome.get(x.id)!, [...(perChi.get(amNome.get(x.id)!) ?? []), x.r + 1]);
+      const dove = [...perChi.entries()].map(([chi, rr]) => `${rr.length > 1 ? "nelle righe" : "alla riga"} ${righeInBreve(rr)} c'è l'ID che su Amazon è di ${chi}`).join("; ");
+      anomalie.push({ file: tipoFile, riga: r0 + 1, driver: nome, codice: "ID_ALTRUI", breve: `ID sbagliato: ${dove}`, anomalia: `Nel blocco, ${dove}${suoPerAmazon.length ? `; il suo ID (${suoPerAmazon[0]}) è in un'altra riga` : ""}: ID sbagliato ignorato` });
+    }
+    const scartati = new Set(altruiAmazon.map((x) => x.id));
+    const id0 = id0Letto && scartati.has(id0Letto) ? null : id0Letto;
+    const ids = tuttiId.map((x) => x.id).filter((i) => !scartati.has(i)).filter((i) => !p.idRigoroso || i === id0 || suoPerAmazon.includes(i) || !idPrimaRiga.has(i));
+    // senza l'aiuto di Amazon resta la regola della posizione: un ID che è il primo di un altro blocco è una cella finita nella riga sbagliata
+    const idAltrui = !altruiAmazon.length && tuttiId.some((x) => x.id !== id0 && !suoPerAmazon.includes(x.id) && idPrimaRiga.has(x.id));
+    // Va segnalato sempre, anche quando il driver ha il suo ID nella prima riga (chiesto da Alessandro il 25/11/2026):
+    // un ID altrui in una riga del blocco fa leggere le ore alla persona sbagliata.
+    if (p.idRigoroso && idAltrui) {
+      const altrui = tuttiId.filter((x) => x.id !== id0 && !suoPerAmazon.includes(x.id) && idPrimaRiga.has(x.id));
+      const diChi = [...new Set(altrui.map((x) => nomeDiId.get(x.id) ?? x.id))].join(", ");
+      const righe = altrui.map((x) => `${x.r + 1} (${text(cell(x.r, ts.tipoCol)).trim() || "?"})`).join(", ");
+      // qui Amazon non aiuta (nessuno dei due ID ha rotte nel periodo): non si sa quale dei due blocchi ha ragione, lo si dice senza dare la colpa
+      anomalie.push({ file: tipoFile, riga: r0 + 1, driver: nome, codice: "ID_ALTRUI", breve: `Lo stesso ID è anche nel blocco di ${diChi} (riga ${righe}): uno dei due è sbagliato`,
+        anomalia: `Nel blocco c'è un ID che compare anche nel blocco di ${diChi}, alla riga ${righe}${id0 ? "" : ", e manca il suo"}: ID ignorato${id0 ? "" : ", driver cercato per nome"}` });
+    }
     const uniq = [...new Set(ids)];
     const inAm = uniq.filter((i) => amIds.has(i));
-    let did: string | null = inAm.length === 1 ? inAm[0] : id0 ?? (ids.length ? mostCommon(ids) : null);
+    let did: string | null = suoPerAmazon.length ? suoPerAmazon[0] : inAm.length === 1 ? inAm[0] : id0 ?? (ids.length ? mostCommon(ids) : null);
     if (!did) {
       did = "NOID|" + normName(nome);
       anomalie.push({ file: tipoFile, riga: r0 + 1, driver: nome, anomalia: "Driver ID mancante" });
@@ -272,6 +328,7 @@ export function controlloSettimanale(
   for (const r of flex) if (r.station === st) am.set(`${r.driverId}|${r.data}`, { nome: r.nome, pacchi: r.pacchi, did: r.driverId, d: r.data });
   if (am.size === 0) throw new Error(`nessuna riga Amazon per ${st}`);
   const amIds = new Set([...am.values()].map((a) => a.did));
+  const amNome = new Map([...am.values()].map((a) => [a.did, a.nome] as [string, string]));
 
   const own = tracking.filter((t) => t.station === st);
   for (const tag of ["STD", "SIC"] as const) {
@@ -283,7 +340,7 @@ export function controlloSettimanale(
   const fogli: Record<string, string> = {};
   for (const tipo of ["STD", "SIC"] as const) {
     const t = own.find((x) => x.tipo === tipo)!;
-    const res = parseTrackingV2(t, { da: p.da, a: p.a, sogliaOre, idRigoroso: p.idRigoroso }, amIds);
+    const res = parseTrackingV2(t, { da: p.da, a: p.a, sogliaOre, idRigoroso: p.idRigoroso }, amIds, amNome);
     for (const [k, v] of res.rows) allRows.set(k, v);
     for (const [k, v] of res.info) allInfo.set(k, v);
     anom.push(...res.anomalie);
@@ -482,7 +539,7 @@ function indiceAltriTracking(altri: TrackingInput[], da: string, a: string): { b
 }
 
 const isDispatcher = (contratto: string, nome: string, dispatcher: Set<string>) =>
-  /dispatcher/i.test(contratto) || dispatcher.has(normName(nome));
+  /dispatcher/i.test(contratto) || nomeInElenco(dispatcher, nome);
 
 function giustificativo(riposo: string, noteCelle: string, codici: Set<string>): string | null {
   const rip = riposo.trim().toUpperCase();
@@ -545,7 +602,7 @@ function applicaRegoleNuove(x: {
       continue;
     }
     // addetto ai mezzi: vale come se avesse sempre il giustificativo MEZZI
-    const giust = giustificativo(r.riposo, r.noteCelle, codici) ?? (mezzi.has(normName(r.driver)) ? "MEZZI (addetto allo spostamento mezzi)" : null);
+    const giust = giustificativo(r.riposo, r.noteCelle, codici) ?? (nomeInElenco(mezzi, r.driver) ? "MEZZI (addetto allo spostamento mezzi)" : null);
     const altrove = rottaAltrove.get(`${r.driverId}|${r.data}`) ?? rottaAltrove.get(`${normName(r.driver)}|${r.data}`);
     const noteCella = r.noteCelle && !r.riposo ? ` (commento di cella: ${r.noteCelle})` : "";
     if (r.esitoBase === "ALERT +1" || (r.esitoBase === "CHECK formula" && r.categoriaBase.startsWith("E."))) {
@@ -556,6 +613,10 @@ function applicaRegoleNuove(x: {
       // R1: il tracking è la fonte retributiva, malattia/infortunio prevalgono sul lavorato
       r.categoria = "";
       r.nota = `Malattia batte il lavorato: ${g(r.oreMalattia)} h di malattia/infortunio nel tracking, Amazon ${r.pacchi} pacchi`;
+    } else if (r.esitoBase === "ALERT -1" && r.ore > 0 && giust && CODICI_SAME.has(giust)) {
+      // same day: giro corto con poche ore e la rotta su Amazon, scritto nella riga RIPOSO o nel commento della cella (chiarito dagli OS il 25/11/2026)
+      r.categoria = "";
+      r.nota = `Same day${noteCella}: ${g(r.ore)} h con ${r.pacchi} pacchi, nessun alert`;
     } else if (r.esitoBase === "ALERT -1") {
       r.categoria = "-1";
       r.nota = r.notaBase;
