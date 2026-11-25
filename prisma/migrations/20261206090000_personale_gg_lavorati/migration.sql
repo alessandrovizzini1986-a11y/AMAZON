@@ -1,0 +1,1 @@
+ALTER TABLE "PersonaleMese" ADD COLUMN "ggLavorati" INTEGER NOT NULL DEFAULT 0;

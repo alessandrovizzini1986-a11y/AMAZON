@@ -1316,6 +1316,7 @@ model PersonaleMese {
   rotte          Int? // giornate di consegna
   rotteTd        Int     @default(0) // di cui di persone a tempo determinato (solo SIC; gli STD sono tutti a termine)
   rotteStimate   Boolean @default(false)
+  ggLavorati     Int     @default(0) // giorni lavorati (più di 4 ore) dal calendario della busta, tutto il personale
   ggMalattia     Int     @default(0)
   ggInfortunio   Int     @default(0)
   ggFerie        Int     @default(0)

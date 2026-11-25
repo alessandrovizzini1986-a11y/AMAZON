@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { analisi, indicatori, livelloDi, mesiAnomali, mesiValidi, riepilogo, rischio, somma, type RigaMese } from "@/domain/personale/analisi";
+import { tabellaTassi, tasso, analisi, indicatori, livelloDi, mesiAnomali, mesiValidi, riepilogo, rischio, somma, type RigaMese } from "@/domain/personale/analisi";
 
 const r = (mese: string, station: string, gruppo: "SIC" | "STD", teste: number, mal: number, inf: number, ass: number, rotte = 1000, calendario = true): RigaMese =>
-  ({ mese, station, gruppo, teste, calendario, rotte, rotteTd: 0, ggMalattia: mal, ggInfortunio: inf, persMalattia: ass, persInfortunio: 0, persAssenti: ass });
+  ({ mese, station, gruppo, teste, calendario, rotte, rotteTd: 0, ggLavorati: rotte, ggMalattia: mal, ggInfortunio: inf, persMalattia: ass, persInfortunio: 0, persAssenti: ass });
 
 describe("assenze del personale", () => {
   it("indicatori: per 100 lavoratori, per 1.000 rotte, e i mesi senza calendario non contano", () => {
@@ -39,6 +39,15 @@ describe("assenze del personale", () => {
     const mesi = mesiValidi(dati, "TOTALE"), f = riepilogo(analisi(dati, "TOTALE", mesi), dati, "TOTALE", mesi);
     expect(f.length).toBeLessThanOrEqual(8); expect(f[0].testo).toContain("Dove intervenire per primo: GRANDE");
     expect(f.some((x) => x.testo.startsWith("SIC contro STD"))).toBe(true); expect(f.some((x) => x.testo.includes("In peggioramento"))).toBe(true);
+  });
+  it("tasso di assenteismo: malattia e infortunio sui giorni dovuti, e le due parti sommano al totale", () => {
+    const t = tasso([r("2026-02", "A", "SIC", 50, 60, 20, 10, 920), r("2026-01", "A", "STD", 30, 99, 99, 0, 500, false)]);
+    expect(t).toEqual({ lavorati: 920, malattia: 60, infortunio: 20, pct: 8, malattiaPct: 6, infortunioPct: 2 });
+    expect(tasso([]).pct).toBeNull();
+    const tab = tabellaTassi([r("2026-02", "A", "SIC", 50, 60, 20, 10, 920), r("2026-02", "A", "STD", 20, 0, 0, 0, 500), r("2026-03", "A", "SIC", 50, 100, 0, 10, 900), r("2026-02", "B", "SIC", 10, 0, 0, 0, 100), r("2026-02", "B", "STD", 10, 0, 0, 0, 100)], "TOTALE");
+    expect(tab.mesi).toEqual(["2026-02"]); expect(tab.stations.map((x) => x.station)).toEqual(["A", "B"]);
+    expect(tab.stations[0].ytd.pct).toBe(5.3); expect(tab.network.ytd.lavorati).toBe(1620);
+    expect(tabellaTassi([r("2026-02", "A", "SIC", 50, 60, 20, 10, 920), r("2026-03", "A", "SIC", 50, 100, 0, 10, 900)], "SIC").stations[0].perMese.map((x) => x.pct)).toEqual([8, 10]);
   });
   it("mesi anomali: solo con almeno 6 mesi e un salto vero", () => {
     const base = [10, 11, 9, 10, 12, 10, 11].map((v, i) => ({ mese: `2026-0${i + 1}`, persi100: v }));
