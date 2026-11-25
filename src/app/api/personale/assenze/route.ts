@@ -22,9 +22,9 @@ export async function GET() {
   const mesiRotte = [...new Set(tutte.filter((r) => r.gruppo === "SIC" && r.rotte !== null).map((r) => r.mese))].sort();
   const cella = (m: string, st: string) => {
     const sic = tutte.find((r) => r.mese === m && r.station === st && r.gruppo === "SIC"), std = tutte.find((r) => r.mese === m && r.station === st && r.gruppo === "STD");
-    return { std: std?.rotte ?? 0, ind: (sic?.rotte ?? 0) - (sic?.rotteTd ?? 0), det: sic?.rotteTd ?? 0, mancaStd: !std || std.rotte === null, stimate: !!std?.rotteStimate };
+    return { std: std?.rotte ?? 0, sic: sic?.rotte ?? 0, mancaStd: !std || std.rotte === null, stimate: !!std?.rotteStimate };
   };
-  const rotteDi = (st: string) => mesiRotte.map((m) => cella(m, st)).reduce((a, c) => ({ std: a.std + c.std, ind: a.ind + c.ind, det: a.det + c.det }), { std: 0, ind: 0, det: 0 });
+  const rotteDi = (st: string) => mesiRotte.map((m) => cella(m, st)).reduce((a, c) => ({ std: a.std + c.std, sic: a.sic + c.sic }), { std: 0, sic: 0 });
   const buchi = stations.flatMap((st) => mesiRotte.filter((m) => cella(m, st).mancaStd).map((m) => `${st} ${nomeMese(m)}`));
   const stimati = [...new Set(mesiRotte.filter((m) => stations.some((st) => cella(m, st).stimate)))];
 
@@ -49,14 +49,14 @@ export async function GET() {
   // ===== 1. Recap
   const rc = wb.addWorksheet("Recap");
   rc.columns = [16, 13, 15, 15, 12, 10, 14, 14, 16].map((width) => ({ width }));
-  titolo(rc, "Rotte e assenze: SIC e STD", "Fonte: buste paga (LUL). STD = somministrati, tutti a termine. SIC = assunti da noi.");
+  titolo(rc, "Rotte e assenze: SIC e STD", "Fonte: buste paga (LUL). STD = somministrati. SIC = assunti da noi.");
   rc.addRow([]);
   titolo(rc, `1. Chi ha fatto le rotte (${periodo(mesiRotte)})`);
-  testa(rc, ["Station", "STD", "SIC indeterminati", "SIC determinati", "Totale", "% STD", "% SIC indeterminati"]);
-  const tot = { std: 0, ind: 0, det: 0 };
-  for (const st of stations) { const x = rotteDi(st), t = x.std + x.ind + x.det; tot.std += x.std; tot.ind += x.ind; tot.det += x.det; rc.addRow([st, x.std, x.ind, x.det, t, pct(x.std, t), pct(x.ind, t)]); }
-  const T = tot.std + tot.ind + tot.det; totale(rc.addRow(["Totale", tot.std, tot.ind, tot.det, T, pct(tot.std, T), pct(tot.ind, T)]));
-  rc.addRow([`In una riga: su ${T.toLocaleString("it-IT")} rotte, ${Math.round(pct(tot.std, T) * 100)}% le hanno fatte gli STD, ${Math.round(pct(tot.ind, T) * 100)}% i SIC indeterminati, ${Math.round(pct(tot.det, T) * 100)}% i SIC determinati.`]).font = { bold: true };
+  testa(rc, ["Station", "STD", "SIC", "Totale", "% STD", "% SIC"]);
+  const tot = { std: 0, sic: 0 };
+  for (const st of stations) { const x = rotteDi(st), t = x.std + x.sic; tot.std += x.std; tot.sic += x.sic; const r = rc.addRow([st, x.std, x.sic, t, pct(x.std, t), pct(x.sic, t)]); r.getCell(5).numFmt = "0.0%"; r.getCell(6).numFmt = "0.0%"; }
+  const T = tot.std + tot.sic; { const r = rc.addRow(["Totale", tot.std, tot.sic, T, pct(tot.std, T), pct(tot.sic, T)]); totale(r); r.getCell(5).numFmt = "0.0%"; r.getCell(6).numFmt = "0.0%"; }
+  rc.addRow([`In una riga: su ${T.toLocaleString("it-IT")} rotte, ${Math.round(pct(tot.std, T) * 100)}% le hanno fatte gli STD, ${Math.round(pct(tot.sic, T) * 100)}% i SIC.`]).font = { bold: true };
   if (stimati.length) rc.addRow([`Nota: per ${stimati.map(nomeMese).join(", ")} le rotte STD sono stimate: quota media STD della station nel resto dell'anno, applicata alle rotte fatturate ad Amazon in quel mese (la busta non ha il calendario).`]).font = { italic: true, color: { argb: "FF64748B" } };
   if (buchi.length) rc.addRow([`Nota: manca la busta STD di ${buchi.join(", ")}: quelle rotte non sono contate.`]).font = { italic: true, color: { argb: "FF64748B" } };
   rc.addRow([]);
@@ -111,10 +111,10 @@ export async function GET() {
 
   // ===== 2. Rotte per mese
   const rm = wb.addWorksheet("Rotte per mese");
-  rm.columns = [16, 10, 10, 16, 15, 10, 10, 26].map((width) => ({ width }));
-  testa(rm, ["Mese", "Station", "STD", "SIC indeterminati", "SIC determinati", "Totale", "% STD", "Nota"]);
-  for (const m of mesiRotte) for (const st of stations) { const c = cella(m, st), t = c.std + c.ind + c.det; rm.addRow([nomeMese(m), st, c.mancaStd ? "" : c.std, c.ind, c.det, t, c.mancaStd ? "" : pct(c.std, t), c.mancaStd ? "manca la busta STD" : c.stimate ? "rotte STD stimate: quota media dell'anno sulle rotte fatturate" : ""]); }
-  rm.getColumn(7).numFmt = "0.0%";
+  rm.columns = [16, 10, 10, 10, 10, 10, 52].map((width) => ({ width }));
+  testa(rm, ["Mese", "Station", "STD", "SIC", "Totale", "% STD", "Nota"]);
+  for (const m of mesiRotte) for (const st of stations) { const c = cella(m, st), t = c.std + c.sic; rm.addRow([nomeMese(m), st, c.mancaStd ? "" : c.std, c.sic, t, c.mancaStd ? "" : pct(c.std, t), c.mancaStd ? "manca la busta STD" : c.stimate ? "rotte STD stimate: quota media dell'anno sulle rotte fatturate" : ""]); }
+  rm.getColumn(6).numFmt = "0.0%";
 
   // ===== 3. Station: SIC e STD
   const sg = wb.addWorksheet("Station SIC e STD");
@@ -125,9 +125,9 @@ export async function GET() {
 
   // ===== 4. Dettaglio per mese
   const dm = wb.addWorksheet("Dettaglio per mese");
-  dm.columns = [16, 10, 9, 10, 10, 14, 12, 12, 13, 9, 9, 12, 13, 14, 13, 22].map((width) => ({ width }));
-  testa(dm, ["Mese", "Station", "Gruppo", "Persone", "Rotte", "di cui a termine", "Giorni lavorati", "Giorni malattia", "Giorni infortunio", "Giorni ferie", "Giorni ROL", "Giorni ex festività", "Persone in malattia", "Persone in infortunio", "Persone assenti", "Nota"]);
-  for (const r of tutte) dm.addRow([nomeMese(r.mese), r.station, r.gruppo, r.teste, r.rotte ?? "", r.gruppo === "STD" ? r.rotte ?? "" : r.rotteTd, ...(r.calendario ? [r.ggLavorati, r.ggMalattia, r.ggInfortunio, r.ggFerie, r.ggRol, r.ggExfest, r.persMalattia, r.persInfortunio, r.persAssenti] : ["", "", "", "", "", "", "", "", ""]), !r.calendario ? "busta senza calendario: assenze non note" : r.rotteStimate ? "rotte stimate" : ""]);
+  dm.columns = [16, 10, 9, 10, 10, 12, 12, 13, 9, 9, 12, 13, 14, 13, 22].map((width) => ({ width }));
+  testa(dm, ["Mese", "Station", "Gruppo", "Persone", "Rotte", "Giorni lavorati", "Giorni malattia", "Giorni infortunio", "Giorni ferie", "Giorni ROL", "Giorni ex festività", "Persone in malattia", "Persone in infortunio", "Persone assenti", "Nota"]);
+  for (const r of tutte) dm.addRow([nomeMese(r.mese), r.station, r.gruppo, r.teste, r.rotte ?? "", ...(r.calendario ? [r.ggLavorati, r.ggMalattia, r.ggInfortunio, r.ggFerie, r.ggRol, r.ggExfest, r.persMalattia, r.persInfortunio, r.persAssenti] : ["", "", "", "", "", "", "", "", ""]), !r.calendario ? "busta senza calendario: assenze non note" : r.rotteStimate ? "rotte stimate" : ""]);
 
   // ===== 5. Come leggere
   const cl = wb.addWorksheet("Come leggere");
@@ -136,7 +136,7 @@ export async function GET() {
   for (const [k, v] of [
     ["Fonte", "Buste paga (LUL) di SIC e STD. Solo totali per station, mese e gruppo: nessun nome, nessun importo."],
     ["Rotta", "Una giornata di consegna. SIC: i giorni di trasferta pagati in busta. STD: i giorni lavorati per più di 4 ore sul calendario della busta."],
-    ["SIC determinati / indeterminati", "Si distinguono dalla scadenza del contratto scritta in busta. Gli STD sono tutti a termine."],
+    ["SIC e STD", "SIC = assunti da noi, a tempo indeterminato o determinato, contati insieme. STD = somministrati."],
     ["Mese", "Il mese in cui si è lavorato. La busta dei SIC paga le trasferte del mese prima, quindi i SIC arrivano con un mese di ritardo."],
     ["Assenteismo %", "Giorni di malattia e infortunio diviso i giorni in cui si doveva lavorare (lavorati + malattia + infortunio). Ferie, ROL, ex festività e permessi non contano né sopra né sotto."],
     ["Giorno lavorato", "Un giorno del calendario della busta con più di 4 ore lavorate. Vale per tutto il personale in busta, non solo per i driver."],
