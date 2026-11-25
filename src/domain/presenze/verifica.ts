@@ -317,6 +317,7 @@ export function verificaOre(persone: Persona[], coperti: Map<string, Set<string>
           const senzaSup = STATION_SENZA_SUPPLEMENTARE.has(x.station);
           const maxAcc = tetto - ORE_FT, maxStd = pt && c.ore !== null && !senzaSup ? c.ore : ORE_FT;
           // La riga Accordo può anche non essere compilata (deciso da Alessandro il 24/11/2026): dopo le 39 ore ordinarie
+          // Il "sesto giorno" non fa eccezione (chiesto dagli OS, respinto da Alessandro con HR il 25/11/2026): senza le 39 ore non è Straordinario.
           // le ore possono andare a Straordinario. È un errore solo lo Straordinario segnato PRIMA di arrivare a 39 ore.
           // Le 39 ore si contano su Standard (e Supplementare per i part time): l'Accordo già scritto resta dov'è e non conta
           // (deciso da Alessandro il 24/11/2026: "standard fino a 39 e il resto in straordinario"). Le assenze retribuite, se servono, contano.
