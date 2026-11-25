@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function PersonaleAssenzePage() {
   await requireSuperAdmin();
   const righe = await db.personaleMese.findMany({ where: { mese: { gte: "2026-01" } }, orderBy: [{ mese: "asc" }, { station: "asc" }] });
-  const dati: RigaMese[] = righe.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", teste: r.teste, calendario: r.calendario, rotte: r.rotte, rotteTd: r.rotteTd, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, persMalattia: r.persMalattia, persInfortunio: r.persInfortunio, persAssenti: r.persAssenti }));
+  const dati: RigaMese[] = righe.map((r) => ({ mese: r.mese, station: r.station, gruppo: r.gruppo as "SIC" | "STD", teste: r.teste, calendario: r.calendario, rotte: r.rotte, rotteTd: r.rotteTd, ggLavorati: r.ggLavorati, ggMalattia: r.ggMalattia, ggInfortunio: r.ggInfortunio, persMalattia: r.persMalattia, persInfortunio: r.persInfortunio, persAssenti: r.persAssenti }));
   return (
     <div className="flex flex-col gap-5">
       <PageHeader eyebrow="Personale" title="Assenze e infortuni" subtitle="Malattia e infortuni di SIC e STD per station, dalle buste paga: dove intervenire, chi migliora, chi peggiora e chi pesa di più sul network. La vedi solo tu." />

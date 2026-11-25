@@ -7,6 +7,8 @@ export type Gruppo = "SIC" | "STD";
 export type Vista = Gruppo | "TOTALE";
 export type RigaMese = {
   mese: string; station: string; gruppo: Gruppo; teste: number; calendario: boolean; rotte: number | null; rotteTd: number;
+  /** giorni lavorati dal calendario della busta (0 se la busta non ha il calendario) */
+  ggLavorati: number;
   ggMalattia: number; ggInfortunio: number; persMalattia: number; persInfortunio: number; persAssenti: number;
 };
 export type Somma = { teste: number; mesi: number; rotte: number; ggMalattia: number; ggInfortunio: number; persAssenti: number };
@@ -153,4 +155,26 @@ export function riepilogo(a: ReturnType<typeof analisi>, tutte: RigaMese[], vist
   const anomali = s.flatMap((x) => mesiAnomali(serieMensile(tutte, vista, mesi, x.station)).map((m) => `${x.station} a ${meseBreve(m.mese)} (${m.valore} contro una media di ${m.media})`));
   if (anomali.length) out.push({ tono: "INFO", testo: `Mesi fuori dal normale: ${anomali.slice(0, 4).join(", ")} giorni persi ogni 100 lavoratori. Da capire se è stato un evento isolato.` });
   return out.slice(0, 8);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Tasso di assenteismo: giorni di malattia e infortunio sui giorni in cui si doveva lavorare
+// (lavorati + malattia + infortunio). Ferie, ROL, ex festività e permessi non contano né sopra né sotto.
+
+export type Tasso = { lavorati: number; malattia: number; infortunio: number; /** % con un decimale; null se non ci sono giorni */ pct: number | null; malattiaPct: number | null; infortunioPct: number | null };
+
+export function tasso(righe: RigaMese[]): Tasso {
+  let lavorati = 0, malattia = 0, infortunio = 0;
+  for (const r of righe) { if (!r.calendario) continue; lavorati += r.ggLavorati; malattia += r.ggMalattia; infortunio += r.ggInfortunio; }
+  const dovuti = lavorati + malattia + infortunio, p = (x: number) => (dovuti ? Math.round((x / dovuti) * 1000) / 10 : null);
+  return { lavorati, malattia, infortunio, pct: p(malattia + infortunio), malattiaPct: p(malattia), infortunioPct: p(infortunio) };
+}
+
+export type RigaTasso = { station: string; perMese: Tasso[]; ytd: Tasso };
+/** Station per mese e da inizio anno, più la riga del network. In vista Totale solo i mesi con tutti e due i gruppi. */
+export function tabellaTassi(tutte: RigaMese[], vista: Vista): { mesi: string[]; stations: RigaTasso[]; network: RigaTasso } {
+  const mesi = mesiValidi(tutte, vista), dentro = new Set(mesi);
+  const righe = (vista === "TOTALE" ? tutte : tutte.filter((r) => r.gruppo === vista)).filter((r) => dentro.has(r.mese));
+  const riga = (station: string, rr: RigaMese[]): RigaTasso => ({ station, perMese: mesi.map((m) => tasso(rr.filter((r) => r.mese === m))), ytd: tasso(rr) });
+  return { mesi, stations: [...new Set(righe.map((r) => r.station))].sort().map((st) => riga(st, righe.filter((r) => r.station === st))), network: riga("Network", righe) };
 }

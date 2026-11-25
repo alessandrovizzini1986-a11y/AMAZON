@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { analisi, ETICHETTA_LIVELLO, indicatori, mesiValidi, PESI_PRIORITA, PESI_RISCHIO, riepilogo, serieMensile, somma, type Livello, type RigaMese, type SchedaStation, type Vista } from "@/domain/personale/analisi";
+import { analisi, ETICHETTA_LIVELLO, indicatori, mesiValidi, PESI_PRIORITA, PESI_RISCHIO, riepilogo, serieMensile, somma, tabellaTassi, type Tasso, type Livello, type RigaMese, type SchedaStation, type Vista } from "@/domain/personale/analisi";
 
 // stato: sempre con l'etichetta scritta accanto, mai solo il colore
 const STATO: Record<Livello, { colore: string; chiaro: string; segno: string }> = {
@@ -35,6 +35,7 @@ export function AssenzeClient({ righe }: { righe: RigaMese[] }) {
   const ultimo = mesi[mesi.length - 1], penultimo = mesi[mesi.length - 2];
   const delMese = (m?: string) => (m ? indicatori(somma((vista === "TOTALE" ? righe : righe.filter((r) => r.gruppo === vista)).filter((r) => r.mese === m))) : null);
   const iu = delMese(ultimo), ip = delMese(penultimo);
+  const tn = useMemo(() => tabellaTassi(righe.filter((r) => mesi.includes(r.mese)), vista).network.ytd, [righe, vista, mesi]);
   const critiche = a.stations.filter((s) => s.livello === "CRITICA" || s.livello === "PRIORITARIA");
   const migliore = [...a.stations].sort((x, y) => x.rischio - y.rischio)[0];
 
@@ -61,13 +62,15 @@ export function AssenzeClient({ righe }: { righe: RigaMese[] }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <Tessera titolo="Persone (media al mese)" valore={a.network.headcount.toLocaleString("it-IT")} nota={`${a.stations.length} station`} />
+        <Tessera titolo="Assenteismo" valore={tn.pct === null ? "—" : `${n1(tn.pct)}%`} nota={`malattia ${n1(tn.malattiaPct ?? 0)}% · infortunio ${n1(tn.infortunioPct ?? 0)}% · ${a.network.headcount} persone`} />
         <Tessera titolo="Persone assenti" valore={`${n1(a.network.assentiPct)}%`} ora={iu?.assentiPct} prima={ip?.assentiPct} unita="%" />
         <Tessera titolo="Giorni di malattia ogni 100" valore={n1(a.network.malattia100)} ora={iu?.malattia100} prima={ip?.malattia100} />
         <Tessera titolo="Giorni di infortunio ogni 100" valore={n1(a.network.infortunio100)} ora={iu?.infortunio100} prima={ip?.infortunio100} />
         <Tessera titolo="Station critiche" valore={String(critiche.length)} nota={critiche.map((s) => s.station).join(", ") || "nessuna"} />
         <Tessera titolo="Station migliore" valore={migliore?.station ?? "—"} nota={migliore ? `rischio ${migliore.rischio} su 100` : undefined} />
       </div>
+
+      <Tassi righe={righe} vista={vista} />
 
       <Riquadro titolo="In breve" sotto="Le cose da sapere, in ordine di importanza">
         <ul className="flex flex-col gap-1.5 text-sm">
@@ -125,6 +128,7 @@ export function AssenzeClient({ righe }: { righe: RigaMese[] }) {
         <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
           <li><b>Fonte:</b> le buste paga (LUL) di SIC e STD. Sul sito ci sono solo i totali per station, mese e gruppo: nessun nome, nessun importo.</li>
           <li><b>Giorni, non ore:</b> le ore in busta non sono confrontabili (una giornata di un somministrato part time vale 3–4 ore, quella di un SIC quasi 8).</li>
+          <li><b>Assenteismo %:</b> giorni di malattia e infortunio diviso i giorni in cui si doveva lavorare (lavorati + malattia + infortunio). Ferie, ROL, ex festività e permessi non contano. Un giorno lavorato è un giorno del calendario della busta con più di 4 ore.</li>
           <li><b>Persone assenti:</b> persone con almeno un giorno di malattia o infortunio nel mese, in percentuale delle persone in busta.</li>
           <li><b>Rischio (0–100):</b> ogni misura si confronta con il network: uguale = 50, il doppio o più = 100. Pesi: assenti {PESI_RISCHIO.assenti * 100}%, malattia {PESI_RISCHIO.malattia * 100}%, infortunio {PESI_RISCHIO.infortunio * 100}%.</li>
           <li><b>Peso (0–100):</b> quota dei giorni persi del network; la station che pesa di più vale 100.</li>
@@ -248,5 +252,55 @@ function Calore({ righe, vista, mesi, stations }: { righe: RigaMese[]; vista: Vi
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Assenteismo %: station per mese e da inizio anno, con la scelta totale / malattia / infortunio. */
+function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
+  const [misura, setMisura] = useState<"pct" | "malattiaPct" | "infortunioPct">("pct");
+  const t = useMemo(() => tabellaTassi(righe, vista), [righe, vista]);
+  const comuni = useMemo(() => new Set(tabellaTassi(righe, "TOTALE").mesi), [righe]);
+  const gruppi = useMemo(() => (["TOTALE", "SIC", "STD"] as Vista[]).map((v) => tabellaTassi(righe.filter((r) => comuni.has(r.mese)), v)), [righe, comuni]);
+  const max = Math.max(1, ...t.stations.flatMap((s) => s.perMese.map((x) => x[misura] ?? 0)));
+  const fondo = (v: number | null) => (v === null ? "transparent" : `rgba(220, 38, 38, ${Math.min(0.55, (v / max) * 0.55).toFixed(2)})`);
+  const p = (v: number | null) => (v === null ? "—" : `${n1(v)}%`);
+  const nomeVista = vista === "TOTALE" ? "SIC + STD" : vista;
+  return (
+    <Riquadro titolo={`Assenteismo ${nomeVista}: station per mese e da inizio anno`} sotto="Giorni di malattia e infortunio sui giorni in cui si doveva lavorare. Malattia + infortunio = assenteismo. Più rosso = più alto.">
+      <div className="flex flex-wrap gap-2 text-sm">
+        {([["pct", "Assenteismo"], ["malattiaPct", "di cui malattia"], ["infortunioPct", "di cui infortunio"]] as const).map(([k, nome]) => <button key={k} className={misura === k ? "btn-primary" : "btn-secondary"} onClick={() => setMisura(k)}>{nome}</button>)}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate text-sm" style={{ borderSpacing: 2 }}>
+          <thead><tr className="text-slate-500"><th className="text-left font-normal">Station</th>{t.mesi.map((m) => <th key={m} className="px-1 font-normal">{mb(m)}</th>)}<th className="px-2 font-semibold text-slate-700">Da inizio anno</th></tr></thead>
+          <tbody>
+            {[...t.stations, t.network].map((s) => (
+              <tr key={s.station} className={s.station === "Network" ? "font-semibold" : ""}>
+                <th className="whitespace-nowrap pr-2 text-left font-semibold">{s.station}</th>
+                {s.perMese.map((x, i) => <td key={i} className="rounded px-1 py-1.5 text-center tabular-nums" style={{ background: s.station === "Network" ? "#F1F5F9" : fondo(x[misura]) }} title={`${s.station} ${mb(t.mesi[i])}: ${x.malattia} giorni di malattia e ${x.infortunio} di infortunio su ${x.lavorati + x.malattia + x.infortunio} giorni dovuti`}>{p(x[misura])}</td>)}
+                <td className="rounded px-2 py-1.5 text-center font-semibold tabular-nums" style={{ background: "#E2E8F0" }} title={`${s.ytd.malattia} giorni di malattia e ${s.ytd.infortunio} di infortunio su ${s.ytd.lavorati + s.ytd.malattia + s.ytd.infortunio} giorni dovuti`}>{p(s.ytd[misura])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <h3 className="mt-2 text-sm font-semibold">Da inizio anno: SIC + STD, SIC e STD a confronto <span className="font-normal text-slate-500">(stessi mesi per tutti: {comuni.size ? `${mb([...comuni][0])} – ${mb([...comuni][comuni.size - 1])}` : "—"})</span></h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr><th />{["SIC + STD", "SIC", "STD"].map((g) => <th key={g} colSpan={3} className="border-b border-slate-200 px-2 py-1 text-center">{g === "SIC + STD" ? g : <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: SERIE[g as "SIC" | "STD"] }} />{g}</span>}</th>)}</tr>
+            <tr className="text-slate-500"><th className="py-1 text-left font-normal">Station</th>{[0, 1, 2].flatMap((g) => ["Assenteismo", "Malattia", "Infortunio"].map((n) => <th key={`${g}${n}`} className={`px-2 py-1 text-right font-normal ${n === "Assenteismo" ? "border-l border-slate-200" : ""}`}>{n}</th>))}</tr>
+          </thead>
+          <tbody>
+            {[...gruppi[0].stations.map((s) => s.station), "Network"].map((st) => (
+              <tr key={st} className={`border-t border-slate-100 ${st === "Network" ? "bg-slate-50 font-semibold" : ""}`}>
+                <td className="py-1.5 font-semibold">{st}</td>
+                {gruppi.flatMap((g, gi) => { const y: Tasso | undefined = st === "Network" ? g.network.ytd : g.stations.find((s) => s.station === st)?.ytd; return [<td key={`${gi}a`} className="border-l border-slate-200 px-2 text-right font-semibold tabular-nums">{p(y?.pct ?? null)}</td>, <td key={`${gi}m`} className="px-2 text-right tabular-nums">{p(y?.malattiaPct ?? null)}</td>, <td key={`${gi}i`} className="px-2 text-right tabular-nums">{p(y?.infortunioPct ?? null)}</td>]; })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Riquadro>
   );
 }
