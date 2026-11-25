@@ -95,7 +95,7 @@ const ordineGiorno = (q: string) => { const m = /^(\d\d)\/(\d\d)/.exec(q); retur
 export function puntiVerifica(richieste: { driver: string; pop: string; periodo: string; testo: string; breve?: string | null }[]): PuntoVerifica[] {
   const punti = richieste.flatMap((r) => (r.breve || r.testo).split(" · ").map((pezzo) => {
     const m = /^(\d\d\/\d\d): (.+)$/.exec(pezzo);
-    return { driver: r.driver, tracking: r.pop, quando: m ? m[1] : /^\\d\\d\\/\\d{4}$/.test(r.periodo) ? "nel mese" : r.periodo, cosa: m ? m[2] : pezzo };
+    return { driver: r.driver, tracking: r.pop, quando: m ? m[1] : /^\d\d\/\d{4}$/.test(r.periodo) ? "nel mese" : r.periodo, cosa: m ? m[2] : pezzo };
   }));
   return punti.sort((a, b) => a.driver.localeCompare(b.driver) || ordineGiorno(a.quando).localeCompare(ordineGiorno(b.quando)) || a.quando.localeCompare(b.quando));
 }
