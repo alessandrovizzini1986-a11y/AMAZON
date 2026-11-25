@@ -1328,3 +1328,18 @@ model PersonaleMese {
 
   @@id([mese, station, gruppo])
 }
+
+// Giorni lavorati, di malattia e di infortunio per persona e mese (solo chi ha avuto almeno un'assenza nell'anno).
+// Dati personali: li vede solo il super admin, non escono dal sito.
+model PersonaleAssenzaPersona {
+  mese         String
+  station      String
+  gruppo       String // SIC | STD
+  codice       String // matricola in busta
+  nome         String @default("")
+  ggLavorati   Int    @default(0)
+  ggMalattia   Int    @default(0)
+  ggInfortunio Int    @default(0)
+
+  @@id([mese, station, gruppo, codice])
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { analisi, ETICHETTA_LIVELLO, indicatori, mesiValidi, PESI_PRIORITA, PESI_RISCHIO, riepilogo, serieMensile, somma, tabellaTassi, type Tasso, type Livello, type RigaMese, type SchedaStation, type Vista } from "@/domain/personale/analisi";
+import { analisi, ETICHETTA_LIVELLO, indicatori, mesiValidi, PESI_PRIORITA, PESI_RISCHIO, riepilogo, serieMensile, somma, tabellaTassi, piuAssenti, type Assente, type OrdineAssenti, type RigaPersona, type Tasso, type Livello, type RigaMese, type SchedaStation, type Vista } from "@/domain/personale/analisi";
 
 // stato: sempre con l'etichetta scritta accanto, mai solo il colore
 const STATO: Record<Livello, { colore: string; chiaro: string; segno: string }> = {
@@ -23,7 +23,7 @@ function Riquadro({ titolo, sotto, children }: { titolo: string; sotto?: string;
   return <section className="card flex flex-col gap-2 p-4"><div><h2 className="text-base font-semibold">{titolo}</h2>{sotto && <p className="text-xs text-slate-500">{sotto}</p>}</div>{children}</section>;
 }
 
-export function AssenzeClient({ righe }: { righe: RigaMese[] }) {
+export function AssenzeClient({ righe, persone }: { righe: RigaMese[]; persone: RigaPersona[] }) {
   const [vista, setVista] = useState<Vista>("TOTALE");
   const [periodo, setPeriodo] = useState<Periodo>("ANNO");
   const [station, setStation] = useState<string>("NETWORK");
@@ -71,6 +71,8 @@ export function AssenzeClient({ righe }: { righe: RigaMese[] }) {
       </div>
 
       <Tassi righe={righe} vista={vista} />
+
+      <Assenti persone={persone} vista={vista} />
 
       <Riquadro titolo="In breve" sotto="Le cose da sapere, in ordine di importanza">
         <ul className="flex flex-col gap-1.5 text-sm">
@@ -301,6 +303,59 @@ function Tassi({ righe, vista }: { righe: RigaMese[]; vista: Vista }) {
           </tbody>
         </table>
       </div>
+    </Riquadro>
+  );
+}
+
+/** Chi è stato più assente: un colpo d'occhio per station, oppure l'elenco di una station; in un mese o da inizio anno. */
+function Assenti({ persone, vista }: { persone: RigaPersona[]; vista: Vista }) {
+  const [station, setStation] = useState(""), [mese, setMese] = useState(""), [ordine, setOrdine] = useState<OrdineAssenti>("giorni"), [tutti, setTutti] = useState(false);
+  const stations = useMemo(() => [...new Set(persone.map((p) => p.station))].sort(), [persone]);
+  const mesi = useMemo(() => [...new Set(persone.filter((p) => vista === "TOTALE" || p.gruppo === vista).map((p) => p.mese))].sort(), [persone, vista]);
+  const meseOk = mesi.includes(mese) ? mese : "";
+  const elenco = (st?: string) => piuAssenti(persone, { vista, station: st, mese: meseOk || undefined, ordine });
+  const Gr = ({ g }: { g: "SIC" | "STD" }) => <span className="inline-flex items-center gap-1 text-xs text-slate-600"><span className="inline-block h-2 w-2 rounded-sm" style={{ background: SERIE[g] }} />{g}</span>;
+  const valore = (a: Assente) => a[ordine];
+  const righeStation = station ? elenco(station) : [];
+  return (
+    <Riquadro titolo="Chi è stato più assente" sotto={`Persone con più giorni di ${ordine === "giorni" ? "malattia e infortunio" : ordine} ${meseOk ? `a ${mb(meseOk)}` : "da inizio anno"}. Dati personali: li vedi solo tu.`}>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <select className="input w-auto" value={station} onChange={(e) => { setStation(e.target.value); setTutti(false); }} aria-label="Station"><option value="">Tutte le station (primi 5)</option>{stations.map((s) => <option key={s}>{s}</option>)}</select>
+        <select className="input w-auto" value={meseOk} onChange={(e) => setMese(e.target.value)} aria-label="Periodo"><option value="">Da inizio anno</option>{mesi.map((m) => <option key={m} value={m}>{MESI[Number(m.slice(5)) - 1]} {m.slice(0, 4)}</option>)}</select>
+        {([["giorni", "Tutte le assenze"], ["malattia", "Malattia"], ["infortunio", "Infortunio"]] as [OrdineAssenti, string][]).map(([k, nome]) => <button key={k} className={ordine === k ? "btn-primary" : "btn-secondary"} onClick={() => setOrdine(k)}>{nome}</button>)}
+      </div>
+      {!station ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {stations.map((st) => { const e = elenco(st); return (
+            <div key={st} className="rounded-lg border border-slate-200 p-2.5">
+              <button className="mb-1 flex w-full items-baseline justify-between text-left" onClick={() => setStation(st)} title="Apri l'elenco completo della station"><span className="font-semibold">{st}</span><span className="text-xs text-slate-500">{e.length} persone ›</span></button>
+              {e.length === 0 ? <p className="text-xs text-slate-500">Nessuna assenza.</p> : (
+                <ol className="flex flex-col gap-1 text-sm">
+                  {e.slice(0, 5).map((a) => <li key={a.chiave} className="flex items-baseline justify-between gap-2" title={`${a.malattia} giorni di malattia, ${a.infortunio} di infortunio, ${a.lavorati} lavorati${a.pct === null ? "" : ` · ${n1(a.pct)}% di assenteismo`}`}><span className="min-w-0 truncate">{a.nome} <Gr g={a.gruppo} /></span><span className="shrink-0 font-semibold tabular-nums">{valore(a)} gg</span></li>)}
+                </ol>
+              )}
+            </div>); })}
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-slate-500"><th className="py-1 pr-2 font-normal">#</th><th className="py-1 pr-3 font-normal">Persona</th><th className="py-1 pr-3 font-normal">Gruppo</th><th className="py-1 pr-3 text-right font-normal">Malattia</th><th className="py-1 pr-3 text-right font-normal">Infortunio</th><th className="py-1 pr-3 text-right font-normal">Totale giorni</th><th className="py-1 pr-3 text-right font-normal">Giorni lavorati</th><th className="py-1 pr-3 text-right font-normal">Assenteismo</th>{!meseOk && <th className="py-1 text-right font-normal">Mesi con assenze</th>}</tr></thead>
+              <tbody>
+                {righeStation.slice(0, tutti ? undefined : 10).map((a, i) => (
+                  <tr key={a.chiave} className="border-t border-slate-100">
+                    <td className="py-1.5 pr-2 tabular-nums text-slate-500">{i + 1}</td><td className="py-1.5 pr-3 font-medium">{a.nome}</td><td className="py-1.5 pr-3"><Gr g={a.gruppo} /></td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{a.malattia}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.infortunio}</td><td className="py-1.5 pr-3 text-right font-semibold tabular-nums">{a.giorni}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{a.lavorati}</td><td className="py-1.5 pr-3 text-right tabular-nums">{a.pct === null ? "—" : `${n1(a.pct)}%`}</td>{!meseOk && <td className="py-1.5 text-right tabular-nums">{a.mesi}</td>}
+                  </tr>
+                ))}
+                {righeStation.length === 0 && <tr><td colSpan={9} className="py-2 text-slate-500">Nessuna assenza nel periodo.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          {righeStation.length > 10 && <button className="btn-secondary self-start text-sm" onClick={() => setTutti(!tutti)}>{tutti ? "Mostra solo i primi 10" : `Mostra tutti (${righeStation.length})`}</button>}
+        </>
+      )}
     </Riquadro>
   );
 }
