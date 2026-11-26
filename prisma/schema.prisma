@@ -1468,3 +1468,19 @@ model PersonaleRateiPersona {
 
   @@id([mese, station, gruppo, codice])
 }
+
+// Addebiti in busta per persona: multe stradali, danni ai veicoli, provvedimenti disciplinari (importo trattenuto; negativo = restituito).
+model PersonaleAddebito {
+  id        String @id @default(cuid())
+  mese      String // mese della busta
+  station   String
+  gruppo    String
+  codice    String
+  nome      String @default("")
+  tipo      String // MULTA | DANNO | DISCIPLINARE
+  voce      String
+  importo   Float
+
+  @@index([mese])
+  @@index([station, mese])
+}
