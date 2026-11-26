@@ -1399,3 +1399,72 @@ model SegretoInterno {
   valore   String
   creatoIl DateTime @default(now())
 }
+
+// ── Dalle buste paga (mese = mese della busta). I soldi solo aggregati per station, mese e gruppo; per persona solo ore e ratei. ──
+// Totali del mese: lordo = totale competenze in busta (comprese le indennità anticipate per conto INPS, che sono a parte).
+model PersonaleBustaMese {
+  mese        String
+  station     String
+  gruppo      String // SIC | STD (GLS: station "GLS", solo autisti)
+  teste       Int
+  lordo       Float
+  tfr         Float  @default(0) // quota TFR del mese (figurativa in busta)
+  impInps     Float  @default(0) // imponibile contributivo
+  senzaTotali Int    @default(0) // cedolini senza riga dei totali: lordo ricostruito dalle voci
+
+  @@id([mese, station, gruppo])
+}
+
+// Voci della busta per categoria (voce = "") e, per alcune categorie, voce per voce.
+model PersonaleBustaVoce {
+  mese      String
+  station   String
+  gruppo    String
+  categoria String // RETRIBUZIONE | MENSILITA | STRAORDINARI | MAGGIORAZIONI | TRASFERTE | INDENNITA | PREMI | FESTIVITA | MALATTIA_AZIENDA | ANTICIPI_INPS | FERIE_LIQUIDATE | FINE_RAPPORTO | RIMBORSI | ALTRO | ASSENZE_NON_PAGATE | T_*
+  voce      String @default("")
+  importo   Float
+  ore       Float  @default(0)
+  persone   Int    @default(0)
+
+  @@id([mese, station, gruppo, categoria, voce])
+}
+
+// Ore per persona e mese di busta: ore lavorate dal calendario (mese di lavoro), straordinari e maggiorazioni dalle voci. Nessun importo.
+model PersonaleOrePersona {
+  mese       String
+  station    String
+  gruppo     String
+  codice     String
+  nome       String  @default("")
+  qualifica  String  @default("")
+  meseLavoro String?
+  oreLav     Float?
+  ggLav      Int?
+  oreStr     Float   @default(0) // straordinari e supplementari
+  oreMagg    Float   @default(0) // ore con sola maggiorazione (festive, notturne)
+
+  @@id([mese, station, gruppo, codice])
+}
+
+// Ferie, ROL ed ex festività per persona e mese di busta (unità: GG o ORE, come in busta).
+model PersonaleRateiPersona {
+  mese          String
+  station       String
+  gruppo        String
+  codice        String
+  nome          String @default("")
+  qualifica     String @default("")
+  ferieUnita    String @default("GG")
+  ferieSaldo    Float?
+  ferieMatur    Float?
+  ferieGoduto   Float?
+  ferieResAP    Float?
+  rolSaldo      Float?
+  rolMatur      Float?
+  rolGoduto     Float?
+  exfestSaldo   Float?
+  exfestMatur   Float?
+  exfestGoduto  Float?
+
+  @@id([mese, station, gruppo, codice])
+}
