@@ -36,6 +36,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/costi", label: "Costi del personale", icon: "euro", perm: "costi.view", descr: "stima a fine mese e consuntivo Amazon" },
       { href: "/costi/gls", label: "Costi GLS", icon: "euro", perm: "costi.view", descr: "appalto Castel Maggiore e Badgebox" },
       { href: "/personale-assenze", label: "Assenze e infortuni", icon: "dashboard", perm: "users.manage", descr: "malattia e infortuni di SIC e STD: dove intervenire" },
+      { href: "/personale-buste", label: "Buste paga: costo, ore e ferie", icon: "euro", perm: "users.manage", descr: "costo, voci variabili, straordinari e ferie residue dalle buste" },
     ],
   },
   {
@@ -108,7 +109,7 @@ export const vociPer = (role: Role, nascosti: string[] = []) => menuPer(role, na
 const TUTTI_GLI_HREF = GRUPPI.flatMap((g) => g.voci.map((v) => v.href)).filter((h) => !h.includes("?"));
 
 /** Voci riservate al super admin: agli altri non compaiono mai e non si aprono (requireUser le aggiunge alle nascoste). */
-export const SOLO_SUPER = ["/uso", "/personale-assenze"];
+export const SOLO_SUPER = ["/uso", "/personale-assenze", "/personale-buste"];
 
 /** Le voci che un ruolo potrebbe vedere, per gruppo: è l'elenco dei flag che il super admin accende o spegne. */
 export const vociDelRuolo = (role: Role) => menuPer(role, SOLO_SUPER);
