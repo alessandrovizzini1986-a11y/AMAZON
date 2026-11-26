@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
-import { feriePerStation, orePerStation, ultimiRatei, type Gruppo, type OrePersona, type RateiPersona } from "@/domain/personale/buste";
+import { feriePerStation, orePerStation, ultimiRatei, type Gruppo, type TipoAddebito, type OrePersona, type RateiPersona } from "@/domain/personale/buste";
 import { BusteClient, type DatiBuste } from "./BusteClient";
 
 export const dynamic = "force-dynamic";
@@ -10,12 +10,13 @@ export const dynamic = "force-dynamic";
 export default async function PersonaleBustePage({ searchParams }: { searchParams: Promise<{ cliente?: string }> }) {
   await requireSuperAdmin();
   const gls = (await searchParams).cliente === "gls", dove = gls ? "GLS" : { not: "GLS" };
-  const [tot, voci, ore, ratei, rotte] = await Promise.all([
+  const [tot, voci, ore, ratei, rotte, addebiti] = await Promise.all([
     db.personaleBustaMese.findMany({ where: { station: dove }, orderBy: [{ mese: "asc" }, { station: "asc" }] }),
     db.personaleBustaVoce.findMany({ where: { station: dove } }),
     db.personaleOrePersona.findMany({ where: { station: dove }, select: { mese: true, station: true, gruppo: true, codice: true, nome: true, qualifica: true, oreLav: true, ggLav: true, oreStr: true, oreMagg: true } }),
     db.personaleRateiPersona.findMany({ where: { station: dove } }),
     db.personaleMese.findMany({ where: { station: dove }, select: { mese: true, station: true, gruppo: true, rotte: true } }),
+    db.personaleAddebito.findMany({ where: { station: dove }, orderBy: { mese: "asc" } }),
   ]);
   const o = ore as OrePersona[];
   const r = ratei.map((x) => ({ ...x, gruppo: x.gruppo as Gruppo, ferieUnita: x.ferieUnita as "GG" | "ORE" })) as RateiPersona[];
@@ -26,6 +27,7 @@ export default async function PersonaleBustePage({ searchParams }: { searchParam
     oreStr: o.filter((x) => x.oreStr > 0).map((x) => ({ mese: x.mese, station: x.station, gruppo: x.gruppo, codice: x.codice, nome: x.nome, oreLav: x.oreLav, oreStr: x.oreStr })),
     ferieStation: feriePerStation(r),
     ferieUltime: ultimiRatei(r).map((x) => ({ mese: x.mese, station: x.station, gruppo: x.gruppo, codice: x.codice, nome: x.nome, qualifica: x.qualifica, ferieUnita: x.ferieUnita, ferieSaldo: x.ferieSaldo, ferieMatur: x.ferieMatur, ferieGoduto: x.ferieGoduto, rolSaldo: x.rolSaldo, exfestSaldo: x.exfestSaldo })),
+    addebiti: addebiti.map((a) => ({ mese: a.mese, station: a.station, gruppo: a.gruppo as Gruppo, codice: a.codice, nome: a.nome, tipo: a.tipo as TipoAddebito, voce: a.voce, importo: a.importo })),
     rotte: rotte.filter((x) => x.rotte !== null).map((x) => ({ mese: x.mese, station: x.station, gruppo: x.gruppo as Gruppo, rotte: x.rotte! })),
   };
   return (

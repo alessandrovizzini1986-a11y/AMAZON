@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireSuperAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_FONTE, costo, feriePerStation, piuStraordinari, SOGLIA_FERIE, ultimiRatei, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
+import { addebitiPerPersona, NOME_ADDEBITO, type Addebito, type TipoAddebito, CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_FONTE, costo, feriePerStation, piuStraordinari, SOGLIA_FERIE, ultimiRatei, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +14,9 @@ const BLU = "FF1E3A5F", GRIGIO = "FFF1F5F9", EURO = '#,##0 "€";-#,##0 "€"', 
 export async function GET(req: NextRequest) {
   await requireSuperAdmin();
   const gls = req.nextUrl.searchParams.get("cliente") === "gls", dove = gls ? "GLS" : { not: "GLS" };
-  const [t0, v0, o0, r0] = await Promise.all([
+  const [t0, v0, o0, r0, a0] = await Promise.all([
     db.personaleBustaMese.findMany({ where: { station: dove } }), db.personaleBustaVoce.findMany({ where: { station: dove } }),
-    db.personaleOrePersona.findMany({ where: { station: dove } }), db.personaleRateiPersona.findMany({ where: { station: dove } }),
+    db.personaleOrePersona.findMany({ where: { station: dove } }), db.personaleRateiPersona.findMany({ where: { station: dove } }), db.personaleAddebito.findMany({ where: { station: dove }, orderBy: { mese: "asc" } }),
   ]);
   const tot = t0.map((t) => ({ ...t, gruppo: t.gruppo as Gruppo })) as TotaleMese[], voci = v0.map((v) => ({ ...v, gruppo: v.gruppo as Gruppo })) as VoceMese[];
   const ore = o0 as OrePersona[], ratei = r0.map((r) => ({ ...r, gruppo: r.gruppo as Gruppo, ferieUnita: r.ferieUnita as "GG" | "ORE" })) as RateiPersona[];
@@ -114,6 +114,17 @@ export async function GET(req: NextRequest) {
   }
   [28, 8, 7, 22, 9, 11, 7, 11, 11, 11, 11].forEach((w, i) => (ws5.getColumn(i + 1).width = w));
   for (const ws of [ws1, ws2, ws4]) ws.eachRow((r) => { if (!r.font?.bold && r.getCell(1).value === "Totale") r.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GRIGIO } }; }); });
+
+  // 6. Multe e danni
+  const add = a0.map((a) => ({ ...a, gruppo: a.gruppo as Gruppo, tipo: a.tipo as TipoAddebito })) as Addebito[];
+  const ws6 = wb.addWorksheet("Multe e danni");
+  titolo(ws6, "Addebiti in busta: multe stradali, danni ai veicoli, multe disciplinari", "Importi trattenuti alle persone, per mese della busta. Negativo = restituito.");
+  intest(ws6, ["Persona", "Station", "Gruppo", "Multe stradali", "Danni ai veicoli", "Multe disciplinari", "Totale", "Addebiti", "Mesi"]);
+  for (const p of addebitiPerPersona(add)) { const r = ws6.addRow([p.nome, p.station, p.gruppo, p.MULTA || null, p.DANNO || null, p.DISCIPLINARE || null, p.totale, p.volte, p.mesi.map(mb).join(", ")]); [4, 5, 6, 7].forEach((i) => (r.getCell(i).numFmt = '#,##0.00 "€"')); }
+  ws6.addRow([]); ws6.addRow(["Elenco degli addebiti"]).font = { bold: true };
+  intest(ws6, ["Persona", "Station", "Gruppo", "Mese busta", "Tipo", "Voce in busta", "Importo"]);
+  for (const x of [...add].sort((p, q) => p.nome.localeCompare(q.nome) || p.mese.localeCompare(q.mese))) { const r = ws6.addRow([x.nome, x.station, x.gruppo, mb(x.mese), NOME_ADDEBITO[x.tipo], x.voce, x.importo]); r.getCell(7).numFmt = '#,##0.00 "€"'; }
+  [30, 8, 7, 14, 16, 16, 12, 9, 40].forEach((w, i) => (ws6.getColumn(i + 1).width = w));
 
   const buf = await wb.xlsx.writeBuffer();
   return new NextResponse(Buffer.from(buf), { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": `attachment; filename="Buste_paga_${gls ? "GLS" : "Amazon"}_2026.xlsx"`, "Cache-Control": "no-store" } });

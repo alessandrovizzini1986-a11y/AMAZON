@@ -44,3 +44,13 @@ describe("ferie residue", () => {
     expect(s).toMatchObject({ persone: 3, ferie: 17, oltre: 1, negativi: 1, unita: "GG" });
   });
 });
+
+import { addebitiPerPersona, type Addebito } from "@/domain/personale/buste";
+describe("addebiti per persona", () => {
+  const a = (x: Partial<Addebito>): Addebito => ({ mese: "2026-09", station: "DER2", gruppo: "SIC", codice: "1", nome: "A", tipo: "MULTA", voce: "Infraz. codice stradale", importo: 100, ...x });
+  it("somma per tipo, conta gli addebiti e ordina dal più alto, con le restituzioni in negativo", () => {
+    const p = addebitiPerPersona([a({}), a({ mese: "2026-10", tipo: "DANNO", importo: 300 }), a({ importo: -50 }), a({ codice: "2", nome: "B", importo: 200 })]);
+    expect(p[0]).toMatchObject({ nome: "A", MULTA: 50, DANNO: 300, totale: 350, volte: 3, mesi: ["2026-09", "2026-10"] });
+    expect(p[1].nome).toBe("B");
+  });
+});

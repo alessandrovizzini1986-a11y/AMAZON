@@ -104,3 +104,20 @@ export function feriePerStation(r: RateiPersona[]) {
   }
   return [...m.values()];
 }
+
+// ── Addebiti in busta: multe stradali, danni ai veicoli, provvedimenti disciplinari ──
+export type TipoAddebito = "MULTA" | "DANNO" | "DISCIPLINARE";
+export const NOME_ADDEBITO: Record<TipoAddebito, string> = { MULTA: "Multe stradali", DANNO: "Danni ai veicoli", DISCIPLINARE: "Multe disciplinari" };
+export type Addebito = { mese: string; station: string; gruppo: Gruppo; codice: string; nome: string; tipo: TipoAddebito; voce: string; importo: number };
+
+/** Per persona: totale per tipo, quante volte, primo e ultimo mese, dal più alto. */
+export function addebitiPerPersona(a: Addebito[]) {
+  const m = new Map<string, { codice: string; nome: string; station: string; gruppo: Gruppo; MULTA: number; DANNO: number; DISCIPLINARE: number; totale: number; volte: number; mesi: Set<string>; righe: Addebito[] }>();
+  for (const x of a) {
+    const k = `${x.gruppo}|${x.station}|${x.codice}`;
+    const y = m.get(k) ?? { codice: x.codice, nome: x.nome, station: x.station, gruppo: x.gruppo, MULTA: 0, DANNO: 0, DISCIPLINARE: 0, totale: 0, volte: 0, mesi: new Set<string>(), righe: [] };
+    y[x.tipo] += x.importo; y.totale += x.importo; y.volte++; y.mesi.add(x.mese); y.righe.push(x);
+    m.set(k, y);
+  }
+  return [...m.values()].map((y) => ({ ...y, mesi: [...y.mesi].sort(), righe: y.righe.sort((p, q) => p.mese.localeCompare(q.mese)) })).sort((p, q) => q.totale - p.totale);
+}

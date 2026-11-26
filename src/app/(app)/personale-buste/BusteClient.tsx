@@ -1,16 +1,16 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_FONTE, costo, piuStraordinari, SOGLIA_FERIE, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
+import { addebitiPerPersona, NOME_ADDEBITO, type Addebito, type TipoAddebito, CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_FONTE, costo, piuStraordinari, SOGLIA_FERIE, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
 
 type OreStation = { mese: string; station: string; gruppo: Gruppo; persone: number; oreLav: number; oreStr: number; oreMagg: number; conStr: number };
 type FerieStation = { mese: string; station: string; gruppo: Gruppo; unita: "GG" | "ORE"; persone: number; ferie: number; rol: number; exfest: number; oltre: number; negativi: number };
 export type DatiBuste = {
   totali: TotaleMese[]; voci: VoceMese[]; oreStation: OreStation[];
   oreStr: Pick<OrePersona, "mese" | "station" | "gruppo" | "codice" | "nome" | "oreLav" | "oreStr">[];
-  ferieStation: FerieStation[]; ferieUltime: RateiPersona[]; rotte: { mese: string; station: string; gruppo: Gruppo; rotte: number }[];
+  ferieStation: FerieStation[]; addebiti: Addebito[]; ferieUltime: RateiPersona[]; rotte: { mese: string; station: string; gruppo: Gruppo; rotte: number }[];
 };
-type Scheda = "COSTO" | "VOCI" | "ORE" | "FERIE";
+type Scheda = "COSTO" | "VOCI" | "ORE" | "FERIE" | "MULTE";
 type Misura = "STIMATO" | "LORDO" | "TESTA" | "ROTTA" | "TESTE";
 
 const MESI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
@@ -40,6 +40,8 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
   const [aperta, setAperta] = useState<string | null>(null);
   const [periodoStr, setPeriodoStr] = useState<string>("ANNO");
   const [tuttiFerie, setTuttiFerie] = useState(false);
+  const [persAperta, setPersAperta] = useState<string | null>(null);
+  const [meseMulte, setMeseMulte] = useState<string>("ANNO");
 
   const g = gls ? "SIC" : gruppo;
   const stations = useMemo(() => [...new Set(dati.totali.map((t) => t.station))].sort(), [dati.totali]);
@@ -68,7 +70,7 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        {(["COSTO", "VOCI", "ORE", "FERIE"] as Scheda[]).map((s) => <button key={s} className={scheda === s ? "btn-primary" : "btn-secondary"} onClick={() => setScheda(s)}>{{ COSTO: "Costo", VOCI: "Voci variabili", ORE: "Ore e straordinari", FERIE: "Ferie residue" }[s]}</button>)}
+        {(["COSTO", "VOCI", "ORE", "FERIE", "MULTE"] as Scheda[]).map((s) => <button key={s} className={scheda === s ? "btn-primary" : "btn-secondary"} onClick={() => setScheda(s)}>{{ COSTO: "Costo", VOCI: "Voci variabili", ORE: "Ore e straordinari", FERIE: "Ferie residue", MULTE: "Multe e danni" }[s]}</button>)}
         <span className="mx-1 h-6 w-px bg-slate-200" />
         {!gls && (["SIC", "STD"] as Gruppo[]).map((x) => <button key={x} className={gruppo === x ? "btn-primary" : "btn-secondary"} onClick={() => setGruppo(x)}>{x}</button>)}
         {!gls && <select className="input w-auto" value={station} onChange={(e) => setStation(e.target.value)} aria-label="Station"><option value="TUTTE">Tutte le station</option>{stations.map((s) => <option key={s}>{s}</option>)}</select>}
@@ -194,6 +196,41 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
                 <tbody>{(tuttiFerie ? ordinati : ordinati.slice(0, 40)).map((x) => <tr key={x.station + x.codice} className={(x.ferieSaldo ?? 0) > SOGLIA_FERIE[x.ferieUnita] ? "bg-amber-50" : ""}><td className={td}>{x.nome}</td><td className={td}>{x.station}</td><td className={td}>{x.qualifica}</td><td className={tdn + " font-semibold"}>{x.ferieSaldo !== null ? `${n1(x.ferieSaldo)} ${unita(x.ferieUnita)}` : "—"}{(x.ferieSaldo ?? 0) > SOGLIA_FERIE[x.ferieUnita] && <span className="ml-1 text-xs text-amber-700">▲ alta</span>}</td><td className={tdn}>{x.ferieMatur !== null ? n1(x.ferieMatur) : "—"}</td><td className={tdn}>{x.ferieGoduto !== null ? n1(x.ferieGoduto) : "—"}</td><td className={tdn}>{x.rolSaldo !== null ? n1(x.rolSaldo) : "—"}</td><td className={tdn}>{x.exfestSaldo !== null ? n1(x.exfestSaldo) : "—"}</td></tr>)}</tbody>
               </Tab>
               {ordinati.length > 40 && <button className="btn-secondary self-start text-sm" onClick={() => setTuttiFerie(!tuttiFerie)}>{tuttiFerie ? "Mostra le prime 40" : `Mostra tutte (${ordinati.length})`}</button>}
+            </Riquadro>
+          </>
+        );
+      })()}
+
+      {scheda === "MULTE" && (() => {
+        const TIPI: TipoAddebito[] = ["MULTA", "DANNO", "DISCIPLINARE"];
+        const tutti = dati.addebiti.filter(nelFiltro);
+        const mesiA = [...new Set(dati.totali.filter((t) => t.gruppo === g).map((t) => t.mese))].sort();
+        const sel = tutti.filter((x) => meseMulte === "ANNO" || x.mese === meseMulte);
+        const somma = (r: Addebito[], t?: TipoAddebito) => r.filter((x) => !t || x.tipo === t).reduce((a, x) => a + x.importo, 0);
+        const persone = addebitiPerPersona(sel);
+        return (
+          <>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {TIPI.map((t) => <Tessera key={t} titolo={`${NOME_ADDEBITO[t]} · ${meseMulte === "ANNO" ? "anno" : mb(meseMulte)}`} valore={eur(somma(sel, t))} nota={`${sel.filter((x) => x.tipo === t).length} addebiti, ${new Set(sel.filter((x) => x.tipo === t).map((x) => x.codice)).size} persone`} />)}
+              <Tessera titolo="Totale trattenuto" valore={eur(somma(sel))} nota={`${persone.length} persone`} />
+            </div>
+            <Riquadro titolo="Per station e mese della busta" sotto="Importi trattenuti in busta alle persone. Danni = danni provocati, risarcimenti e contestazioni di addebito. Negativo = multa restituita.">
+              <Tab>
+                <thead><tr><th className={th}>Station</th><th className={th}>Tipo</th>{mesiA.map((m) => <th key={m} className={thn}>{mb(m)}</th>)}<th className={thn}>Anno</th></tr></thead>
+                <tbody>{[...stations.filter((s) => station === "TUTTE" || s === station), ...(station === "TUTTE" && stations.length > 1 ? ["NETWORK"] : [])].flatMap((s) => TIPI.map((t, i) => { const r = tutti.filter((x) => (s === "NETWORK" || x.station === s) && x.tipo === t); return <tr key={s + t} className={s === "NETWORK" ? "font-semibold" : ""}><td className={td}>{i === 0 ? (s === "NETWORK" ? "Totale" : s) : ""}</td><td className={td + " text-xs text-slate-600"}>{NOME_ADDEBITO[t]}</td>{mesiA.map((m) => { const v = somma(r.filter((x) => x.mese === m)); return <td key={m} className={tdn}>{v ? eur(v) : "—"}</td>; })}<td className={tdn + " font-semibold"}>{somma(r) ? eur(somma(r)) : "—"}</td></tr>; }))}</tbody>
+              </Tab>
+            </Riquadro>
+            <Riquadro titolo="Persone, dalla più addebitata" sotto="Clicca una persona per vedere ogni addebito, mese per mese.">
+              <div className="flex flex-wrap gap-2 text-sm"><button className={meseMulte === "ANNO" ? "btn-primary" : "btn-secondary"} onClick={() => setMeseMulte("ANNO")}>Da inizio anno</button><select className="input w-auto" value={meseMulte === "ANNO" ? "" : meseMulte} onChange={(e) => setMeseMulte(e.target.value || "ANNO")} aria-label="Mese"><option value="">Un mese…</option>{mesiA.map((m) => <option key={m} value={m}>{mb(m)} {m.slice(0, 4)}</option>)}</select></div>
+              <Tab>
+                <thead><tr><th className={th}>Persona</th><th className={th}>Station</th><th className={thn}>Multe stradali</th><th className={thn}>Danni</th><th className={thn}>Disciplinari</th><th className={thn}>Totale</th><th className={thn}>Addebiti</th><th className={th}>Mesi</th></tr></thead>
+                <tbody>{persone.map((p) => { const k = p.gruppo + p.station + p.codice, ap = persAperta === k; return (
+                  <Fragment key={k}>
+                    <tr className="cursor-pointer hover:bg-slate-50" onClick={() => setPersAperta(ap ? null : k)}><td className={td}>{ap ? "▾ " : "▸ "}{p.nome}</td><td className={td}>{p.station}</td><td className={tdn}>{p.MULTA ? eur(p.MULTA) : "—"}</td><td className={tdn}>{p.DANNO ? eur(p.DANNO) : "—"}</td><td className={tdn}>{p.DISCIPLINARE ? eur(p.DISCIPLINARE) : "—"}</td><td className={tdn + " font-semibold"}>{eur(p.totale)}</td><td className={tdn}>{p.volte}</td><td className={td}>{p.mesi.map(mb).join(", ")}</td></tr>
+                    {ap && p.righe.map((x, i) => <tr key={i} className="text-xs text-slate-600"><td className={td + " pl-6"}>{mb(x.mese)} {x.mese.slice(0, 4)}</td><td className={td} colSpan={4}>{NOME_ADDEBITO[x.tipo]} · {x.voce}</td><td className={tdn}>{eur(x.importo)}</td><td className={td} colSpan={2}></td></tr>)}
+                  </Fragment>); })}</tbody>
+              </Tab>
+              {!persone.length && <p className="text-sm text-slate-500">Nessun addebito nel periodo.</p>}
             </Riquadro>
           </>
         );
