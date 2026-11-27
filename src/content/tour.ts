@@ -58,7 +58,7 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   telematica: () => ({
     titolo: "Telematica: i furgoni in strada",
-    testo: ["La mappa dice dove sono adesso i furgoni. La Giornata di consegna e il mese per targa raccontano km, soste e rientri.", "Carburante: Q8 e telematica confronta ogni pagamento con il gasolio entrato davvero nel serbatoio."],
+    testo: ["Una sezione a sé, con le sue schede in cima. La mappa dice dove sono adesso i furgoni. La Giornata di consegna e il mese per targa raccontano km, soste e rientri.", "Carburante: Q8 e telematica confronta ogni pagamento con il gasolio entrato davvero nel serbatoio."],
     quando: "Ogni giorno, quando vuoi sapere come è andata la consegna.",
   }),
   strumenti: (v) => ({

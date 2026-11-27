@@ -97,3 +97,19 @@ describe("ricerca delle pagine", () => {
     for (const i of PAGINE_INTERNE) { expect(voci).toContain(i.voce); expect(voci).not.toContain(i.href); }
   });
 });
+
+import { comeVoceMenu } from "@/components/navModel";
+describe("telematica come sezione a schede", () => {
+  it("nel menu è una voce sola che apre la prima pagina visibile", () => {
+    const t = menuPer("ADMIN").find((g) => g.id === "telematica")!;
+    const v = comeVoceMenu(t);
+    expect(v.items).toHaveLength(1);
+    expect(v.items[0]).toMatchObject({ href: "/telematica/mappa", label: "Telematica" });
+    const senzaMappa = comeVoceMenu(menuPer("ADMIN", ["/telematica/mappa"]).find((g) => g.id === "telematica")!);
+    expect(senzaMappa.items[0].href).toBe("/telematica/giornata");
+  });
+  it("gli altri gruppi restano tendine", () => {
+    const f = menuPer("ADMIN").find((g) => g.id === "flotta")!;
+    expect(comeVoceMenu(f)).toBe(f);
+  });
+});

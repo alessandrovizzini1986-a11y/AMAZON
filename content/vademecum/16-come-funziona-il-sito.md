@@ -16,14 +16,14 @@ Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e u
 | **Home** | [Da fare](/home): le scadenze della settimana e del mese · [Conto economico](/conto-economico): ricavi, costi e margine per cliente |
 | **Flotta** | Situazione per stazione · Mezzi · Furgoni in arrivo · Officine · Listini noleggiatori · Aggiorna da Lista Targhe |
 | **Personale** | Presenze · Costi del personale · Costi GLS · Assenze e infortuni · Buste paga (le ultime due solo per il super admin) |
-| **Telematica** (solo admin) | Mappa dei furgoni · Giornata di consegna · Furgoni: il mese · Carburante: Q8 e telematica · Collegamento Targa e FlottaWeb |
+| **Telematica** (solo admin) | Una voce sola: apre la sezione, con le schede Mappa · Giornata · Il mese · Carburante · Collegamento |
 | **Amazon** | Fatture · Fatturato · Rimborsi · Forecast (lo storico del forecast è una scheda dentro Forecast) |
 | **Spese mezzi** | Stato del mese · Telepass · Carburante Q8 · Fuel card e Telepass · File già elaborati |
 | **Strumenti** | Telefoni e SIM · Spedizioni GLS · [Archivio file](/archivio): i file trascinati su questo PC |
 | **Aiuto** | [Corsi](/corsi): lezioni ed esercizi · Vademecum · [Glossario](/vademecum/18-glossario) · Tour del sito · Training |
 | **Gestione** (solo admin) | Utenti · Uso del sito · Registro attività · Configurazione · Portali fornitori · Import iniziale |
 
-Le sezioni con più pagine (Presenze, Costi del personale, Fatture, Spese mezzi) hanno in cima una **barra di schede** con tutte le loro pagine: dal menu entri nella sezione, dalla barra passi da un passo all'altro.
+Le sezioni con più pagine (Presenze, Costi del personale, Fatture, Spese mezzi, Telematica) hanno in cima una **barra di schede** con tutte le loro pagine: dal menu entri nella sezione, dalla barra passi da un passo all'altro.
 
 **Cerca una pagina.** Da computer premi **Ctrl+K** (⌘K sul Mac) o la lente in alto a destra; da telefono scrivi nella casella in cima al **Menu**. Bastano poche lettere, senza accenti: "telepass", "meta mese", "verifica tracking". Trova anche le schede che non sono nel menu (Stima di metà mese, Registro fatture, Storico forecast). Frecce per scegliere, Invio per aprire. Trovi solo le pagine che puoi aprire.
 
