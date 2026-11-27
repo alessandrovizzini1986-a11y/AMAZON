@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { attivoNelMese, giorniA, scadenzaInterna, scadenzaPortale } from "@/domain/compliance/scadenze";
 import { chiusa, mia, puoSpuntare, puoTogliereSpunta, scaduta, soloCompliance } from "@/domain/compliance/stato";
 import { ARRETRATI, FAC_SIMILE, STATO_INIZIALE, TEMPLATE } from "@/domain/compliance/seed";
-import { daIndirizzo, differenze, perIndirizzo } from "@/domain/compliance/importa";
+import { daIndirizzo, differenze, mancanti, perIndirizzo } from "@/domain/compliance/importa";
 import { mailRichiesta, mailto } from "@/domain/compliance/mail";
 import { can } from "@/lib/rbac";
 
@@ -118,6 +118,26 @@ describe("arrivo dal segnalibro del portale", () => {
     const r = differenze([{ entita: "PS", area: "Giuslavoro", anno: 2026, mese: 11, folder: "Varie", stato_portale: "OPEN_NOWORKFLOW_HASFILES" }], reg);
     expect(r.nonTrovati).toEqual([]);
     expect(r.diff[0].statoDopo).toBe("CARICATO");
+  });
+});
+
+describe("righe che nel registro mancano", () => {
+  const tpl = [
+    { id: "t1", entita: "PS", area: "Giuslavoro", folder: "Visura camerale", regolaScadenza: "fine_M+1", usato: true },
+    { id: "t2", entita: "PS", area: "Giuslavoro", folder: "Dilazioni", regolaScadenza: "manuale", usato: false },
+    { id: "t3", entita: "PS", area: "Giuslavoro", folder: "Varie – WHC", regolaScadenza: "fine_M+1", usato: true },
+  ];
+  const p = (folder: string, stato_portale: "OPEN" | "VALIDATED" | "OPEN_NOWORKFLOW_HASFILES") => ({ entita: "PS", area: "Giuslavoro", anno: 2026, mese: 9, folder, stato_portale });
+  it("crea solo i folder che usiamo: le Dilazioni restano fuori", () => {
+    const r = mancanti([p("Visura camerale", "VALIDATED"), p("Dilazioni", "OPEN"), p("Varie", "OPEN_NOWORKFLOW_HASFILES"), p("Mai visto", "OPEN")], [], tpl);
+    expect(r.daCreare.map((c) => [c.templateId, c.stato])).toEqual([["t1", "VALIDATO"], ["t3", "CARICATO"]]);
+    expect(r.daCreare[0].scadenzaPortale).toBe("2026-10-31");
+    expect(r.ignorati).toHaveLength(1);
+    expect(r.sconosciuti).toHaveLength(1);
+  });
+  it("chi ha già la riga non viene creato di nuovo", () => {
+    const reg = [{ id: "x", entita: "PS", area: "Giuslavoro", anno: 2026, mese: 9, folder: "Visura camerale", stato: "DA_RICHIEDERE" as const, scadenzaPortale: null }];
+    expect(mancanti([p("Visura camerale", "OPEN")], reg, tpl).daCreare).toEqual([]);
   });
 });
 
