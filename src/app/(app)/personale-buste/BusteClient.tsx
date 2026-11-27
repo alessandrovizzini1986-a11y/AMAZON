@@ -8,7 +8,7 @@ type FerieStation = { mese: string; station: string; gruppo: Gruppo; unita: "GG"
 export type DatiBuste = {
   totali: TotaleMese[]; voci: VoceMese[]; oreStation: OreStation[];
   oreStr: Pick<OrePersona, "mese" | "station" | "gruppo" | "codice" | "nome" | "oreLav" | "oreStr">[];
-  ferieStation: FerieStation[]; addebiti: Addebito[]; ferieUltime: RateiPersona[]; rotte: { mese: string; station: string; gruppo: Gruppo; rotte: number }[];
+  ferieStation: FerieStation[]; addebiti: Addebito[]; ferieUltime: RateiPersona[]; stime: Record<string, { mese: string; ferie: number | null; rol: number | null; exfest: number | null }>; rotte: { mese: string; station: string; gruppo: Gruppo; rotte: number }[];
 };
 type Scheda = "COSTO" | "VOCI" | "ORE" | "FERIE" | "MULTE";
 type Misura = "STIMATO" | "LORDO" | "TESTA" | "ROTTA" | "TESTE";
@@ -174,6 +174,7 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
         const fs = dati.ferieStation.filter(nelFiltro);
         const mesiF = [...new Set(fs.map((x) => x.mese))].sort();
         const oltre = ult.filter((x) => (x.ferieSaldo ?? 0) > SOGLIA_FERIE[u]);
+        const conStime = ult.some((x) => dati.stime[`${x.station}|${x.gruppo}|${x.codice}`]);
         const ordinati = [...ult].sort((a, b) => (b.ferieSaldo ?? 0) - (a.ferieSaldo ?? 0));
         const tot = (k: "ferieSaldo" | "rolSaldo" | "exfestSaldo") => ult.reduce((a, x) => a + Math.max(0, x[k] ?? 0), 0);
         return (
@@ -190,10 +191,10 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
                 <tbody>{stations.filter((s) => station === "TUTTE" || s === station).map((s) => { const r = fs.filter((x) => x.station === s); const l = r.find((x) => x.mese === meseF); return <tr key={s}><td className={td}>{s}</td>{mesiF.map((m) => { const x = r.find((y) => y.mese === m); return <td key={m} className={tdn}>{x ? n0(x.ferie) : "—"}</td>; })}<td className={tdn}>{l?.persone ?? "—"}</td><td className={tdn}>{l ? `${n1(l.ferie / l.persone)} ${unita(u)}` : "—"}</td><td className={tdn}>{l?.oltre ?? "—"}</td><td className={tdn}>{l?.negativi ?? "—"}</td></tr>; })}</tbody>
               </Tab>
             </Riquadro>
-            <Riquadro titolo="Persone, dalla più carica di ferie" sotto={`Ultima busta disponibile (${meseF ? `${mb(meseF)} ${meseF.slice(0, 4)}` : "—"}). Chi è uscito prima non compare.`}>
+            <Riquadro titolo="Persone, dalla più carica di ferie" sotto={`Ultima busta disponibile (${meseF ? `${mb(meseF)} ${meseF.slice(0, 4)}` : "—"}). Chi è uscito prima non compare.${conStime ? " La colonna azzurra è la stima a fine mese: saldo della busta meno ferie e permessi che la station ha scritto nel tracking dello stesso mese. Quando arriva la busta dopo, vale la busta." : ""}`}>
               <Tab>
-                <thead><tr><th className={th}>Persona</th><th className={th}>Station</th><th className={th}>Qualifica</th><th className={thn}>Ferie residue</th><th className={thn}>Maturate nell&apos;anno</th><th className={thn}>Godute nell&apos;anno</th><th className={thn}>ROL (h)</th><th className={thn}>Ex fest. (h)</th></tr></thead>
-                <tbody>{(tuttiFerie ? ordinati : ordinati.slice(0, 40)).map((x) => <tr key={x.station + x.codice} className={(x.ferieSaldo ?? 0) > SOGLIA_FERIE[x.ferieUnita] ? "bg-amber-50" : ""}><td className={td}>{x.nome}</td><td className={td}>{x.station}</td><td className={td}>{x.qualifica}</td><td className={tdn + " font-semibold"}>{x.ferieSaldo !== null ? `${n1(x.ferieSaldo)} ${unita(x.ferieUnita)}` : "—"}{(x.ferieSaldo ?? 0) > SOGLIA_FERIE[x.ferieUnita] && <span className="ml-1 text-xs text-amber-700">▲ alta</span>}</td><td className={tdn}>{x.ferieMatur !== null ? n1(x.ferieMatur) : "—"}</td><td className={tdn}>{x.ferieGoduto !== null ? n1(x.ferieGoduto) : "—"}</td><td className={tdn}>{x.rolSaldo !== null ? n1(x.rolSaldo) : "—"}</td><td className={tdn}>{x.exfestSaldo !== null ? n1(x.exfestSaldo) : "—"}</td></tr>)}</tbody>
+                <thead><tr><th className={th}>Persona</th><th className={th}>Station</th><th className={th}>Qualifica</th><th className={thn}>Ferie residue</th><th className={thn}>Maturate nell&apos;anno</th><th className={thn}>Godute nell&apos;anno</th><th className={thn}>ROL (h)</th><th className={thn}>Ex fest. (h)</th>{conStime && <th className={thn + " bg-sky-50"}>Stima a fine {meseF ? mb(meseF) : ""}<br /><span className="font-normal">ferie · ROL · ex fest.</span></th>}</tr></thead>
+                <tbody>{(tuttiFerie ? ordinati : ordinati.slice(0, 40)).map((x) => <tr key={x.station + x.codice} className={(x.ferieSaldo ?? 0) > SOGLIA_FERIE[x.ferieUnita] ? "bg-amber-50" : ""}><td className={td}>{x.nome}</td><td className={td}>{x.station}</td><td className={td}>{x.qualifica}</td><td className={tdn + " font-semibold"}>{x.ferieSaldo !== null ? `${n1(x.ferieSaldo)} ${unita(x.ferieUnita)}` : "—"}{(x.ferieSaldo ?? 0) > SOGLIA_FERIE[x.ferieUnita] && <span className="ml-1 text-xs text-amber-700">▲ alta</span>}</td><td className={tdn}>{x.ferieMatur !== null ? n1(x.ferieMatur) : "—"}</td><td className={tdn}>{x.ferieGoduto !== null ? n1(x.ferieGoduto) : "—"}</td><td className={tdn}>{x.rolSaldo !== null ? n1(x.rolSaldo) : "—"}</td><td className={tdn}>{x.exfestSaldo !== null ? n1(x.exfestSaldo) : "—"}</td>{conStime && (() => { const e = dati.stime[`${x.station}|${x.gruppo}|${x.codice}`]; const f = (v: number | null) => (v === null ? "—" : n1(v)); return <td className={tdn + " bg-sky-50"}>{e ? `${f(e.ferie)} ${unita(x.ferieUnita)} · ${f(e.rol)} · ${f(e.exfest)}` : <span className="text-slate-400">senza tracking</span>}</td>; })()}</tr>)}</tbody>
               </Tab>
               {ordinati.length > 40 && <button className="btn-secondary self-start text-sm" onClick={() => setTuttiFerie(!tuttiFerie)}>{tuttiFerie ? "Mostra le prime 40" : `Mostra tutte (${ordinati.length})`}</button>}
             </Riquadro>
