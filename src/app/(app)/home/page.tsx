@@ -7,6 +7,7 @@ import { NavIcon } from "@/components/icons";
 import { bloccato, menuPer } from "@/components/navModel";
 import { percorsiCosti, percorsoFattureSettimana, percorsoPresenzeOra, percorsoTelepassOra } from "@/lib/percorsi";
 import { daFare, type Percorso } from "@/domain/percorsi/percorso";
+import { incrociOrganico } from "@/lib/personale/organico";
 import { allerteTariffe, etaMesi, versioniCDL, versioniMog } from "../costi/dati";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,13 @@ export default async function HomePage() {
     if (!cdl[0]) avvisi.push({ testo: "Nessuna anagrafica CDL caricata: la stima SIC non si può fare", href: "/costi/parametri#anagrafica", grave: true });
     else if (etaMesi(cdl[0].mese) > 3) avvisi.push({ testo: <>L&apos;anagrafica CDL più recente è del {it(cdl[0].mese)}: ha più di 3 mesi, chiedi a HR quella aggiornata</>, href: "/costi/parametri#anagrafica" });
     if (mog[0] && (Date.now() - Date.parse(mog[0].versione)) / 864e5 > 40) avvisi.push({ testo: <>Il file MOG di Adecco è del {it(mog[0].versione)}: ha più di 40 giorni, chiedi a Erika quello aggiornato</>, href: "/costi/parametri#mog" });
+  }
+  // incroci dell'organico HR con telefoni, SIM e anagrafica costi: nomi solo nella pagina Buste paga (super admin)
+  if (user.superAdmin) {
+    const inc = await incrociOrganico();
+    if (inc?.daRitirare.length) avvisi.push({ testo: <><b>{inc.daRitirare.length} {inc.daRitirare.length === 1 ? "persona uscita ha" : "persone uscite hanno"}</b> ancora telefono o SIM a loro nome: da ritirare</>, href: "/personale-buste#incroci", grave: true });
+    if (inc?.inScadenza.length) avvisi.push({ testo: <><b>{inc.inScadenza.length} {inc.inScadenza.length === 1 ? "contratto a termine scade" : "contratti a termine scadono"}</b> entro 60 giorni (il primo tra {inc.inScadenza[0].giorni} giorni)</>, href: "/personale-buste#incroci" });
+    if (inc && inc.mancanoInCdl.length + inc.cdlDaTogliere.length > 0) avvisi.push({ testo: <>L&apos;anagrafica dei costi non combacia con l&apos;organico HR: {inc.mancanoInCdl.length} in forza senza costo, {inc.cdlDaTogliere.length} con costo ma non più in forza</>, href: "/personale-buste#incroci" });
   }
   const avvisiVisti = avvisi.filter((a) => !nascosta(a.href));
   const gruppi = menuPer(user.role, user.nascosti).map((g) => (g.id === "home" ? { ...g, label: "Numeri", items: g.items.filter((v) => v.href !== "/home") } : g)).filter((g) => g.items.length > 0);
