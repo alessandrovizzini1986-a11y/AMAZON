@@ -1643,3 +1643,18 @@ model ComplianceFacSimile {
   dati         Bytes
   aggiornatoIl DateTime @default(now())
 }
+
+/// Segnalibri da mettere nella barra dei preferiti del browser (bookmarklet) per i portali esterni.
+/// Il codice e la pagina originale stanno qui, non nel repo.
+model Segnalibro {
+  id           String   @id @default(cuid())
+  titolo       String
+  descrizione  String   @default("")
+  istruzioni   String   @default("")
+  pulsanti     Json // [{ nome, codice }] — codice comincia con "javascript:"
+  nomeFile     String   @default("")
+  pagina       Bytes? // la pagina HTML originale, solo da scaricare
+  ordine       Int      @default(0)
+  aggiornatoIl DateTime @default(now())
+  aggiornatoDa String   @default("")
+}
