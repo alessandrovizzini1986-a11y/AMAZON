@@ -13,7 +13,9 @@ import type { Station } from "@/domain/presenze/regole";
 import { caricaDatiMese } from "@/lib/presenze/carica";
 import { excelFineMese } from "@/lib/presenze/excelFineMese";
 import { scarica } from "@/lib/presenze/excelUtil";
-import { salvaEsecuzione } from "../actions";
+import { salvaEsecuzione, salvaOreTracking } from "../actions";
+import { leggiLavoratori } from "@/domain/presenze/lavoratori";
+import { oreDalTracking } from "@/domain/personale/confronto";
 import { CopiaMessaggio } from "../CopiaMessaggio";
 import type { RunSalvata } from "../settimanale/SettimanaleClient";
 import { Aiuto } from "@/components/Aiuto";
@@ -40,6 +42,7 @@ export function FineMeseClient({ referenti, runs, canRun, mog }: { referenti: Re
   const [stMatrice, setStMatrice] = useState<Station | "">("");
   const [mogIn, setMogIn] = useState<{ mese: string; finoA: string; tracking: TrackingInput[] } | null>(null);
   const [salvata, setSalvata] = useState<string | null>(null);
+  const [oreSalvate, setOreSalvate] = useState<number | null>(null);
   useAvvisoUscita(!!esito && !salvata);
 
   const esegui = async () => {
@@ -57,6 +60,12 @@ export function FineMeseClient({ referenti, runs, canRun, mog }: { referenti: Re
       await new Promise((r) => setTimeout(r, 0));
       const e = controlloFineMese({ trackingSic: sic, trackingStd: map("STD"), zucchetti: zuc, anno: Number(mese.slice(0, 4)), mese: Number(mese.slice(5, 7)) });
       err.push(...e.mancanti);
+      // ore del mese per persona: servono a Buste paga (stima di ferie e permessi, confronto tracking–busta). Al sito vanno solo i totali
+      if (canRun) {
+        const [anno, m] = [Number(mese.slice(0, 4)), Number(mese.slice(5, 7))];
+        const ore = dati.tracking.flatMap((t) => { try { return oreDalTracking(leggiLavoratori(t.sheets, anno, m).lavoratori, mese, t.station, t.tipo); } catch { return []; } });
+        try { const { ok } = await salvaOreTracking(ore.map((o) => ({ ...o, gruppo: o.gruppo as "SIC" | "STD" }))); setOreSalvate(ok); } catch { setOreSalvate(null); err.push("Non sono riuscito a salvare le ore del mese per Buste paga: riprova il controllo."); }
+      }
       setEsito(e); setErrori(err); setStato("");
       setStMatrice(e.riepilogo[0]?.station ?? "");
     } catch (e) {
@@ -108,6 +117,7 @@ export function FineMeseClient({ referenti, runs, canRun, mog }: { referenti: Re
         </ul>
       )}
 
+      {esito && oreSalvate !== null && oreSalvate > 0 && <p className="mb-3 rounded-control bg-ok-soft px-3 py-2 text-sm text-ok">✓ Ore del mese di {oreSalvate} persone salvate per Buste paga: stima di ferie e permessi a fine mese e confronto tra tracking e buste.</p>}
       {esito && (
         <>
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">

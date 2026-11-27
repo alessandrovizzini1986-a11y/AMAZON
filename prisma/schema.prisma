@@ -1505,3 +1505,51 @@ model OrganicoPersona {
   @@id([versione, cf])
   @@index([versione, station])
 }
+
+// Ore del mese per persona come le ha scritte la station nel tracking (salvate dal "Fine mese" di Presenze).
+// Servono a stimare ferie e permessi goduti prima che arrivi la busta e a confrontare tracking e busta. Solo super admin.
+model TrackingPersonaMese {
+  mese          String // AAAA-MM di lavoro
+  station       String
+  gruppo        String // SIC | STD
+  chiave        String // codice fiscale, se manca matricola o nome
+  cf            String   @default("")
+  matricola     String   @default("")
+  nome          String   @default("")
+  contratto     String   @default("")
+  oreLavoro     Float    @default(0) // Standard + Accordo
+  oreStraord    Float    @default(0)
+  oreSuppl      Float    @default(0)
+  oreFerie      Float    @default(0)
+  ggFerie       Int      @default(0)
+  oreRol        Float    @default(0)
+  oreExf        Float    @default(0)
+  oreMalattia   Float    @default(0)
+  oreInfortunio Float    @default(0)
+  oreAltro      Float    @default(0) // 104, permessi sindacali e altri, non retribuiti, ingiustificate
+  salvatoIl     DateTime @default(now())
+
+  @@id([mese, station, gruppo, chiave])
+}
+
+// Le stesse ore come le ha messe in busta l'ufficio paghe: calendario del mese di lavoro e voci di straordinario.
+model BustaLavoroPersona {
+  meseLavoro    String // AAAA-MM
+  station       String
+  gruppo        String
+  cf            String
+  codice        String // matricola in busta
+  nome          String @default("")
+  meseBusta     String
+  oreOrdinarie  Float  @default(0) // comprende straordinari e supplementari (il calendario non li separa)
+  oreStraord    Float  @default(0) // dalle voci pagate
+  oreSuppl      Float  @default(0)
+  oreFerie      Float  @default(0)
+  ggFerie       Int    @default(0)
+  oreRol        Float  @default(0)
+  oreExf        Float  @default(0)
+  oreMalattia   Float  @default(0)
+  oreInfortunio Float  @default(0)
+
+  @@id([meseLavoro, station, gruppo, cf])
+}

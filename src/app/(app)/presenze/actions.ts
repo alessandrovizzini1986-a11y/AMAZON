@@ -137,3 +137,26 @@ export async function aggiornaRichieste(items: { chiave: string; stato: string; 
   revalidatePath("/presenze/verifica");
   return { ok };
 }
+
+const orePersona = z.object({
+  mese: z.string().regex(/^\d{4}-\d{2}$/), station: z.string().min(2).max(8), gruppo: z.enum(["SIC", "STD"]), chiave: z.string().min(1).max(80), cf: z.string().max(20), matricola: z.string().max(20), nome: z.string().max(120), contratto: z.string().max(60),
+  oreLavoro: z.number(), oreStraord: z.number(), oreSuppl: z.number(), oreFerie: z.number(), ggFerie: z.number().int(), oreRol: z.number(), oreExf: z.number(), oreMalattia: z.number(), oreInfortunio: z.number(), oreAltro: z.number(),
+});
+
+/**
+ * Salva le ore del mese per persona lette dai tracking (il file resta sul PC: al sito arrivano solo i totali per voce).
+ * Sostituisce le righe delle stesse station e gruppo: rifare il Fine mese con un tracking corretto aggiorna i dati.
+ */
+export async function salvaOreTracking(righe: z.infer<typeof orePersona>[]): Promise<{ ok: number }> {
+  const user = await requireUser();
+  assertCan(user, "presenze.run");
+  const r = z.array(orePersona).max(4000).parse(righe);
+  if (!r.length) return { ok: 0 };
+  const blocchi = [...new Map(r.map((x) => [`${x.mese}|${x.station}|${x.gruppo}`, { mese: x.mese, station: x.station, gruppo: x.gruppo }])).values()];
+  await db.$transaction([
+    ...blocchi.map((b) => db.trackingPersonaMese.deleteMany({ where: b })),
+    db.trackingPersonaMese.createMany({ data: r, skipDuplicates: true }),
+  ]);
+  await audit({ userId: user.id, action: "presenze.oreTracking", entity: "TrackingPersonaMese", entityId: r[0].mese, meta: { righe: r.length, blocchi: blocchi.length } });
+  return { ok: r.length };
+}
