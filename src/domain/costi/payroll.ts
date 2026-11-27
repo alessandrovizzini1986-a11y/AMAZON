@@ -28,7 +28,7 @@ export function classifica(cod1: string, cod2: string, descr: string): { compone
   if (/^straordinario a forfait/i.test(d)) return { componente: "STR_SUPP_MAGG", istituto: "STR_FORFAIT" };
   if (/^straordinario/i.test(d)) return { componente: "STR_SUPP_MAGG", istituto: "STR" };
   if (/^lav(\.|oro) suppl/i.test(d)) return { componente: "STR_SUPP_MAGG", istituto: "SUPP" };
-  if (/^maggiorazione 50/i.test(d)) return { componente: "STR_SUPP_MAGG", istituto: "MAGG" };
+  if (/^maggiorazione 50|^magg\. ?festiva 50/i.test(d)) return { componente: "STR_SUPP_MAGG", istituto: "MAGG" };
   if (l.includes("festivita' non goduta") || l.includes("festività non goduta")) return { componente: "FESTIVITA", istituto: "FESTIVITA" };
   if (/^carenza|^integr(\.|azione) ?(malattia|infortunio)|^integr\.malattia/i.test(d)) return { componente: "CARENZA_INTEGR", istituto: "CARENZA_INTEGR" };
   if (cod1 === "10") return { componente: "ASSENZE", istituto: /malattia|infortunio/i.test(d) ? "MALATTIA" : "ALTRE_ASSENZE" };

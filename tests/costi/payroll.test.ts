@@ -55,3 +55,11 @@ describe("riconciliazione e coefficienti", async () => {
   });
 });
 const r2 = (x: number) => Math.round(x * 100) / 100;
+
+import { classifica as cl } from "@/domain/costi/payroll";
+describe("maggiorazione festiva", () => {
+  it("\"Magg. Festiva 50%\" (payroll 10/2026) è maggiorazione, non una voce da classificare", () => {
+    expect(cl("5", "VOCI", "Magg. Festiva 50%")).toEqual({ componente: "STR_SUPP_MAGG", istituto: "MAGG" });
+    expect(cl("5", "VOCI", "Maggiorazione 50%")).toEqual({ componente: "STR_SUPP_MAGG", istituto: "MAGG" });
+  });
+});
