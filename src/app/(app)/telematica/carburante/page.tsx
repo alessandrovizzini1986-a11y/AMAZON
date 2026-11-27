@@ -23,7 +23,7 @@ export default async function CarburantePage({ searchParams }: { searchParams: P
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        eyebrow="Strumenti"
+        eyebrow="Telematica"
         title="Carburante: Q8 e telematica"
         subtitle="Ogni pagamento con le carte Q8 di DER2 e GLS confrontato con il gasolio che la telematica Targa ha visto entrare nei furgoni: ora, litri e luogo."
         action={<PulsantiIntestazione />}

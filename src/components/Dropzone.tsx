@@ -6,7 +6,7 @@ import { Aiuto, DoveFinisce } from "./Aiuto";
 import { AIUTO } from "@/content/aiuto";
 import { accetta, archivia, riprendi, tuttiMeta, type MetaArchiviato } from "@/lib/archivioFile";
 
-const quando = (iso: string) => new Date(iso).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+const quando = (iso: string) => new Date(iso).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", timeZone: "Europe/Rome" });
 const kb = (n: number) => (n > 1048576 ? `${(n / 1048576).toLocaleString("it-IT", { maximumFractionDigits: 1 })} MB` : `${Math.ceil(n / 1024)} KB`);
 
 /**

@@ -88,7 +88,7 @@ export function GruppoMenu({ gruppi, etichetta, tutti, allineaDestra = false }: 
         {etichetta} <span aria-hidden className="text-xs">▾</span>
       </button>
       {aperto && (
-        <div role="menu" className={`absolute top-full z-30 mt-1 w-72 rounded-control border border-line bg-surface-raised p-1.5 shadow-lg ${allineaDestra ? "right-0" : "left-0"}`}>
+        <div role="menu" className={`absolute top-full z-30 mt-1 max-h-[calc(100vh-88px)] w-72 overflow-y-auto overscroll-contain rounded-control border border-line bg-surface-raised p-1.5 shadow-lg ${allineaDestra ? "right-0" : "left-0"}`}>
           {gruppi.map((g) => (
             <div key={g.id} className="py-0.5">
               {gruppi.length > 1 && <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">{g.label}</div>}

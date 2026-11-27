@@ -12,7 +12,7 @@ export default async function TelematicaPage() {
   const pronto = (chiave: string) => portali.some((p) => p.portale.toLowerCase().replace(/\s+/g, "").includes(chiave) && !!p.username && !!p.passwordCifrata);
   return (
     <div className="flex max-w-4xl flex-col gap-5">
-      <PageHeader eyebrow="Strumenti" title="Telematica furgoni" subtitle="Collegamento a Targa Telematics e FlottaWeb con il tuo utente. Il sito legge soltanto: nessun comando ai mezzi (blocco motore, porte) può partire da qui." action={<a href="/telematica/mappa" className="btn-primary">Apri la mappa</a>} />
+      <PageHeader eyebrow="Telematica" title="Collegamento Targa e FlottaWeb" subtitle="Collegamento a Targa Telematics e FlottaWeb con il tuo utente. Il sito legge soltanto: nessun comando ai mezzi (blocco motore, porte) può partire da qui." action={<a href="/telematica/mappa" className="btn-primary">Apri la mappa</a>} />
       <TelematicaClient
         pronti={{ TARGA: pronto("targa"), FLOTTAWEB: pronto("flottaweb") }}
         prove={prove.map((p) => ({ fonte: p.fonte as "TARGA" | "FLOTTAWEB", chiamata: p.chiamata, cosa: p.cosa, ok: p.ok, stato: p.stato, elementi: p.elementi, errore: p.errore, eseguitaIl: p.eseguitaIl.toISOString() }))}

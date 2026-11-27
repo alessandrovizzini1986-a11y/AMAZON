@@ -53,14 +53,19 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   spese: (v) => ({
     titolo: "Spese mezzi: Telepass e carburante",
-    testo: ["Trascini il file Telepass e l'export Q8: il sito divide pedaggi e carburante per station e ti dà l'Excel pronto."],
+    testo: ["Trascini il file Telepass e l'export Q8: il sito divide pedaggi e carburante per station e ti dà l'Excel pronto.", "Fuel card e Telepass: station e targa di ogni carta e dispositivo, da aggiornare quando cambia qualcosa."],
     quando: "A inizio mese.",
+  }),
+  telematica: () => ({
+    titolo: "Telematica: i furgoni in strada",
+    testo: ["La mappa dice dove sono adesso i furgoni. La Giornata di consegna e il mese per targa raccontano km, soste e rientri.", "Carburante: Q8 e telematica confronta ogni pagamento con il gasolio entrato davvero nel serbatoio."],
+    quando: "Ogni giorno, quando vuoi sapere come è andata la consegna.",
   }),
   strumenti: (v) => ({
     titolo: "Strumenti: quello che usi al bisogno",
     testo: [
-      ...(v.has("/telefoni") ? ["Telefoni e SIM, Fuel card e Telepass: a chi sono assegnati e i PIN. I PIN sono sempre nascosti, li legge solo un Admin con Mostra."] : ["Fuel card e Telepass: station e targa di ogni carta e dispositivo."]),
-      ...(v.has("/spedizioni-gls") ? ["Spedizioni GLS: il portale con utente e sede pronti e il bollettino compilato a video, in PDF. Portali fornitori: gli accessi a noleggiatori e simili."] : []),
+      ...(v.has("/telefoni") ? ["Telefoni e SIM: a chi sono assegnati, e i PIN. I PIN sono sempre nascosti, li legge solo un Admin con Mostra."] : []),
+      ...(v.has("/spedizioni-gls") ? ["Spedizioni GLS: il portale con utente e sede pronti e il bollettino compilato a video, in PDF."] : []),
       "Archivio file: i file che hai trascinato nel sito, tenuti su questo PC.",
     ],
     quando: "Quando ti serve un dato o devi spedire, non a scadenza.",
@@ -72,7 +77,7 @@ const GRUPPO: Record<string, (v: Voci) => { titolo: string; testo: string[]; qua
   }),
   gestione: () => ({
     titolo: "Gestione: solo per Admin",
-    testo: ["Crei gli utenti e scegli il loro ruolo, cioè cosa vedono. Nel Registro attività c'è chi ha fatto cosa, e quando.", "Da Utenti cambi anche il ruolo di una persona e le dai una nuova password."],
+    testo: ["Crei gli utenti e scegli il loro ruolo e le voci di menu che vedono. Nel Registro attività c'è chi ha fatto cosa, e quando.", "Portali fornitori: gli accessi a noleggiatori, Telepass, Q8 e alla telematica."],
     quando: "Di rado: quando entra una persona nuova o cambia un'impostazione.",
   }),
 };

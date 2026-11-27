@@ -16,7 +16,7 @@ export default async function GiornataPage({ searchParams }: { searchParams: Pro
   const dati = await datiGiornata(station, giorno);
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader eyebrow="Strumenti" title="Giornata di consegna" subtitle="Cosa ha fatto ogni furgone in un giorno: partenza, rientro, km, soste, e le cose da guardare. Di fianco, le rotte Amazon dello stesso giorno." action={<a href="/telematica/mese" className="btn-secondary">Il mese</a>} />
+      <PageHeader eyebrow="Telematica" title="Giornata di consegna" subtitle="Cosa ha fatto ogni furgone in un giorno: partenza, rientro, km, soste, e le cose da guardare. Di fianco, le rotte Amazon dello stesso giorno." action={<a href="/telematica/mese" className="btn-secondary">Il mese</a>} />
       <GiornataClient dati={dati} stations={stations} oggi={oggi} evidenzia={q.targa?.trim().slice(0, 12) || null} />
     </div>
   );
