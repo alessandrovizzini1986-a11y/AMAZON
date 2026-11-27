@@ -42,11 +42,11 @@ export const GRUPPI: Gruppo[] = [
   {
     // i furgoni visti dalla telematica (Targa, FlottaWeb): solo Admin
     id: "telematica", label: "Telematica", icon: "map", voci: [
-      { href: "/telematica/mappa", label: "Mappa dei furgoni", icon: "map", perm: "users.manage", descr: "dove sono adesso i mezzi" },
-      { href: "/telematica/giornata", label: "Giornata di consegna", icon: "map", perm: "users.manage", descr: "cosa ha fatto ogni furgone in un giorno" },
-      { href: "/telematica/mese", label: "Furgoni: il mese", icon: "map", perm: "users.manage", descr: "km, ore, soste e rifornimenti per targa" },
-      { href: "/telematica/carburante", label: "Carburante: Q8 e telematica", icon: "fuel", perm: "users.manage", descr: "pagamenti Q8 contro rifornimenti visti dai furgoni" },
-      { href: "/telematica", label: "Collegamento Targa e FlottaWeb", icon: "settings", perm: "users.manage", descr: "prova l'accesso ai due portali" },
+      { href: "/telematica/mappa", label: "Mappa dei furgoni", short: "Mappa", icon: "map", perm: "users.manage", descr: "dove sono adesso i mezzi" },
+      { href: "/telematica/giornata", label: "Giornata di consegna", short: "Giornata", icon: "map", perm: "users.manage", descr: "cosa ha fatto ogni furgone in un giorno" },
+      { href: "/telematica/mese", label: "Furgoni: il mese", short: "Il mese", icon: "map", perm: "users.manage", descr: "km, ore, soste e rifornimenti per targa" },
+      { href: "/telematica/carburante", label: "Carburante: Q8 e telematica", short: "Carburante", icon: "fuel", perm: "users.manage", descr: "pagamenti Q8 contro rifornimenti visti dai furgoni" },
+      { href: "/telematica", label: "Collegamento Targa e FlottaWeb", short: "Collegamento", icon: "settings", perm: "users.manage", descr: "prova l'accesso ai due portali" },
     ],
   },
   {
@@ -96,6 +96,18 @@ export const GRUPPI: Gruppo[] = [
     ],
   },
 ];
+
+/**
+ * Gruppi che sono una sezione a sé: nel menu una sola voce (apre la prima pagina che l'utente vede),
+ * dentro le pagine una barra di schede. Le voci restano nel modello: permessi, voci nascoste, statistica e ricerca.
+ */
+export const GRUPPI_SEZIONE = ["telematica"];
+
+/** Come il gruppo si mostra nel menu: una sezione diventa una voce sola, con le schede elencate nella descrizione. */
+export const comeVoceMenu = (g: NavGroup): NavGroup =>
+  GRUPPI_SEZIONE.includes(g.id) && g.items.length > 1
+    ? { ...g, items: [{ ...g.items[0], label: g.label, icon: g.icon, descr: g.items.map((v) => v.short ?? v.label).join(", ").toLowerCase() }] }
+    : g;
 
 /** Gruppi che nella barra in alto stanno a destra, separati dai gruppi di lavoro. */
 export const GRUPPI_DESTRA = ["aiuto", "gestione"];

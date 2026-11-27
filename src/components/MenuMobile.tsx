@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
 import { NavIcon } from "./icons";
 import { RicercaPagine } from "./CercaPagine";
-import { gruppoAttivo, voceAttiva, type NavGroup, type Pagina } from "./navModel";
+import { comeVoceMenu, gruppoAttivo, voceAttiva, type NavGroup, type Pagina } from "./navModel";
 
 /**
  * Voce "Menu" della barra in basso (telefono): apre un pannello dal basso con tutte le voci divise per gruppo,
@@ -35,12 +35,13 @@ export function MenuMobile({ gruppi, attivo, utente, pagine }: { gruppi: NavGrou
           {/* la casella riparte vuota a ogni apertura; mentre si cerca il menu lascia il posto ai risultati */}
           <div className="mb-3"><RicercaPagine key={giro} pagine={pagine} onScrivi={setCerca} onVai={() => ref.current?.close()} /></div>
           <nav aria-label="Tutte le sezioni" className={`flex flex-col gap-3 ${cerca.trim() ? "hidden" : ""}`}>
-            {gruppi.map((g) => (
+            {gruppi.map((pieno) => ({ g: comeVoceMenu(pieno), pieno })).map(({ g, pieno }) => (
               <div key={g.id}>
                 <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">{g.label}</div>
                 <div className="grid grid-cols-2 gap-2">
                   {g.items.map((v) => {
-                    const on = corrente?.href === v.href;
+                    // una sezione a schede è una voce sola: è accesa su qualunque sua pagina
+                    const on = g.items.length < pieno.items.length ? pieno.items.some((x) => x.href === corrente?.href) : corrente?.href === v.href;
                     return (
                       <Link key={v.href} href={v.href} aria-current={on ? "page" : undefined}
                         className={`flex min-h-[48px] items-center gap-2.5 rounded-control border px-3 text-[15px] font-medium ${on ? "border-brand bg-brand-light text-brand" : "border-line text-ink"}`}>

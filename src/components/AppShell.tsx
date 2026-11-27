@@ -3,7 +3,7 @@ import type { SessionUser } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
 import { BottomGruppoLink } from "./NavLink";
 import { NavIcon } from "./icons";
-import { GRUPPI_DESTRA, menuPer, pagineCercabili, vociBarra } from "./navModel";
+import { GRUPPI_DESTRA, comeVoceMenu, menuPer, pagineCercabili, vociBarra } from "./navModel";
 import { CercaPagine } from "./CercaPagine";
 import { MenuMobile, GruppoMenu } from "./MenuMobile";
 import { MenuAttivoBarra } from "./MenuAttivo";
@@ -49,12 +49,12 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           </Link>
 
           <nav data-tour="menu" className="hidden flex-1 items-center gap-1 xl:flex" aria-label="Menu principale">
-            {operativi.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} />)}
+            {operativi.map((g) => <GruppoMenu key={g.id} gruppi={[comeVoceMenu(g)]} etichetta={g.label} tutti={gruppi} />)}
             {destra.length > 0 && <><span aria-hidden className="mx-2 h-6 w-px bg-line" />{destra.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} allineaDestra />)}</>}
           </nav>
           <nav data-tour="menu" className="hidden flex-1 items-center gap-1 md:flex xl:hidden" aria-label="Menu principale">
-            {tabletVista.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} />)}
-            {tabletAltro.length > 0 && <GruppoMenu gruppi={tabletAltro} etichetta="Altro" tutti={gruppi} allineaDestra />}
+            {tabletVista.map((g) => <GruppoMenu key={g.id} gruppi={[comeVoceMenu(g)]} etichetta={g.label} tutti={gruppi} />)}
+            {tabletAltro.length > 0 && <GruppoMenu gruppi={tabletAltro.map(comeVoceMenu)} etichetta="Altro" tutti={gruppi} allineaDestra />}
           </nav>
 
           <div data-tour="account" className="ml-auto flex items-center gap-2 md:ml-0">
