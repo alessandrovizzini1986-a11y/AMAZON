@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { attivoNelMese, giorniA, scadenzaInterna, scadenzaPortale } from "@/domain/compliance/scadenze";
 import { chiusa, mia, puoSpuntare, puoTogliereSpunta, scaduta, soloCompliance } from "@/domain/compliance/stato";
 import { ARRETRATI, FAC_SIMILE, STATO_INIZIALE, TEMPLATE } from "@/domain/compliance/seed";
-import { differenze } from "@/domain/compliance/importa";
+import { daIndirizzo, differenze, perIndirizzo } from "@/domain/compliance/importa";
 import { mailRichiesta, mailto } from "@/domain/compliance/mail";
 import { can } from "@/lib/rbac";
 
@@ -100,6 +100,24 @@ describe("import dal portale", () => {
     const [x] = differenze([p({ mese: 9, folder: "LUL_Riepilogo LUL", file: [{ nome: "x.pdf", nota: "FileNonConforme" }], scadenza_portale: "2026-12-04" })], reg).diff;
     expect(x).toMatchObject({ statoDopo: "RESPINTO", motivo: "FileNonConforme", scadenzaDopo: "2026-12-04", scadenzaInterna: "2026-11-27" });
     expect(differenze([p({})], reg).diff).toEqual([]);
+  });
+});
+
+describe("arrivo dal segnalibro del portale", () => {
+  it("i dati viaggiano nell'indirizzo dopo il cancelletto, accenti compresi", () => {
+    const j = JSON.stringify({ letto_il: "2026-11-27T16:10:00", righe: [{ folder: "Varie – WHC", nota: "è già lì" }] });
+    const h = perIndirizzo(j);
+    expect(h).toMatch(/^#import=[A-Za-z0-9_-]+$/);
+    expect(daIndirizzo(h)).toBe(j);
+    expect(daIndirizzo("#altro")).toBeNull();
+    expect(daIndirizzo("")).toBeNull();
+    expect(daIndirizzo("#import=%%%")).toBeNull();
+  });
+  it("il folder \"Varie\" del portale è la riga \"Varie – WHC\" del registro", () => {
+    const reg = [{ id: "w", entita: "PS", area: "Giuslavoro", anno: 2026, mese: 11, folder: "Varie – WHC", stato: "DA_RICHIEDERE" as const, scadenzaPortale: null }];
+    const r = differenze([{ entita: "PS", area: "Giuslavoro", anno: 2026, mese: 11, folder: "Varie", stato_portale: "OPEN_NOWORKFLOW_HASFILES" }], reg);
+    expect(r.nonTrovati).toEqual([]);
+    expect(r.diff[0].statoDopo).toBe("CARICATO");
   });
 });
 
