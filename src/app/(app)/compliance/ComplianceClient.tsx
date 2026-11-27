@@ -9,10 +9,11 @@ import { chiusa, COLORE_STATO, mia, NOME_STATO, puoSpuntare, puoTogliereSpunta, 
 import { FAC_SIMILE } from "@/domain/compliance/seed";
 import { mailRichiesta, mailSollecito, mailto, nomeEntita } from "@/domain/compliance/mail";
 import { daIndirizzo, type DaCreare, type Differenza } from "@/domain/compliance/importa";
+import { SmistaFile } from "./SmistaFile";
 import { anteprimaImport, applicaImport, cambiaStato, generaMeseAzione, salvaTemplate, segnaRichiesti, spunta, togliSpunta } from "./actions";
 
 type Tpl = { id: string; entita: string; area: string; folder: string; documento: string; formato: string; nomeFileStandard: string; regolaScadenza: string; mesiAttivi: string; owner: string; ownerEmail: string; usato: boolean };
-type Vista = "OGGI" | "MESE" | "TRE" | "SCADENZE" | "FAC" | "MAIL" | "GESTIONE";
+type Vista = "OGGI" | "MESE" | "TRE" | "SCADENZE" | "SMISTA" | "FAC" | "MAIL" | "GESTIONE";
 type Props = { righe: RigaVista[]; oggi: string; admin: boolean; io: { id: string; nome: string; cognome: string }; template: Tpl[] };
 
 const ora = (iso: string) => new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
@@ -109,9 +110,9 @@ export function ComplianceClient({ righe, oggi, admin, io, template }: Props) {
         {([["Scaduti", conta.scaduti, "text-red-700"], ["Entro 7 giorni", conta.sette, "text-orange-700"], ["Respinti", conta.respinti, "text-red-900"]] as const).map(([t, n, c]) => <div key={t} className="card p-3"><div className="text-xs text-ink-muted">{t}</div><div className={`text-2xl font-semibold ${n ? c : "text-ink-faint"}`}>{n}</div></div>)}
       </div>
       <nav className="flex flex-wrap gap-2" aria-label="Viste del registro">
-        {([["OGGI", "Cosa fare oggi"], ["MESE", "Mese"], ["TRE", "3 mesi"], ["SCADENZE", "Scadenze"], ["FAC", "Fac-simile"], ...(admin ? [["MAIL", "Richieste e solleciti"], ["GESTIONE", "Gestione"]] : [])] as [Vista, string][]).map(([v, n]) => <button key={v} type="button" onClick={() => setVista(v)} aria-current={vista === v ? "page" : undefined} className={`h-10 rounded-full border px-4 text-sm font-semibold ${vista === v ? "border-brand bg-brand text-white" : "border-[#d5dbe3] bg-surface-raised text-ink"}`}>{n}</button>)}
+        {([["OGGI", "Cosa fare oggi"], ["MESE", "Mese"], ["TRE", "3 mesi"], ["SCADENZE", "Scadenze"], ["SMISTA", "Dove va questo file?"], ["FAC", "Fac-simile"], ...(admin ? [["MAIL", "Richieste e solleciti"], ["GESTIONE", "Gestione"]] : [])] as [Vista, string][]).map(([v, n]) => <button key={v} type="button" onClick={() => setVista(v)} aria-current={vista === v ? "page" : undefined} className={`h-10 rounded-full border px-4 text-sm font-semibold ${vista === v ? "border-brand bg-brand text-white" : "border-[#d5dbe3] bg-surface-raised text-ink"}`}>{n}</button>)}
       </nav>
-      {vista !== "FAC" && vista !== "GESTIONE" && (
+      {vista !== "FAC" && vista !== "GESTIONE" && vista !== "SMISTA" && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {(["TUTTE", "PS", "ADECCO"] as const).map((e) => <button key={e} type="button" onClick={() => setEntita(e)} className={entita === e ? "btn-primary" : "btn-secondary"}>{e === "TUTTE" ? "Tutte" : e === "PS" ? "Professional Solutions" : "Adecco"}</button>)}
           {(vista === "OGGI" || vista === "SCADENZE") && <label className="ml-1 flex min-h-[40px] items-center gap-2"><input type="checkbox" className="h-5 w-5" checked={soloMie} onChange={(e) => setSoloMie(e.target.checked)} />Solo le mie</label>}
@@ -119,6 +120,8 @@ export function ComplianceClient({ righe, oggi, admin, io, template }: Props) {
         </div>
       )}
       {errore && <p role="alert" className="rounded-control bg-red-50 px-3 py-2 text-sm text-red-800">{errore}</p>}
+
+      {vista === "SMISTA" && <SmistaFile righe={righe} oggi={oggi} attesa={attesa} fai={fai} />}
 
       {vista === "OGGI" && (aperte.length === 0 ? <p className="card bg-ok-soft p-4 text-sm text-ok">✓ Niente di aperto{soloMie ? " tra le tue righe" : ""}.</p> : <div className="flex flex-col gap-2">{aperte.map((r) => <Riga key={r.id} r={r} />)}</div>)}
 
