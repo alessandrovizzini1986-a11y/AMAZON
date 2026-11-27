@@ -7,7 +7,7 @@ import { Aiuto } from "@/components/Aiuto";
 
 export const dynamic = "force-dynamic";
 
-const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", RESP_MEZZI: "Resp. Mezzi", DRIVER: "Driver", CONTROLLO: "Controllo presenze", STAGISTA: "Stagista (training)" };
+const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", RESP_MEZZI: "Resp. Mezzi", DRIVER: "Driver", CONTROLLO: "Controllo presenze", STAGISTA: "Stagista (training)", COMPLIANCE: "Compliance (solo registro documenti)" };
 
 export default async function UsersPage({
   searchParams,

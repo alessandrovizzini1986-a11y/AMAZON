@@ -43,7 +43,9 @@ export type Action =
   | "telefoni.manage"
   | "telefoni.codici"
   | "carte.pin"
-  | "spedizioni.view";
+  | "spedizioni.view"
+  | "compliance.view" // vedere il registro, scaricare i fac-simile, spuntare "Caricato"
+  | "compliance.manage"; // stati, scadenze, anagrafica, genera mese, import, mail
 
 const MATRIX: Record<Role, Action[]> = {
   DRIVER: [
@@ -71,6 +73,10 @@ const MATRIX: Record<Role, Action[]> = {
     "costi.view",
     "costi.run",
     "costi.parametri",
+  ],
+  // chi fornisce i documenti del Compliance Tool: solo il registro
+  COMPLIANCE: [
+    "compliance.view",
   ],
   // stagista in training: solo il percorso e il vademecum
   STAGISTA: [
@@ -115,6 +121,8 @@ const MATRIX: Record<Role, Action[]> = {
     "telefoni.codici",
     "carte.pin",
     "spedizioni.view",
+    "compliance.view",
+    "compliance.manage",
   ],
 };
 

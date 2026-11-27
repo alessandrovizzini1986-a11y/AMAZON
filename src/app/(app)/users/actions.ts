@@ -14,7 +14,7 @@ const userSchema = z.object({
   email: z.string().email().transform((v) => v.toLowerCase().trim()),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
-  role: z.enum(["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO", "STAGISTA"]),
+  role: z.enum(["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO", "STAGISTA", "COMPLIANCE"]),
   stationId: z.string().optional(),
   licenseNo: z.string().optional(),
   phone: z.string().optional(),
@@ -79,7 +79,7 @@ export async function resetUserPasswordAction(userId: string) {
   redirect(`/users?created=${encodeURIComponent(`${user.email} — nuova password temporanea: ${tempPassword}`)}`);
 }
 
-const ROLES = ["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO", "STAGISTA"] as const;
+const ROLES = ["ADMIN", "RESP_MEZZI", "DRIVER", "CONTROLLO", "STAGISTA", "COMPLIANCE"] as const;
 
 /** Cambia ruolo (e stazione) di un utente. Vale dal suo prossimo accesso. */
 export async function changeUserRoleAction(userId: string, formData: FormData) {
