@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-const AMMESSE = ["/training", "/vademecum", "/account"];
+const AMMESSE = ["/training", "/corsi", "/vademecum", "/account"];
 
-/** La stagista in training vede solo il percorso, il vademecum e il proprio account. */
+/** La stagista in training vede solo il percorso, i corsi, il vademecum e il proprio account. */
 export function GuardiaStagista() {
   const pathname = usePathname(), router = useRouter();
   useEffect(() => {

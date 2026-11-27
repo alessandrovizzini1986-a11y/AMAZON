@@ -36,7 +36,7 @@ export default async function HomePage() {
     else if (etaMesi(cdl[0].mese) > 3) avvisi.push({ testo: <>L&apos;anagrafica CDL più recente è del {it(cdl[0].mese)}: ha più di 3 mesi, chiedi a HR quella aggiornata</>, href: "/costi/parametri#anagrafica" });
     if (mog[0] && (Date.now() - Date.parse(mog[0].versione)) / 864e5 > 40) avvisi.push({ testo: <>Il file MOG di Adecco è del {it(mog[0].versione)}: ha più di 40 giorni, chiedi a Erika quello aggiornato</>, href: "/costi/parametri#mog" });
   }
-  const gruppi = menuPer(user.role, user.nascosti).filter((g) => g.id !== "home");
+  const gruppi = menuPer(user.role, user.nascosti).map((g) => (g.id === "home" ? { ...g, label: "Numeri", items: g.items.filter((v) => v.href !== "/home") } : g)).filter((g) => g.items.length > 0);
   const nome = user.name.split(" ")[0];
   const oggi = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" });
 

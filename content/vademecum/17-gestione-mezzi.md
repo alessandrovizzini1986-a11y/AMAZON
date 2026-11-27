@@ -117,7 +117,7 @@ Ogni portale ha il suo account: **chiedi il tuo** appena puoi. Gli accessi condi
 - I verbali arrivati a casa del lavoratore si pagano tramite Tesoreria (Nicola Bellopede) e **poi** si addebitano al driver: è una procedura diversa dalle multe normali (vedi [flusso multe](/vademecum/03-multe-flusso)).
 - Controllo fatture: una targa riconsegnata non deve più comparire a canone il mese dopo. La riconciliazione del sito elenca le targhe **fatturate dopo la cessazione**, da contestare al noleggiatore.
 
-### Telefoni e SIM ([/telefoni](/telefoni), menu Personale)
+### Telefoni e SIM ([/telefoni](/telefoni), menu Strumenti)
 
 Il **file Wind ufficiale** del mese (fogli *Mobile Ricaricabile* = SIM, *terminali* = telefoni) dice cosa paghiamo a canone; i file **&lt;DS&gt;_GESTIONE_BYOD** delle station (e QUERY_BYOD, planning_DEVICE) dicono dove sono, a chi sono assegnati, in che stato, e PIN/PUK. Nella scheda **Carica i file** li trascini tutti insieme: il sito abbina le SIM per numero di telefono e i telefoni per IMEI, mostra l'anteprima e, con **Salva**, sostituisce il censimento. Se un file è protetto da password, aprilo e salvalo senza prima di trascinarlo.
 

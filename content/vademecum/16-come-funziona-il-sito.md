@@ -9,18 +9,21 @@ Questa pagina spiega in breve come si usa FleetDSP: dove finiscono i dati che ca
 
 ### Il menu e la Home
 
-Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e una riga che dice a cosa servono:
+Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e una riga che dice a cosa servono. A sinistra ci sono i gruppi del lavoro, a destra Aiuto e Gestione:
 
 | Gruppo | Pagine |
 |---|---|
 | **Home** | [Da fare](/home): le scadenze della settimana e del mese · [Conto economico](/conto-economico): ricavi, costi e margine per cliente |
-| **Flotta** | Situazione per stazione · Mezzi · Aggiorna da Lista Targhe · Furgoni in arrivo · Listini noleggiatori · Officine |
-| **Personale** | Presenze · Costi del personale · Costi GLS |
-| **Amazon** | Fatture · Fatturato · Rimborsi · Forecast · Storico forecast |
-| **Spese mezzi** | Stato del mese · Telepass · Carburante Q8 · File già elaborati |
-| **Strumenti** | Telefoni e SIM · Fuel card e Telepass · Spedizioni GLS · Portali fornitori · [Archivio file](/archivio): i file trascinati su questo PC |
+| **Flotta** | Situazione per stazione · Mezzi · Furgoni in arrivo · Officine · Listini noleggiatori · Aggiorna da Lista Targhe |
+| **Personale** | Presenze · Costi del personale · Costi GLS · Assenze e infortuni · Buste paga (le ultime due solo per il super admin) |
+| **Telematica** (solo admin) | Mappa dei furgoni · Giornata di consegna · Furgoni: il mese · Carburante: Q8 e telematica · Collegamento Targa e FlottaWeb |
+| **Amazon** | Fatture · Fatturato · Rimborsi · Forecast (lo storico del forecast è una scheda dentro Forecast) |
+| **Spese mezzi** | Stato del mese · Telepass · Carburante Q8 · Fuel card e Telepass · File già elaborati |
+| **Strumenti** | Telefoni e SIM · Spedizioni GLS · [Archivio file](/archivio): i file trascinati su questo PC |
 | **Aiuto** | [Corsi](/corsi): lezioni ed esercizi · Vademecum · [Glossario](/vademecum/18-glossario) · Tour del sito · Training |
-| **Gestione** (solo admin) | Utenti · Registro attività · Configurazione · Import iniziale |
+| **Gestione** (solo admin) | Utenti · Uso del sito · Registro attività · Configurazione · Portali fornitori · Import iniziale |
+
+Le sezioni con più pagine (Presenze, Costi del personale, Fatture, Spese mezzi) hanno in cima una **barra di schede** con tutte le loro pagine: dal menu entri nella sezione, dalla barra passi da un passo all'altro.
 
 Ognuno vede solo le pagine che può usare. Il **mese** si sceglie sempre allo stesso modo (‹ Ottobre 2026 ›) e resta quello scelto anche cambiando sezione, finché non chiudi il browser. Le pagine lunghe (Parametri, Listini, Rimborsi, Training) sono divise in **schede** sotto il titolo; i link con #sezione aprono la scheda giusta. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
 

@@ -12,7 +12,7 @@ export default async function PortaliPage() {
   const portali = (await db.portaleCredenziale.findMany({ orderBy: { portale: "asc" } })).filter((p) => io.superAdmin || !riservato(p.portale));
   return (
     <div className="flex max-w-5xl flex-col gap-5">
-      <PageHeader eyebrow="Strumenti" title="Portali e credenziali" subtitle="Accessi ai portali dei noleggiatori, Telepass e simili. Le password sono cifrate: per vederle riscrivi la tua password di ADMIN. Ogni visualizzazione resta nel log di audit." />
+      <PageHeader eyebrow="Gestione" title="Portali e credenziali" subtitle="Accessi ai portali dei noleggiatori, Telepass e simili. Le password sono cifrate: per vederle riscrivi la tua password di ADMIN. Ogni visualizzazione resta nel log di audit." />
       <PortaliClient portali={portali.map((p) => ({ id: p.id, portale: p.portale, url: p.url, username: p.username, haPassword: !!p.passwordCifrata, note: p.note, aggiornatoIl: p.aggiornatoIl.toISOString(), aggiornatoDa: p.aggiornatoDa }))} />
     </div>
   );

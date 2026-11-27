@@ -3,7 +3,7 @@ import type { SessionUser } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
 import { BottomGruppoLink } from "./NavLink";
 import { NavIcon } from "./icons";
-import { menuPer, vociBarra } from "./navModel";
+import { GRUPPI_DESTRA, menuPer, vociBarra } from "./navModel";
 import { MenuMobile, GruppoMenu } from "./MenuMobile";
 import { MenuAttivoBarra } from "./MenuAttivo";
 import { MarcaScroll } from "./MarcaScroll";
@@ -29,11 +29,11 @@ function initials(name: string): string {
  */
 export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const gruppi = menuPer(user.role, user.nascosti);
-  const operativi = gruppi.filter((g) => g.id !== "gestione"), gestione = gruppi.filter((g) => g.id === "gestione");
+  const operativi = gruppi.filter((g) => !GRUPPI_DESTRA.includes(g.id)), destra = gruppi.filter((g) => GRUPPI_DESTRA.includes(g.id));
   const { barra } = vociBarra(user.role, 4, user.nascosti);
-  const gruppiBarra = operativi.filter((g) => barra.some((b) => b.gruppo === g.id));
+  const gruppiBarra = gruppi.filter((g) => barra.some((b) => b.gruppo === g.id));
   // tablet: i primi 4 gruppi in vista, gli altri (e la gestione) in "Altro"
-  const tabletVista = operativi.slice(0, 4), tabletAltro = [...operativi.slice(4), ...gestione];
+  const tabletVista = operativi.slice(0, 4), tabletAltro = [...operativi.slice(4), ...destra];
 
   return (
     <div className="min-h-screen">
@@ -48,7 +48,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
           <nav data-tour="menu" className="hidden flex-1 items-center gap-1 xl:flex" aria-label="Menu principale">
             {operativi.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} />)}
-            {gestione.length > 0 && <><span aria-hidden className="mx-2 h-6 w-px bg-line" /><GruppoMenu gruppi={gestione} etichetta="Gestione" tutti={gruppi} allineaDestra /></>}
+            {destra.length > 0 && <><span aria-hidden className="mx-2 h-6 w-px bg-line" />{destra.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} allineaDestra />)}</>}
           </nav>
           <nav data-tour="menu" className="hidden flex-1 items-center gap-1 md:flex xl:hidden" aria-label="Menu principale">
             {tabletVista.map((g) => <GruppoMenu key={g.id} gruppi={[g]} etichetta={g.label} tutti={gruppi} />)}

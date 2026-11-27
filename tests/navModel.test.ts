@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Role } from "@prisma/client";
-import { GRUPPI, gruppoAttivo, menuAttivo, menuPer, paginaIniziale, voceAttiva, vociBarra, vociPer } from "@/components/navModel";
+import { GRUPPI, GRUPPI_DESTRA, gruppoAttivo, menuAttivo, menuPer, paginaIniziale, voceAttiva, vociBarra, vociPer } from "@/components/navModel";
 import { can } from "@/lib/rbac";
 import { daFare, stati } from "@/domain/percorsi/percorso";
 
@@ -8,7 +8,7 @@ const RUOLI: Role[] = ["ADMIN", "RESP_MEZZI", "CONTROLLO", "STAGISTA", "DRIVER"]
 
 describe("menu a gruppi", () => {
   it("ogni ruolo vede solo le voci permesse, nei gruppi per tema", () => {
-    expect(menuPer("ADMIN").map((g) => g.label)).toEqual(["Home", "Flotta", "Personale", "Amazon", "Spese mezzi", "Strumenti", "Aiuto", "Gestione"]);
+    expect(menuPer("ADMIN").map((g) => g.label)).toEqual(["Home", "Flotta", "Personale", "Telematica", "Amazon", "Spese mezzi", "Strumenti", "Aiuto", "Gestione"]);
     expect(menuPer("CONTROLLO").map((g) => g.label)).toEqual(["Home", "Personale", "Amazon", "Spese mezzi", "Strumenti", "Aiuto"]);
     expect(menuPer("RESP_MEZZI").map((g) => g.label)).toEqual(["Flotta", "Amazon", "Aiuto"]);
     expect(menuPer("DRIVER").flatMap((g) => g.items.map((v) => v.href))).toEqual(["/vehicles"]);
@@ -16,6 +16,13 @@ describe("menu a gruppi", () => {
     expect(vociPer("ADMIN").map((v) => v.href)).not.toContain("/training"); // l'admin vede il training da tutor
     const hrefs = GRUPPI.flatMap((g) => g.voci.map((v) => v.href));
     expect(new Set(hrefs).size).toBe(hrefs.length);
+  });
+  it("menu corto: al massimo 7 gruppi di lavoro e 7 voci per gruppo; Aiuto e Gestione a destra", () => {
+    expect(GRUPPI.filter((g) => !GRUPPI_DESTRA.includes(g.id)).length).toBeLessThanOrEqual(7);
+    for (const g of GRUPPI) expect(g.voci.length, g.id).toBeLessThanOrEqual(7);
+    expect(GRUPPI.slice(-2).map((g) => g.id)).toEqual(GRUPPI_DESTRA);
+    // le schede delle sezioni non si ripetono nel menu
+    expect(GRUPPI.flatMap((g) => g.voci.map((v) => v.href))).not.toContain("/fatture-amazon/forecast/storico");
   });
   it("le voci di ogni ruolo rispettano i permessi", () => {
     for (const r of RUOLI) for (const g of GRUPPI) for (const v of g.voci) if (menuPer(r).some((x) => x.items.some((i) => i.href === v.href))) expect(can({ role: r }, v.perm), `${r} ${v.href}`).toBe(true);
@@ -28,6 +35,10 @@ describe("menu a gruppi", () => {
     expect(voceAttiva("/costi/fine-mese", voci)?.label).toBe("Costi del personale");
     expect(gruppoAttivo("/fatture-amazon/rimborsi", g)?.id).toBe("amazon");
     expect(gruppoAttivo("/carburante-telepass/q8", g)?.id).toBe("spese");
+    expect(gruppoAttivo("/carburante-telepass/anagrafiche", g)?.id).toBe("spese");
+    expect(gruppoAttivo("/telematica/giornata", g)?.id).toBe("telematica");
+    expect(gruppoAttivo("/portali", g)?.id).toBe("gestione");
+    expect(voceAttiva("/fatture-amazon/forecast/storico", voci)?.label).toBe("Forecast");
     expect(gruppoAttivo("/account", g)).toBeNull();
   });
 });
@@ -39,7 +50,9 @@ describe("barra del telefono", () => {
       expect(barra.length, r).toBeLessThanOrEqual(4);
       expect(barra.every((b) => vociPer(r).some((v) => v.href === b.href)), r).toBe(true);
     }
-    expect(vociBarra("ADMIN").barra.map((b) => b.label)).toEqual(["Home", "Flotta", "Personale", "Amazon"]);
+    expect(vociBarra("ADMIN").barra.map((b) => b.label)).toEqual(["Home", "Flotta", "Personale", "Telematica"]);
+    // chi non vede la telematica ha Amazon come quarto gruppo
+    expect(vociBarra("ADMIN", 4, ["/telematica/mappa", "/telematica/giornata", "/telematica/mese", "/telematica/carburante", "/telematica"]).barra.map((b) => b.label)).toEqual(["Home", "Flotta", "Personale", "Amazon"]);
     expect(vociBarra("CONTROLLO").barra.map((b) => b.label)).toEqual(["Home", "Personale", "Amazon", "Spese mezzi"]);
   });
   it("Menu attivo quando la pagina non è in un gruppo della barra", () => {

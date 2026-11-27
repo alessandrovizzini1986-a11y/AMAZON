@@ -26,7 +26,8 @@ function metasDi(f: FileLocale): FileMeta[] {
   }));
 }
 
-const dt = (iso: string) => new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+// ora italiana fissa: server (UTC) e browser devono scrivere la stessa ora, altrimenti React segnala un errore di idratazione
+const dt = (iso: string) => new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 
 export function ArchivioClient({ mese, registrati, canRun }: { mese: string; registrati: Registrato[]; canRun: boolean }) {
   const router = useRouter();

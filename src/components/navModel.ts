@@ -24,28 +24,37 @@ export const GRUPPI: Gruppo[] = [
     id: "flotta", label: "Flotta", icon: "fleet", voci: [
       { href: "/dashboard", label: "Situazione per stazione", icon: "dashboard", perm: "dashboard.station", descr: "furgoni e canoni per stazione" },
       { href: "/vehicles", label: "Mezzi", icon: "fleet", perm: "vehicle.view", descr: "dove si trova ogni targa" },
-      { href: "/vehicles/aggiorna", label: "Aggiorna da Lista Targhe", icon: "import", perm: "import.run", descr: "attivi, cessati e canoni dal file" },
       { href: "/orders", label: "Furgoni in arrivo", icon: "orders", perm: "orders.view", descr: "ordini ai noleggiatori" },
-      { href: "/vehicles/listini", label: "Listini noleggiatori", icon: "receipt", perm: "vehicle.manage", descr: "tariffe e confronto per classe" },
       { href: "/officine", label: "Officine", icon: "wrench", perm: "officine.view", descr: "officine e carrozzerie autorizzate" },
+      { href: "/vehicles/listini", label: "Listini noleggiatori", icon: "receipt", perm: "vehicle.manage", descr: "tariffe e confronto per classe" },
+      { href: "/vehicles/aggiorna", label: "Aggiorna da Lista Targhe", icon: "import", perm: "import.run", descr: "attivi, cessati e canoni dal file" },
     ],
   },
   {
     id: "personale", label: "Personale", icon: "presenze", voci: [
       { href: "/presenze", label: "Presenze", icon: "presenze", perm: "presenze.view", descr: "tracking, controllo settimanale e fine mese" },
-      { href: "/costi", label: "Costi del personale", icon: "euro", perm: "costi.view", descr: "stima a fine mese e consuntivo Amazon" },
+      { href: "/costi", label: "Costi del personale", icon: "euro", perm: "costi.view", descr: "stima a metà e fine mese, consuntivo Amazon" },
       { href: "/costi/gls", label: "Costi GLS", icon: "euro", perm: "costi.view", descr: "appalto Castel Maggiore e Badgebox" },
       { href: "/personale-assenze", label: "Assenze e infortuni", icon: "dashboard", perm: "users.manage", descr: "malattia e infortuni di SIC e STD: dove intervenire" },
-      { href: "/personale-buste", label: "Buste paga: costo, ore e ferie", icon: "euro", perm: "users.manage", descr: "costo, voci variabili, straordinari e ferie residue dalle buste" },
+      { href: "/personale-buste", label: "Buste paga", icon: "euro", perm: "users.manage", descr: "costo, straordinari, ferie residue, multe e danni" },
+    ],
+  },
+  {
+    // i furgoni visti dalla telematica (Targa, FlottaWeb): solo Admin
+    id: "telematica", label: "Telematica", icon: "map", voci: [
+      { href: "/telematica/mappa", label: "Mappa dei furgoni", icon: "map", perm: "users.manage", descr: "dove sono adesso i mezzi" },
+      { href: "/telematica/giornata", label: "Giornata di consegna", icon: "map", perm: "users.manage", descr: "cosa ha fatto ogni furgone in un giorno" },
+      { href: "/telematica/mese", label: "Furgoni: il mese", icon: "map", perm: "users.manage", descr: "km, ore, soste e rifornimenti per targa" },
+      { href: "/telematica/carburante", label: "Carburante: Q8 e telematica", icon: "fuel", perm: "users.manage", descr: "pagamenti Q8 contro rifornimenti visti dai furgoni" },
+      { href: "/telematica", label: "Collegamento Targa e FlottaWeb", icon: "settings", perm: "users.manage", descr: "prova l'accesso ai due portali" },
     ],
   },
   {
     id: "amazon", label: "Amazon", icon: "receipt", voci: [
-      { href: "/fatture-amazon", label: "Fatture", icon: "receipt", perm: "fatture.registro", descr: "importa i PDF e allinea fatt_2026" },
+      { href: "/fatture-amazon", label: "Fatture", icon: "receipt", perm: "fatture.registro", descr: "importa i PDF, registro e allineamento" },
       { href: "/fatture-amazon/fatturato", label: "Fatturato", icon: "dashboard", perm: "fatturato.view", descr: "per mese, DS e classe" },
       { href: "/fatture-amazon/rimborsi", label: "Rimborsi", icon: "euro", perm: "fatturato.view", descr: "parcheggi, pedaggi, carburante, training" },
-      { href: "/fatture-amazon/forecast", label: "Forecast", icon: "refresh", perm: "forecast.view", descr: "carica i file, rotte previste e stima del mese" },
-      { href: "/fatture-amazon/forecast/storico", label: "Storico forecast", icon: "dashboard", perm: "forecast.view", descr: "come cambia, rotta massima, furgoni che servono" },
+      { href: "/fatture-amazon/forecast", label: "Forecast", icon: "refresh", perm: "forecast.view", descr: "rotte previste, stima del mese e storico" },
     ],
   },
   {
@@ -53,6 +62,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/carburante-telepass", label: "Stato del mese", icon: "fuel", perm: "telepass.view", descr: "cosa manca per Telepass e carburante" },
       { href: "/carburante-telepass/telepass", label: "Telepass", icon: "fuel", perm: "telepass.run", descr: "elabora il file del mese" },
       { href: "/carburante-telepass/q8", label: "Carburante Q8", icon: "fuel", perm: "telepass.run", descr: "elabora l'export Q8" },
+      { href: "/carburante-telepass/anagrafiche", label: "Fuel card e Telepass", icon: "fuel", perm: "telepass.view", descr: "station, targa e PIN di ogni carta" },
       { href: "/carburante-telepass/storico", label: "File già elaborati", icon: "import", perm: "telepass.run", descr: "mesi lavorati fuori dal sito" },
     ],
   },
@@ -60,18 +70,12 @@ export const GRUPPI: Gruppo[] = [
     // cose che si consultano o si usano al bisogno, non lavori del mese
     id: "strumenti", label: "Strumenti", icon: "wrench", voci: [
       { href: "/telefoni", label: "Telefoni e SIM", icon: "settings", perm: "telefoni.view", descr: "a chi sono assegnati, PIN e PUK" },
-      { href: "/carburante-telepass/anagrafiche", label: "Fuel card e Telepass", icon: "fuel", perm: "telepass.view", descr: "station, targa e PIN di ogni carta" },
       { href: "/spedizioni-gls", label: "Spedizioni GLS", icon: "orders", perm: "spedizioni.view", descr: "portale GLS e bollettino in PDF" },
-      { href: "/telematica/mappa", label: "Mappa dei furgoni", icon: "settings", perm: "users.manage", descr: "dove sono adesso i mezzi" },
-      { href: "/telematica/giornata", label: "Giornata di consegna", icon: "settings", perm: "users.manage", descr: "cosa ha fatto ogni furgone in un giorno" },
-      { href: "/telematica/mese", label: "Furgoni: il mese", icon: "settings", perm: "users.manage", descr: "km, ore, soste e rifornimenti per targa" },
-      { href: "/telematica/carburante", label: "Carburante: Q8 e telematica", icon: "settings", perm: "users.manage", descr: "pagamenti Q8 contro rifornimenti visti dai furgoni" },
-      { href: "/telematica", label: "Telematica furgoni", icon: "settings", perm: "users.manage", descr: "collegamento a Targa e FlottaWeb" },
-      { href: "/portali", label: "Portali fornitori", icon: "settings", perm: "users.manage", descr: "indirizzi e accessi di noleggiatori, Telepass, Q8" },
       { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" },
     ],
   },
   {
+    // a destra nella barra in alto, come Gestione
     id: "aiuto", label: "Aiuto", icon: "book", voci: [
       { href: "/training", label: "Il mio training", icon: "book", perm: "training.view", descr: "percorso della stagista" },
       { href: "/corsi", label: "Corsi", icon: "book", perm: "vademecum.view", descr: "lezioni ed esercizi, una regola alla volta" },
@@ -83,14 +87,18 @@ export const GRUPPI: Gruppo[] = [
   },
   {
     id: "gestione", label: "Gestione", icon: "settings", voci: [
-      { href: "/users", label: "Utenti", icon: "users", perm: "users.manage", descr: "chi entra, con che ruolo e password" },
+      { href: "/users", label: "Utenti", icon: "users", perm: "users.manage", descr: "chi entra, ruolo, password e voci che vede" },
       { href: "/uso", label: "Uso del sito", icon: "dashboard", perm: "users.manage", descr: "quali pagine si usano davvero, e quali no" },
       { href: "/audit", label: "Registro attività", icon: "audit", perm: "audit.viewFull", descr: "chi ha fatto cosa, e quando" },
       { href: "/config", label: "Configurazione", icon: "settings", perm: "config.manage", descr: "impostazioni del sito" },
+      { href: "/portali", label: "Portali fornitori", icon: "settings", perm: "users.manage", descr: "indirizzi e accessi di noleggiatori, Telepass, Q8" },
       { href: "/import", label: "Import iniziale", icon: "import", perm: "import.run", descr: "caricamenti massivi da Excel, di rado" },
     ],
   },
 ];
+
+/** Gruppi che nella barra in alto stanno a destra, separati dai gruppi di lavoro. */
+export const GRUPPI_DESTRA = ["aiuto", "gestione"];
 
 /**
  * Gruppi visibili per un ruolo (solo le voci permesse; i gruppi vuoti spariscono). L'admin non vede "Il mio training".

@@ -530,7 +530,7 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
     if (NON_SERBATOIO.test(q.prodotto ?? "")) riga.motivo = `${q.prodotto}: non passa dal serbatoio del gasolio.`;
     else if (!FLOTTE[q.flotta].sensore) riga.motivo = FLOTTE[q.flotta].nota;
     else if (!c?.scaricato) riga.motivo = "La telematica di quel giorno non è ancora scaricata.";
-    else if (!c.dettaglioCompleto) riga.motivo = "Mancano ora e luogo dei rifornimenti di quel giorno: completali da Strumenti → Furgoni: il mese.";
+    else if (!c.dettaglioCompleto) riga.motivo = "Mancano ora e luogo dei rifornimenti di quel giorno: completali da Telematica → Furgoni: il mese.";
     else if (q.litri < TOLLERANZE.sensoreMinLitri) riga.motivo = `Solo ${fmtL(q.litri)} L: il sensore del serbatoio può non accorgersene.`;
     else if (abitualeSicuro && passato === "SENZA_PERCORSO") riga.motivo = `Il percorso del furgone abituale (${abitualeSicuro.targa}) non è più disponibile (si tiene 120 giorni): non si può dire se era al distributore.`;
     else if (abitualeSicuro && passato) {
@@ -562,7 +562,7 @@ export function riconcilia(input: Ingresso, pre?: Preparato): Esito {
     righe.push({
       flotta: e.flotta, giorno: e.giorno, chiave: `TG:${e.targa}|${e.giorno}||${e.litri}`, stato: "NON_VERIFICABILE", q8: [], eventi: [e], targa: e.targa,
       oraQ8: null, oraTarga: null, litriQ8: null, litriTarga: r1(e.litri), deltaLitri: null, euro: null, luogoQ8: null, luogoTarga: e.dove,
-      luogo: "IGNOTO", distanzaKm: null, motivo: "Manca l'ora del rifornimento: completala da Strumenti → Furgoni: il mese.", abituale: null,
+      luogo: "IGNOTO", distanzaKm: null, motivo: "Manca l'ora del rifornimento: completala da Telematica → Furgoni: il mese.", abituale: null,
     });
   }
 
