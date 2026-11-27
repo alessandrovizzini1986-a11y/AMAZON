@@ -72,3 +72,28 @@ describe("Home: da fare", () => {
     expect(d.map((x) => [x.id, x.completo, x.fatti, x.obbligatori, x.prossimo?.titolo])).toEqual([["aperto", false, 1, 3, "p1"], ["chiuso", true, 2, 2, undefined]]);
   });
 });
+
+import { cercaPagine, pagineCercabili, PAGINE_INTERNE, GRUPPI as TUTTI } from "@/components/navModel";
+describe("ricerca delle pagine", () => {
+  it("trova anche le schede interne, senza badare ad accenti e maiuscole", () => {
+    const p = pagineCercabili("ADMIN");
+    expect(cercaPagine("meta mese", p)[0].href).toBe("/costi/meta-mese");
+    expect(cercaPagine("già elaborati", p)[0].href).toBe("/carburante-telepass/storico");
+    expect(cercaPagine("GIA ELABORATI", p)[0].href).toBe("/carburante-telepass/storico");
+    expect(cercaPagine("verifica tracking", p)[0].href).toBe("/presenze/verifica");
+    expect(cercaPagine("telepass", p)[0].href).toBe("/carburante-telepass/telepass");
+    expect(cercaPagine("", p)).toEqual([]);
+  });
+  it("le schede seguono la voce madre: se è nascosta o non permessa, spariscono", () => {
+    const nascosta = pagineCercabili("ADMIN", ["/costi"]).map((x) => x.href);
+    expect(nascosta).not.toContain("/costi/meta-mese");
+    expect(nascosta).toContain("/costi/gls");
+    const driver = pagineCercabili("DRIVER").map((x) => x.href);
+    expect(driver.some((h) => PAGINE_INTERNE.some((i) => i.href === h))).toBe(false);
+    expect(pagineCercabili("STAGISTA").map((x) => x.href)).not.toContain("/presenze/configurazione");
+  });
+  it("ogni scheda interna appartiene a una voce di menu esistente e non duplica una voce", () => {
+    const voci = TUTTI.flatMap((g) => g.voci.map((v) => v.href));
+    for (const i of PAGINE_INTERNE) { expect(voci).toContain(i.voce); expect(voci).not.toContain(i.href); }
+  });
+});

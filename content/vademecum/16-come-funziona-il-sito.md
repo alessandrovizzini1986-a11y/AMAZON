@@ -25,6 +25,8 @@ Il menu in alto è diviso per tema; ogni voce apre una tendina con le pagine e u
 
 Le sezioni con più pagine (Presenze, Costi del personale, Fatture, Spese mezzi) hanno in cima una **barra di schede** con tutte le loro pagine: dal menu entri nella sezione, dalla barra passi da un passo all'altro.
 
+**Cerca una pagina.** Da computer premi **Ctrl+K** (⌘K sul Mac) o la lente in alto a destra; da telefono scrivi nella casella in cima al **Menu**. Bastano poche lettere, senza accenti: "telepass", "meta mese", "verifica tracking". Trova anche le schede che non sono nel menu (Stima di metà mese, Registro fatture, Storico forecast). Frecce per scegliere, Invio per aprire. Trovi solo le pagine che puoi aprire.
+
 Ognuno vede solo le pagine che può usare. Il **mese** si sceglie sempre allo stesso modo (‹ Ottobre 2026 ›) e resta quello scelto anche cambiando sezione, finché non chiudi il browser. Le pagine lunghe (Parametri, Listini, Rimborsi, Training) sono divise in **schede** sotto il titolo; i link con #sezione aprono la scheda giusta. Entrando nel sito si apre la **Home**: ogni scheda "Da fare" mostra quanti passi sono fatti e il prossimo, con **Vai** che porta dritto alla pagina giusta. Le scadenze si aggiornano da sole con quello che carichi.
 
 ### Dove finisce un dato: le quattro etichette
@@ -77,7 +79,7 @@ Il sito ti ferma solo quando c'è un errore vero:
 
 ### Da telefono
 
-- La **barra in basso** ha Home e i primi gruppi (Flotta, Personale, Amazon) e **Menu**, che apre tutte le pagine divise per gruppo, insieme ad Account ed Esci.
+- La **barra in basso** ha Home e i primi gruppi che vedi (per l'admin Flotta, Personale, Telematica) e **Menu**, che apre la casella di ricerca e tutte le pagine divise per gruppo, insieme ad Account ed Esci.
 - Le **tabelle larghe** si scorrono di lato: la prima colonna resta ferma e il bordo destro sfumato indica che la tabella continua.
 - Per **caricare un file** da telefono tocca "Oppure scegli il file". Ricorda che "Solo su questo PC" vuol dire solo su quel telefono.
 
