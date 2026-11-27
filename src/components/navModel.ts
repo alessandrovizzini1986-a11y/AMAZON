@@ -73,6 +73,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/telefoni", label: "Telefoni e SIM", icon: "settings", perm: "telefoni.view", descr: "a chi sono assegnati, PIN e PUK" },
       { href: "/spedizioni-gls", label: "Spedizioni GLS", icon: "orders", perm: "spedizioni.view", descr: "portale GLS e bollettino in PDF" },
       { href: "/archivio", label: "Archivio file", icon: "import", perm: "home.view", descr: "i file trascinati, su questo PC" },
+      { href: "/segnalibri", label: "Segnalibri", icon: "wrench", perm: "home.view", descr: "pulsanti per i preferiti del browser, da usare sui portali" },
     ],
   },
   {
