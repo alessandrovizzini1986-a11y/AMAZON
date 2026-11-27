@@ -19,7 +19,29 @@ export type RigaPortale = z.infer<typeof schemaImport>["righe"][number];
 export type RigaRegistro = { id: string; entita: string; area: string; anno: number; mese: number; folder: string; stato: Stato; scadenzaPortale: string | null };
 export type Differenza = { id: string; chi: string; statoPrima: Stato; statoDopo: Stato | null; motivo: string | null; scadenzaPrima: string | null; scadenzaDopo: string | null; scadenzaInterna: string | null; avviso: string | null };
 
-const chiave = (r: { entita: string; area: string; anno: number; mese: number; folder: string }) => `${r.entita}|${r.area}|${r.anno}|${r.mese}|${r.folder}`;
+/** Sul portale il WHC si carica nel folder "Varie": nel registro quella riga si chiama "Varie – WHC". */
+const ALIAS: Record<string, string> = { Varie: "Varie – WHC" };
+const chiave = (r: { entita: string; area: string; anno: number; mese: number; folder: string }) => `${r.entita}|${r.area}|${r.anno}|${r.mese}|${ALIAS[r.folder.trim()] ?? r.folder.trim()}`;
+
+/**
+ * Il segnalibro che legge il portale apre il registro con i dati nell'indirizzo, dopo il cancelletto:
+ * /compliance#import=<JSON in base64 per indirizzi>. Quello che sta dopo il cancelletto non viene mandato al server
+ * e non finisce nei registri di accesso. Restituisce il testo JSON, o null se l'indirizzo non porta dati.
+ */
+export function daIndirizzo(hash: string): string | null {
+  const m = /^#?import=([A-Za-z0-9_-]+=*)$/.exec(hash.trim());
+  if (!m) return null;
+  try {
+    const b = atob(m[1].replace(/-/g, "+").replace(/_/g, "/"));
+    return new TextDecoder().decode(Uint8Array.from(b, (c) => c.charCodeAt(0)));
+  } catch { return null; }
+}
+
+/** L'inverso, per i test e per chi scrive il segnalibro. */
+export function perIndirizzo(json: string): string {
+  const b = String.fromCharCode(...new TextEncoder().encode(json));
+  return `#import=${btoa(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`;
+}
 
 export function differenze(portale: RigaPortale[], registro: RigaRegistro[]): { diff: Differenza[]; nonTrovati: string[] } {
   const per = new Map(registro.map((r) => [chiave(r), r]));

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { RigaVista } from "@/lib/compliance/dati";
 import { giorniA, it, MESI, NOME_REGOLA, nomeMese, REGOLE, type Regola } from "@/domain/compliance/scadenze";
 import { chiusa, COLORE_STATO, mia, NOME_STATO, puoSpuntare, puoTogliereSpunta, scaduta, STATI, type Stato } from "@/domain/compliance/stato";
 import { FAC_SIMILE } from "@/domain/compliance/seed";
 import { mailRichiesta, mailSollecito, mailto, nomeEntita } from "@/domain/compliance/mail";
-import type { Differenza } from "@/domain/compliance/importa";
+import { daIndirizzo, type Differenza } from "@/domain/compliance/importa";
 import { anteprimaImport, applicaImport, cambiaStato, generaMeseAzione, salvaTemplate, segnaRichiesti, spunta, togliSpunta } from "./actions";
 
 type Tpl = { id: string; entita: string; area: string; folder: string; documento: string; formato: string; nomeFileStandard: string; regolaScadenza: string; mesiAttivi: string; owner: string; ownerEmail: string; usato: boolean };
@@ -43,6 +43,14 @@ export function ComplianceClient({ righe, oggi, admin, io, template }: Props) {
   const [meseSel, setMeseSel] = useState(() => mesi.filter((m) => m <= oggi.slice(0, 7)).slice(-2)[0] ?? mesi[0] ?? oggi.slice(0, 7));
   const [attesa, parti] = useTransition();
   const [errore, setErrore] = useState<string | null>(null);
+  // arrivo dal segnalibro del portale: i dati sono nell'indirizzo dopo il cancelletto. Li passo all'import e pulisco l'indirizzo
+  const [daPortale, setDaPortale] = useState<string | null>(null);
+  useEffect(() => {
+    const j = daIndirizzo(window.location.hash);
+    if (j === null) return;
+    router.replace(window.location.pathname, { scroll: false });
+    if (admin) { setDaPortale(j); setVista("GESTIONE"); } else setErrore("L'import dal portale lo può fare solo l'amministratore del registro.");
+  }, [admin]); // eslint-disable-line react-hooks/exhaustive-deps
   const fai = (f: () => Promise<unknown>) => parti(async () => { setErrore(null); try { await f(); router.refresh(); } catch (e) { setErrore(e instanceof Error ? e.message : "Operazione non riuscita"); } });
 
   const filtrate = righe.filter((r) => (entita === "TUTTE" || r.entita === entita) && (!soloMie || mia(r.owner, io)));
@@ -165,7 +173,7 @@ export function ComplianceClient({ righe, oggi, admin, io, template }: Props) {
       )}
 
       {vista === "MAIL" && admin && <Mail righe={righe.filter((r) => entita === "TUTTE" || r.entita === entita)} oggi={oggi} attesa={attesa} fai={fai} />}
-      {vista === "GESTIONE" && admin && <Gestione template={template} attesa={attesa} fai={fai} oggi={oggi} />}
+      {vista === "GESTIONE" && admin && <Gestione template={template} attesa={attesa} fai={fai} oggi={oggi} daPortale={daPortale} />}
     </div>
   );
 }
@@ -199,13 +207,16 @@ function Mail({ righe, oggi, attesa, fai }: { righe: RigaVista[]; oggi: string; 
   );
 }
 
-function Gestione({ template, attesa, fai, oggi }: { template: Tpl[]; attesa: boolean; fai: (f: () => Promise<unknown>) => void; oggi: string }) {
+function Gestione({ template, attesa, fai, oggi, daPortale }: { template: Tpl[]; attesa: boolean; fai: (f: () => Promise<unknown>) => void; oggi: string; daPortale: string | null }) {
   const [mese, setMese] = useState(oggi.slice(0, 7));
   const [esito, setEsito] = useState<string | null>(null);
-  const [json, setJson] = useState("");
+  const [json, setJson] = useState(daPortale ?? "");
   const [ante, setAnte] = useState<{ diff: Differenza[]; nonTrovati: string[]; lettoIl: string } | null>(null);
   const [errJson, setErrJson] = useState<string | null>(null);
   const [mod, setMod] = useState<Tpl | null>(null);
+  const vedi = (testo: string) => fai(async () => { setErrJson(null); const r = await anteprimaImport(testo); if ("errore" in r) { setErrJson(r.errore); setAnte(null); } else setAnte(r); });
+  // dati arrivati dal segnalibro: mostro subito le differenze, senza incollare nulla. Applicare resta una scelta
+  useEffect(() => { if (daPortale) vedi(daPortale); }, [daPortale]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="flex flex-col gap-4">
       <section className="card flex flex-col gap-2 p-3 md:p-4">
@@ -215,9 +226,10 @@ function Gestione({ template, attesa, fai, oggi }: { template: Tpl[]; attesa: bo
       </section>
       <section className="card flex flex-col gap-2 p-3 md:p-4">
         <h2 className="text-base font-semibold">Import dello stato dal portale</h2>
-        <p className="text-sm text-ink-muted">Incolla il JSON della lettura del portale. Prima vedi le differenze, poi decidi se applicarle. Non crea righe, non cancella niente e non tocca chi ha caricato e quando.</p>
+        <p className="text-sm text-ink-muted">Con il segnalibro del portale i dati arrivano qui da soli; altrimenti incolla il JSON della lettura. Prima vedi le differenze, poi decidi se applicarle. Non crea righe, non cancella niente e non tocca chi ha caricato e quando.</p>
+        {daPortale && <p className="rounded-control bg-brand-light px-3 py-2 text-sm text-brand">Dati arrivati dal portale con il segnalibro: controlla le differenze qui sotto e premi Applica.</p>}
         <textarea className="input min-h-[120px] font-mono text-xs" value={json} onChange={(e) => { setJson(e.target.value); setAnte(null); }} placeholder='{"letto_il": "2026-11-27T16:10:00", "righe": [ … ]}' aria-label="JSON letto dal portale" />
-        <div><button type="button" className="btn-secondary" disabled={attesa || !json.trim()} onClick={() => fai(async () => { setErrJson(null); const r = await anteprimaImport(json); if ("errore" in r) { setErrJson(r.errore); setAnte(null); } else setAnte(r); })}>Vedi le differenze</button></div>
+        <div><button type="button" className="btn-secondary" disabled={attesa || !json.trim()} onClick={() => vedi(json)}>Vedi le differenze</button></div>
         {errJson && <p role="alert" className="text-sm text-red-700">{errJson}</p>}
         {ante && (
           <div className="flex flex-col gap-2 text-sm">
