@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireSuperAdmin } from "@/lib/auth";
+import { rateiFerie } from "@/lib/personale/ratei";
 import { db } from "@/lib/db";
-import { addebitiPerPersona, NOME_ADDEBITO, type Addebito, type TipoAddebito, CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_FONTE, costo, feriePerStation, piuStraordinari, SOGLIA_FERIE, ultimiRatei, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
+import { addebitiPerPersona, NOME_ADDEBITO, type Addebito, type TipoAddebito, CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_SENZA_RATEI_FERIE, COEFF_FONTE, costo, feriePerStation, piuStraordinari, SOGLIA_FERIE, ultimiRatei, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ const BLU = "FF1E3A5F", GRIGIO = "FFF1F5F9", EURO = '#,##0 "€";-#,##0 "€"', 
 export async function GET(req: NextRequest) {
   await requireSuperAdmin();
   const gls = req.nextUrl.searchParams.get("cliente") === "gls", dove = gls ? "GLS" : { not: "GLS" };
+  const rateiF = gls ? [] : await rateiFerie();
   const [t0, v0, o0, r0, a0] = await Promise.all([
     db.personaleBustaMese.findMany({ where: { station: dove } }), db.personaleBustaVoce.findMany({ where: { station: dove } }),
     db.personaleOrePersona.findMany({ where: { station: dove } }), db.personaleRateiPersona.findMany({ where: { station: dove } }), db.personaleAddebito.findMany({ where: { station: dove }, orderBy: { mese: "asc" } }),
@@ -29,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   // 1. Costo
   const ws1 = wb.addWorksheet("Costo");
-  titolo(ws1, `Costo del personale dalle buste${gls ? " · GLS autisti" : ""}`, `Mese = mese della busta. Costo azienda stimato (SIC) = (lordo di competenza + quota TFR) × ${COEFF_COSTO_AZIENDA}, coefficiente dal ${COEFF_FONTE}. Per gli STD il costo vero è la fattura dell'agenzia.`);
+  titolo(ws1, `Costo del personale dalle buste${gls ? " · GLS autisti" : ""}`, `Mese = mese della busta. Costo azienda stimato (SIC) = (lordo di competenza + quota TFR) × ${COEFF_SENZA_RATEI_FERIE} + rateo di ferie e permessi del mese (maturato − goduto al valore dell'anagrafica costi); dove il rateo non si calcola, × ${COEFF_COSTO_AZIENDA}. Coefficienti dai ${COEFF_FONTE}. Per gli STD il costo vero è la fattura dell'agenzia.`);
   for (const g of gruppi) {
     const mesi = [...new Set(tot.filter((t) => t.gruppo === g).map((t) => t.mese))].sort();
     for (const [nome, f] of (g === "SIC" ? [["Costo azienda stimato", (c: ReturnType<typeof costo>) => c.stimato ?? 0], ["Lordo in busta", (c: ReturnType<typeof costo>) => c.lordo], ["Persone in busta", (c: ReturnType<typeof costo>) => c.teste]] : [["Lordo in busta", (c: ReturnType<typeof costo>) => c.lordo], ["Persone in busta", (c: ReturnType<typeof costo>) => c.teste]]) as [string, (c: ReturnType<typeof costo>) => number][]) {
@@ -37,7 +39,7 @@ export async function GET(req: NextRequest) {
       intest(ws1, ["Station", ...mesi.map(mb), nome.startsWith("Persone") ? "" : "Anno"]);
       for (const s of [...stations, "Totale"]) {
         const righe = tot.filter((t) => t.gruppo === g && (s === "Totale" || t.station === s));
-        const r = ws1.addRow([s, ...mesi.map((m) => f(costo(righe.filter((t) => t.mese === m), voci))), nome.startsWith("Persone") ? null : f(costo(righe, voci))]);
+        const r = ws1.addRow([s, ...mesi.map((m) => f(costo(righe.filter((t) => t.mese === m), voci, rateiF))), nome.startsWith("Persone") ? null : f(costo(righe, voci, rateiF))]);
         r.eachCell((c, i) => { if (i > 1) c.numFmt = nome.startsWith("Persone") ? "0" : EURO; });
         if (s === "Totale") r.font = { bold: true };
       }

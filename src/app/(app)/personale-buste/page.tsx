@@ -7,6 +7,7 @@ import { BusteClient, type DatiBuste } from "./BusteClient";
 import { Incroci } from "./Incroci";
 import { Confronto } from "./Confronto";
 import { datiConfronto, stimeSaldi } from "@/lib/personale/confronto";
+import { rateiFerie } from "@/lib/personale/ratei";
 import { incrociOrganico } from "@/lib/personale/organico";
 
 export const dynamic = "force-dynamic";
@@ -29,13 +30,14 @@ export default async function PersonaleBustePage({ searchParams }: { searchParam
   const r = ratei.map((x) => ({ ...x, gruppo: x.gruppo as Gruppo, ferieUnita: x.ferieUnita as "GG" | "ORE" })) as RateiPersona[];
   const ultime = ultimiRatei(r);
   const stime = await stimeSaldi(ultime);
+  const rateiF = gls ? [] : await rateiFerie();
   const dati: DatiBuste = {
     totali: tot.map((t) => ({ ...t, gruppo: t.gruppo as Gruppo })),
     voci: voci.map((v) => ({ ...v, gruppo: v.gruppo as Gruppo })),
     oreStation: orePerStation(o),
     oreStr: o.filter((x) => x.oreStr > 0).map((x) => ({ mese: x.mese, station: x.station, gruppo: x.gruppo, codice: x.codice, nome: x.nome, oreLav: x.oreLav, oreStr: x.oreStr })),
     ferieStation: feriePerStation(r),
-    stime,
+    stime, rateiFerie: rateiF,
     ferieUltime: ultime.map((x) => ({ mese: x.mese, station: x.station, gruppo: x.gruppo, codice: x.codice, nome: x.nome, qualifica: x.qualifica, ferieUnita: x.ferieUnita, ferieSaldo: x.ferieSaldo, ferieMatur: x.ferieMatur, ferieGoduto: x.ferieGoduto, rolSaldo: x.rolSaldo, exfestSaldo: x.exfestSaldo })),
     addebiti: addebiti.map((a) => ({ mese: a.mese, station: a.station, gruppo: a.gruppo as Gruppo, codice: a.codice, nome: a.nome, tipo: a.tipo as TipoAddebito, voce: a.voce, importo: a.importo })),
     rotte: rotte.filter((x) => x.rotte !== null).map((x) => ({ mese: x.mese, station: x.station, gruppo: x.gruppo as Gruppo, rotte: x.rotte! })),

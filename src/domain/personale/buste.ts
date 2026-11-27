@@ -12,9 +12,46 @@ export type RateiPersona = {
   ferieSaldo: number | null; ferieMatur: number | null; ferieGoduto: number | null; rolSaldo: number | null; exfestSaldo: number | null;
 };
 
-/** Coefficiente da (lordo di competenza + quota TFR) a costo azienda: rapporto tra il report paghe di settembre 2026 (costo vero, SIC) e le buste dello stesso mese. */
-export const COEFF_COSTO_AZIENDA = 1.233;
-export const COEFF_FONTE = "report paghe di settembre 2026, tutte le station SIC";
+/**
+ * Da (lordo di competenza + quota TFR) a costo azienda, tarato sui report paghe di settembre e ottobre 2026 (costo vero, SIC Amazon).
+ * - COEFF_SENZA_RATEI_FERIE: contributi, INAIL e ratei di 13ª e 14ª. Il rateo di ferie e permessi si aggiunge a parte, calcolato
+ *   dal maturato e dal goduto del mese (vedi rateoFerie): è la voce che fa ballare il costo da un mese all'altro.
+ * - COEFF_COSTO_AZIENDA: tutto compreso, per i mesi e i gruppi in cui il rateo non si può calcolare (prima busta dell'anno, GLS).
+ */
+export const COEFF_SENZA_RATEI_FERIE = 1.37;
+export const COEFF_COSTO_AZIENDA = 1.3;
+export const COEFF_FONTE = "report paghe di settembre e ottobre 2026, tutte le station SIC";
+
+/** Rateo di ferie e permessi di un mese e una station: valore del maturato meno valore del goduto (negativo quando si smaltiscono ferie). */
+export type RateoFerie = { mese: string; station: string; gruppo: Gruppo; importo: number; persone: number };
+type RateiMese = { codice: string; station: string; ferieMatur: number | null; ferieGoduto: number | null; rolMatur: number | null; rolGoduto: number | null; exfestMatur: number | null; exfestGoduto: number | null };
+/** Quanto vale per l'azienda un giorno di ferie e un'ora di ROL o di ex festività di una persona (dall'anagrafica dei costi). */
+export type ValoreAssenza = { ferieGg: number; rolH: number; exfH: number };
+
+/**
+ * Rateo del mese per station: per ogni persona (maturato − goduto) tra la busta di prima e questa, per il valore di un giorno
+ * o di un'ora. Chi non è nell'anagrafica dei costi vale la media della sua station. Serve la busta del mese prima.
+ */
+export function rateoFerie(mese: string, ora: RateiMese[], prima: RateiMese[], valore: (station: string, codice: string) => ValoreAssenza | null): RateoFerie[] {
+  const p = new Map(prima.map((x) => [`${x.station}|${x.codice}`, x]));
+  const d = (a: number | null, b: number | null) => Math.max(0, (a ?? 0) - (b ?? 0)); // a gennaio i contatori ripartono: mai negativo
+  const out = new Map<string, { importo: number; persone: number; senza: { fe: number; rol: number; exf: number }; n: number; somma: ValoreAssenza }>();
+  for (const x of ora) {
+    const o = p.get(`${x.station}|${x.codice}`);
+    if (!o) continue;
+    const s = out.get(x.station) ?? { importo: 0, persone: 0, senza: { fe: 0, rol: 0, exf: 0 }, n: 0, somma: { ferieGg: 0, rolH: 0, exfH: 0 } };
+    const fe = d(x.ferieMatur, o.ferieMatur) - d(x.ferieGoduto, o.ferieGoduto), rol = d(x.rolMatur, o.rolMatur) - d(x.rolGoduto, o.rolGoduto), exf = d(x.exfestMatur, o.exfestMatur) - d(x.exfestGoduto, o.exfestGoduto);
+    const v = valore(x.station, x.codice);
+    if (v) { s.importo += fe * v.ferieGg + rol * v.rolH + exf * v.exfH; s.n++; s.somma.ferieGg += v.ferieGg; s.somma.rolH += v.rolH; s.somma.exfH += v.exfH; }
+    else { s.senza.fe += fe; s.senza.rol += rol; s.senza.exf += exf; }
+    s.persone++;
+    out.set(x.station, s);
+  }
+  return [...out.entries()].filter(([, s]) => s.n > 0).map(([station, s]) => ({
+    mese, station, gruppo: "SIC" as Gruppo, persone: s.persone,
+    importo: Math.round((s.importo + (s.senza.fe * s.somma.ferieGg + s.senza.rol * s.somma.rolH + s.senza.exf * s.somma.exfH) / s.n) * 100) / 100,
+  }));
+}
 
 /** Categorie che non sono costo del mese: anticipi per conto INPS (recuperati), voci pagate una volta (13ª/14ª, ferie liquidate, TFR liquidato). */
 const NON_COMPETENZA = ["ANTICIPI_INPS", "MENSILITA", "FERIE_LIQUIDATE", "FINE_RAPPORTO"];
@@ -45,14 +82,24 @@ export const NOME_CATEGORIA = Object.fromEntries(CATEGORIE.map((c) => [c.id, c.n
 
 export type Costo = { teste: number; lordo: number; tfr: number; competenza: number; stimato: number | null };
 
-/** Costo di un insieme di righe: lordo di competenza = lordo − voci non di competenza; costo stimato solo per chi è dipendente (SIC, GLS). */
-export function costo(tot: TotaleMese[], voci: VoceMese[]): Costo {
+/**
+ * Costo di un insieme di righe: lordo di competenza = lordo − voci non di competenza; costo stimato solo per chi è dipendente (SIC, GLS).
+ * Dove c'è il rateo ferie del mese si usa quello (più preciso), altrimenti il coefficiente tutto compreso.
+ */
+export function costo(tot: TotaleMese[], voci: VoceMese[], ratei: RateoFerie[] = []): Costo {
   const lordo = tot.reduce((a, t) => a + t.lordo, 0), tfr = tot.reduce((a, t) => a + t.tfr, 0), teste = tot.reduce((a, t) => a + t.teste, 0);
-  const chiavi = new Set(tot.map((t) => `${t.mese}|${t.station}|${t.gruppo}`));
-  const togli = voci.filter((v) => v.voce === "" && NON_COMPETENZA.includes(v.categoria) && chiavi.has(`${v.mese}|${v.station}|${v.gruppo}`)).reduce((a, v) => a + v.importo, 0);
-  const competenza = lordo - togli;
+  const k = (x: { mese: string; station: string; gruppo: string }) => `${x.mese}|${x.station}|${x.gruppo}`;
+  const togli = new Map<string, number>();
+  for (const v of voci) if (v.voce === "" && NON_COMPETENZA.includes(v.categoria)) togli.set(k(v), (togli.get(k(v)) ?? 0) + v.importo);
+  const rateo = new Map(ratei.map((r) => [k(r), r.importo]));
+  let competenza = 0, stimato = 0;
+  for (const t of tot) {
+    const c = t.lordo - (togli.get(k(t)) ?? 0), r = rateo.get(k(t));
+    competenza += c;
+    stimato += r === undefined ? (c + t.tfr) * COEFF_COSTO_AZIENDA : (c + t.tfr) * COEFF_SENZA_RATEI_FERIE + r;
+  }
   const soloDipendenti = tot.every((t) => t.gruppo === "SIC");
-  return { teste, lordo, tfr, competenza, stimato: tot.length && soloDipendenti ? (competenza + tfr) * COEFF_COSTO_AZIENDA : null };
+  return { teste, lordo, tfr, competenza, stimato: tot.length && soloDipendenti ? stimato : null };
 }
 
 /** Ore per station e mese (somma delle persone). */

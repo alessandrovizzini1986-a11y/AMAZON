@@ -6,6 +6,8 @@ import { quotaCanone } from "@/domain/costi/fo";
 import { rigaNoleggioGls, type CellaNoleggioGls } from "@/lib/costi/excelFOGls";
 import { aditMese, datiFO, festivi, mesePrec, oggiIso, parametri, tariffe, ultimoAdit, utenteCosti } from "../dati";
 import { GlsClient } from "./GlsClient";
+import { db } from "@/lib/db";
+import type { RigaPayroll } from "@/domain/costi/payroll";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Costi GLS — FleetDSP" };
@@ -16,6 +18,8 @@ export default async function CostiGlsPage({ searchParams }: { searchParams: Pro
   const mese = await meseScelto(q, mesePrec(oggiIso().slice(0, 7)));
   const anno = Number(mese.slice(0, 4));
   const [tar, par, fest, festPrima, fo, meseTariffe] = await Promise.all([tariffe(), parametri(), festivi(anno), festivi(anno - 1), datiFO(mese), ultimoAdit(mesePrec(mese))]);
+  // payroll GLS già conservato nel sito per questo mese: la pagina lo usa senza ricaricare il file
+  const paySalvato = await db.payrollGlsRiga.findMany({ where: { mesePaga: mese }, select: { matr: true, dipe: true, cod1: true, cod2: true, descrizione: true, conto: true, importo: true, componente: true, istituto: true } });
   const adit = meseTariffe ? await aditMese(meseTariffe) : [];
   const tStd = adit.length ? tariffeDaAdit(adit.map((r) => ({ ...r, voce: r.voce as VoceAdit }))) : null;
   // noleggi della flotta GLS per riga del foglio F.O. GLS (canone pro-rata, sostitutivi esclusi)
@@ -34,11 +38,12 @@ export default async function CostiGlsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-6">
       <PageHeader eyebrow="Personale · GLS Castel Maggiore (CDC 5565)" title="Costi GLS"
-        subtitle="Trascina i file presenze di Castel Maggiore (mese e mese prima), il DB_CDL_base con il foglio SIC GLS BO e, se ce l'hai, l'export Badgebox e il payroll del mese. I file restano in questo browser: niente viene salvato." />
+        subtitle="Trascina i file presenze di Castel Maggiore (mese e mese prima), il DB_CDL_base con il foglio SIC GLS BO e, se ce l'hai, l'export Badgebox e il payroll del mese. I file restano in questo browser; del payroll il sito conserva le righe del CDC 5565, così non devi ricaricarlo." />
       <GlsClient
         mese={mese} fineMese={fineMese} canRun={can(user, "costi.run")}
         tariffe={tar} parametri={par.map((p) => ({ voce: p.chiave, validaDal: p.validaDal, valore: p.valore }))} festivi={[...festPrima, ...fest]}
         tariffeStd={tStd} meseTariffe={meseTariffe}
+        payrollSalvato={paySalvato.length ? { righe: paySalvato.map((r) => ({ ...r, importo: Number(r.importo) })) as RigaPayroll[], dipendenti: new Set(paySalvato.map((r) => r.matr)).size } : null}
         fo={{ carburante: chiaveGls(fo.q8?.perStation), q8File: fo.q8?.file ?? null, autostrade: chiaveGls(fo.telepass?.perStation), telepassFile: fo.telepass?.file ?? null, noleggi: [...per.values()].map((c) => ({ ...c, importo: Math.round(c.importo * 100) / 100 })) }}
       />
     </div>

@@ -1553,3 +1553,21 @@ model BustaLavoroPersona {
 
   @@id([meseLavoro, station, gruppo, cf])
 }
+
+// Costi del personale PS, CDC 5565 (GLS Castel Maggiore): le stesse righe di PayrollRiga, tenute a parte perché
+// tutto quello che legge PayrollRiga è Amazon. La pagina Costi GLS le usa quando non ricarichi il file.
+model PayrollGlsRiga {
+  id          String  @id @default(cuid())
+  mesePaga    String // AAAA-MM
+  matr        String
+  dipe        String
+  cod1        String
+  cod2        String
+  descrizione String
+  conto       String
+  importo     Decimal @db.Decimal(14, 2)
+  componente  String
+  istituto    String?
+
+  @@index([mesePaga])
+}
