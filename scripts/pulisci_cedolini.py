@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Toglie dai cedolini (LUL Zucchetti, SIC) i dati che non servono a chi li riceve.
+"""Toglie dai cedolini (LUL Zucchetti: SIC e STD dell'agenzia) i dati che non servono a chi li riceve.
 
 Il testo viene tolto davvero dal PDF (non solo coperto da un riquadro nero): non si può più copiare né cercare.
 
@@ -25,9 +25,12 @@ import pymupdf
 CF = re.compile(r"^[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]$")
 DATA = re.compile(r"^\d\d/\d\d/\d{4}$")
 # voci del cedolino da togliere: contributi, addizionali, TFR, trattenute sul netto, legge 104
-VOCE_VIA = re.compile(r"^(EBI|IPP|001|002|005|035|124|TFR100|TFR200|W0900|W1100|TN\w+|CN\w+|FA\w*|PIH\w+|PXR19[56]|PXH\w+)$")
+VOCE_VIA = re.compile(
+    r"^(EBI|IPP|001|002|005|035|124|TFR100|TFR200|W0900|W1100|TN\w+|CN\w+|FA\w*|PIH\w+|PXR19[56]|PXH\w+"
+    # cedolini dell'agenzia (STD): contributi, TFR, fondi, trattenute, multe e danni, conguagli del 730
+    r"|006\w*|152|WRETR|TF140|AD1\w*|750010|706302|703108|090003|00597[56]|00633[45]|007918|704074|80010\d|002010|L\d{4})$")
 # voci da togliere per descrizione, qualunque sia il codice: sindacato e fondo pensione scelto
-DESCR_VIA = re.compile(r"(?i)sindacal|priamo|pension|fondo previd|\bTFR a \b|fondo arti")
+DESCR_VIA = re.compile(r"(?i)sindacal|priamo|pension|fondo previd|\bTFR a \b|fondo arti|^\S+ (TRATTEN|TRATT\.|INFRAZ)|pignor|cessione|FONTE$|FONDO S")
 # giustificativi del calendario da togliere: permessi legge 104 (PH, CD = congedo straordinario) e permessi sindacali (PS)
 GIUST_VIA = {"PH", "PHG", "PHC", "CD", "PS"}
 SEZIONI = re.compile(r"^(VOCI RETRIBUTIVE|TRATTENUTE PREVIDENZIALI|IMPOSTA SUL|ADDIZIONALI|RATEI$|NOTE DESCRIZIONE|FERIE Res|FerAgg|R\.O\.L\.|ExFEST|B\.ORE|SCATTI|Ass\. contr|GG Detr)")
@@ -166,7 +169,7 @@ def cedolino(pagina, rr, conta, aperta=False):
     desc = next((w for w in (note or []) if norm(w[4]).startswith("DESCRIZIONE")), None)
     if note and tfr and desc:
         for r in rr:
-            p = [w for w in r if note[0][3] + 1 < w[1] < tfr[0][1] - 2 and w[2] < desc[0] - 3]
+            p = [w for w in r if note[0][1] + 4 < w[1] < tfr[0][1] - 2 and w[2] < desc[0] - 3]
             if p:
                 via.append(box(p)); conta["cedolino: IBAN e banca"] += 1
     # totali delle trattenute in fondo
