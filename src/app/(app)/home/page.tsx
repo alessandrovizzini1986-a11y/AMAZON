@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { PageHeader } from "@/components/ui";
 import { NavIcon } from "@/components/icons";
-import { menuPer } from "@/components/navModel";
+import { bloccato, menuPer } from "@/components/navModel";
 import { percorsiCosti, percorsoFattureSettimana, percorsoPresenzeOra, percorsoTelepassOra } from "@/lib/percorsi";
 import { daFare, type Percorso } from "@/domain/percorsi/percorso";
 import { allerteTariffe, etaMesi, versioniCDL, versioniMog } from "../costi/dati";
@@ -25,7 +25,11 @@ export default async function HomePage() {
     can(user, "presenze.run") ? percorsoPresenzeOra() : Promise.resolve(null),
     can(user, "telepass.run") ? percorsoTelepassOra() : Promise.resolve(null),
   ]);
-  const lista = daFare([fatture, presenze, telepass, ...costi].filter((p): p is Percorso => !!p));
+  // le pagine che il super admin ha nascosto a questo utente non si propongono: niente "Vai" verso di loro, e via i percorsi tutti nascosti
+  const nascosta = (href?: string) => !!href && bloccato(href.split(/[?#]/)[0], user.nascosti ?? []);
+  const tuttiNascosti = (p: Percorso) => { const h = p.passi.filter((x) => x.href); return h.length > 0 && h.every((x) => nascosta(x.href)); };
+  const visibili = [fatture, presenze, telepass, ...costi].filter((p): p is Percorso => !!p && !tuttiNascosti(p));
+  const lista = daFare(visibili);
   const aperti = lista.filter((x) => !x.completo), chiusi = lista.filter((x) => x.completo);
 
   const avvisi: { testo: React.ReactNode; href: string; grave?: boolean }[] = [];
@@ -36,6 +40,7 @@ export default async function HomePage() {
     else if (etaMesi(cdl[0].mese) > 3) avvisi.push({ testo: <>L&apos;anagrafica CDL più recente è del {it(cdl[0].mese)}: ha più di 3 mesi, chiedi a HR quella aggiornata</>, href: "/costi/parametri#anagrafica" });
     if (mog[0] && (Date.now() - Date.parse(mog[0].versione)) / 864e5 > 40) avvisi.push({ testo: <>Il file MOG di Adecco è del {it(mog[0].versione)}: ha più di 40 giorni, chiedi a Erika quello aggiornato</>, href: "/costi/parametri#mog" });
   }
+  const avvisiVisti = avvisi.filter((a) => !nascosta(a.href));
   const gruppi = menuPer(user.role, user.nascosti).map((g) => (g.id === "home" ? { ...g, label: "Numeri", items: g.items.filter((v) => v.href !== "/home") } : g)).filter((g) => g.items.length > 0);
   const nome = user.name.split(" ")[0];
   const oggi = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" });
@@ -47,7 +52,9 @@ export default async function HomePage() {
 
       <section aria-labelledby="dafare" data-tour="dafare">
         <h2 id="dafare" className="mb-3 text-[19px] font-semibold">Da fare {aperti.length > 0 && <span className="ml-1 rounded-full bg-brand px-2 py-0.5 align-middle text-xs font-semibold text-white">{aperti.length}</span>}</h2>
-        {aperti.length === 0 ? (
+        {lista.length === 0 ? (
+          <p className="rounded-control bg-surface px-4 py-3 text-sm text-ink-muted">Nessun lavoro a scadenza tra le pagine che usi.</p>
+        ) : aperti.length === 0 ? (
           <p className="rounded-control bg-ok-soft px-4 py-3 text-sm text-ok">✓ Tutto fatto per questa settimana e questo mese.</p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -61,7 +68,7 @@ export default async function HomePage() {
                 {x.prossimo && (
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span><span className="text-ink-muted">Ora: </span>{x.prossimo.titolo}{x.prossimo.nota && <span className="text-ink-muted"> ({x.prossimo.nota})</span>}</span>
-                    {x.prossimo.href && <Link href={x.prossimo.href} className="btn-primary px-3 py-1.5 text-sm">Vai</Link>}
+                    {x.prossimo.href && !nascosta(x.prossimo.href) && <Link href={x.prossimo.href} className="btn-primary px-3 py-1.5 text-sm">Vai</Link>}
                   </div>
                 )}
               </article>
@@ -71,11 +78,11 @@ export default async function HomePage() {
         {chiusi.length > 0 && <p className="mt-3 text-sm text-ok">✓ Già fatto: {chiusi.map((x) => x.titolo).join(" · ")}</p>}
       </section>
 
-      {avvisi.length > 0 && (
+      {avvisiVisti.length > 0 && (
         <section aria-labelledby="avvisi" data-tour="avvisi">
           <h2 id="avvisi" className="mb-3 text-[19px] font-semibold">Avvisi</h2>
           <ul className="flex flex-col gap-2">
-            {avvisi.map((a, i) => (
+            {avvisiVisti.map((a, i) => (
               <li key={i} className={`flex flex-wrap items-center justify-between gap-2 rounded-control px-4 py-3 text-sm ${a.grave ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn"}`}>
                 <span>{a.testo}</span><Link href={a.href} className="font-semibold underline">Apri</Link>
               </li>
