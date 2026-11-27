@@ -1484,3 +1484,24 @@ model PersonaleAddebito {
   @@index([mese])
   @@index([station, mese])
 }
+
+// Organico dei dipendenti (SIC) dal file HR del mese: chi c'è, dove, con che contratto, chi è uscito e quando scade un termine.
+// Serve agli incroci con il resto del sito (telefoni e SIM da ritirare, anagrafica costi da aggiornare). Dati personali: solo super admin.
+model OrganicoPersona {
+  versione        String // AAAA-MM del file
+  matricola       String
+  cf              String
+  cognome         String
+  nome            String
+  station         String
+  mansione        String    @default("")
+  tipoContratto   String    @default("")
+  pctPt           Float     @default(0) // 0 = tempo pieno
+  dataAssunzione  DateTime?
+  dataCessazione  DateTime?
+  causaCessazione String    @default("")
+  scadenzaTd      DateTime?
+
+  @@id([versione, cf])
+  @@index([versione, station])
+}

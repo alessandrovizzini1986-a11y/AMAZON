@@ -4,13 +4,16 @@ import { db } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
 import { feriePerStation, orePerStation, ultimiRatei, type Gruppo, type TipoAddebito, type OrePersona, type RateiPersona } from "@/domain/personale/buste";
 import { BusteClient, type DatiBuste } from "./BusteClient";
+import { Incroci } from "./Incroci";
+import { incrociOrganico } from "@/lib/personale/organico";
 
 export const dynamic = "force-dynamic";
 
 export default async function PersonaleBustePage({ searchParams }: { searchParams: Promise<{ cliente?: string }> }) {
   await requireSuperAdmin();
   const gls = (await searchParams).cliente === "gls", dove = gls ? "GLS" : { not: "GLS" };
-  const [tot, voci, ore, ratei, rotte, addebiti] = await Promise.all([
+  const [incroci, tot, voci, ore, ratei, rotte, addebiti] = await Promise.all([
+    gls ? Promise.resolve(null) : incrociOrganico(),
     db.personaleBustaMese.findMany({ where: { station: dove }, orderBy: [{ mese: "asc" }, { station: "asc" }] }),
     db.personaleBustaVoce.findMany({ where: { station: dove } }),
     db.personaleOrePersona.findMany({ where: { station: dove }, select: { mese: true, station: true, gruppo: true, codice: true, nome: true, qualifica: true, oreLav: true, ggLav: true, oreStr: true, oreMagg: true } }),
@@ -38,6 +41,7 @@ export default async function PersonaleBustePage({ searchParams }: { searchParam
         <Link className={gls ? "btn-primary" : "btn-secondary"} href="/personale-buste?cliente=gls">GLS</Link>
         <a className="btn-secondary ml-auto" href={`/api/personale/buste${gls ? "?cliente=gls" : ""}`}>Scarica Excel</a>
       </div>
+      {incroci && <Incroci d={incroci} />}
       {tot.length === 0 ? <p className="card p-4 text-sm text-slate-600">Non ci sono ancora buste caricate.</p> : <BusteClient key={gls ? "gls" : "amazon"} dati={dati} gls={gls} />}
     </div>
   );
