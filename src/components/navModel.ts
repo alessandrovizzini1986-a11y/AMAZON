@@ -184,3 +184,51 @@ export function paginaIniziale(role: Role, nascosti: string[] = []): string {
   // se anche la pagina iniziale è stata nascosta, si atterra sul proprio account (che non si può nascondere)
   return candidate.find((h): h is string => !!h && !nascosti.includes(h)) ?? "/account";
 }
+
+/**
+ * Pagine che non sono voci di menu ma schede dentro una sezione: compaiono solo nella ricerca.
+ * `voce` = la voce di menu a cui appartengono: se è nascosta all'utente, sparisce anche la scheda.
+ */
+type Interna = { href: string; label: string; descr: string; perm: Action; voce: string; parole?: string };
+export const PAGINE_INTERNE: Interna[] = [
+  { href: "/presenze/archivio", label: "Presenze: archivio file", descr: "passo 1, i file del tracking del mese", perm: "presenze.view", voce: "/presenze" },
+  { href: "/presenze/verifica", label: "Presenze: verifica tracking", descr: "passo 2, controllo giorno per giorno", perm: "presenze.view", voce: "/presenze" },
+  { href: "/presenze/settimanale", label: "Presenze: solo Amazon", descr: "dettaglio settimanale delle rotte Amazon", perm: "presenze.view", voce: "/presenze", parole: "settimana" },
+  { href: "/presenze/fine-mese", label: "Presenze: fine mese", descr: "passo 3, chiusura e invio del mese", perm: "presenze.view", voce: "/presenze" },
+  { href: "/presenze/configurazione", label: "Presenze: configurazione", descr: "giustificativi, dispatcher, referenti", perm: "presenze.config", voce: "/presenze" },
+  { href: "/costi/meta-mese", label: "Costi: stima di metà mese", descr: "quanto costa il personale a metà mese", perm: "costi.view", voce: "/costi" },
+  { href: "/costi/fine-mese", label: "Costi: fine mese", descr: "stima completa del mese", perm: "costi.view", voce: "/costi" },
+  { href: "/costi/consuntivo", label: "Costi: consuntivo", descr: "stima contro buste e fattura agenzia", perm: "costi.view", voce: "/costi", parole: "adecco std" },
+  { href: "/costi/parametri", label: "Costi: parametri e anagrafica", descr: "tariffe, contratti e persone", perm: "costi.view", voce: "/costi", parole: "cdl tariffe" },
+  { href: "/fatture-amazon/importa", label: "Fatture: importa PDF", descr: "carica le fatture Amazon", perm: "fatture.import", voce: "/fatture-amazon" },
+  { href: "/fatture-amazon/registro", label: "Fatture: registro", descr: "tutte le fatture caricate", perm: "fatture.registro", voce: "/fatture-amazon" },
+  { href: "/fatture-amazon/allinea", label: "Fatture: controllo con il tuo file", descr: "allineamento con il tuo Excel", perm: "fatture.allinea", voce: "/fatture-amazon" },
+  { href: "/fatture-amazon/forecast/storico", label: "Storico forecast e furgoni", descr: "forecast dei mesi passati", perm: "forecast.view", voce: "/fatture-amazon/forecast" },
+];
+
+export type Pagina = NavItem & { gruppo: string; parole?: string };
+
+/** Tutte le pagine che l'utente può cercare: le voci del suo menu più le schede interne delle voci che vede. */
+export function pagineCercabili(role: Role, nascosti: string[] = []): Pagina[] {
+  const gruppi = menuPer(role, nascosti);
+  const voci = gruppi.flatMap((g) => g.items.map((v) => ({ ...v, gruppo: g.label })));
+  const viste = new Set(voci.map((v) => v.href));
+  const interne = PAGINE_INTERNE.filter((p) => viste.has(p.voce) && can({ role }, p.perm)).map(({ perm: _p, voce, ...p }) => ({
+    ...p, icon: voci.find((v) => v.href === voce)!.icon, gruppo: voci.find((v) => v.href === voce)!.gruppo,
+  }));
+  return [...voci, ...interne, { href: "/account", label: "Il mio account", icon: "user", descr: "nome, password e dati di accesso", gruppo: "Account" }];
+}
+
+const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/** Cerca tra le pagine: tutte le parole devono comparire; prima chi ha la parola all'inizio del titolo, poi nel titolo, poi altrove. */
+export function cercaPagine(q: string, pagine: Pagina[], max = 8): Pagina[] {
+  const parole = norm(q).split(/\s+/).filter(Boolean);
+  if (!parole.length) return [];
+  const punteggio = (p: Pagina) => {
+    const titolo = norm(p.label), tutto = `${titolo} ${norm(p.descr ?? "")} ${norm(p.gruppo)} ${norm(p.parole ?? "")}`;
+    if (!parole.every((w) => tutto.includes(w))) return -1;
+    return parole.reduce((s, w) => s + (titolo.split(/[\s:,]+/).some((t) => t.startsWith(w)) ? 3 : titolo.includes(w) ? 2 : 1), 0);
+  };
+  return pagine.map((p, i) => ({ p, s: punteggio(p), i })).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s || a.i - b.i).slice(0, max).map((x) => x.p);
+}

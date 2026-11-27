@@ -3,7 +3,8 @@ import type { SessionUser } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
 import { BottomGruppoLink } from "./NavLink";
 import { NavIcon } from "./icons";
-import { GRUPPI_DESTRA, menuPer, vociBarra } from "./navModel";
+import { GRUPPI_DESTRA, menuPer, pagineCercabili, vociBarra } from "./navModel";
+import { CercaPagine } from "./CercaPagine";
 import { MenuMobile, GruppoMenu } from "./MenuMobile";
 import { MenuAttivoBarra } from "./MenuAttivo";
 import { MarcaScroll } from "./MarcaScroll";
@@ -30,6 +31,7 @@ function initials(name: string): string {
 export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const gruppi = menuPer(user.role, user.nascosti);
   const operativi = gruppi.filter((g) => !GRUPPI_DESTRA.includes(g.id)), destra = gruppi.filter((g) => GRUPPI_DESTRA.includes(g.id));
+  const pagine = pagineCercabili(user.role, user.nascosti);
   const { barra } = vociBarra(user.role, 4, user.nascosti);
   const gruppiBarra = gruppi.filter((g) => barra.some((b) => b.gruppo === g.id));
   // tablet: i primi 4 gruppi in vista, gli altri (e la gestione) in "Altro"
@@ -56,6 +58,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           </nav>
 
           <div data-tour="account" className="ml-auto flex items-center gap-2 md:ml-0">
+            {pagine.length > 2 && <CercaPagine pagine={pagine} />}
             <Link
               href="/account"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-[#d5dbe3] text-xs font-semibold text-ink transition-colors hover:border-brand hover:text-brand md:h-10 md:w-10 md:text-sm"
@@ -83,7 +86,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
       {/* bottom nav mobile: i primi 4 gruppi + Menu con tutte le voci per gruppo */}
       <nav data-tour="menu" className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface-raised pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
         {gruppiBarra.map((g) => <BottomGruppoLink key={g.id} gruppo={g} tutti={gruppi} />)}
-        {gruppi.flatMap((g) => g.items).length > gruppiBarra.length && <MenuAttivoBarra gruppi={gruppi} inBarra={gruppiBarra.map((g) => g.id)} utente={{ nome: user.name, ruolo: ROLE_LABEL[user.role] }} />}
+        {gruppi.flatMap((g) => g.items).length > gruppiBarra.length && <MenuAttivoBarra gruppi={gruppi} inBarra={gruppiBarra.map((g) => g.id)} utente={{ nome: user.name, ruolo: ROLE_LABEL[user.role] }} pagine={pagine} />}
       </nav>
     </div>
   );

@@ -5,20 +5,22 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { logoutAction } from "@/app/login/actions";
 import { NavIcon } from "./icons";
-import { gruppoAttivo, voceAttiva, type NavGroup } from "./navModel";
+import { RicercaPagine } from "./CercaPagine";
+import { gruppoAttivo, voceAttiva, type NavGroup, type Pagina } from "./navModel";
 
 /**
  * Voce "Menu" della barra in basso (telefono): apre un pannello dal basso con tutte le voci divise per gruppo,
  * l'account e l'uscita. Dialog nativo: Esc chiude, il focus torna al pulsante.
  */
-export function MenuMobile({ gruppi, attivo, utente }: { gruppi: NavGroup[]; attivo: boolean; utente: { nome: string; ruolo: string } }) {
+export function MenuMobile({ gruppi, attivo, utente, pagine }: { gruppi: NavGroup[]; attivo: boolean; utente: { nome: string; ruolo: string }; pagine: Pagina[] }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [cerca, setCerca] = useState(""), [giro, setGiro] = useState(0);
   const pathname = usePathname();
   const corrente = voceAttiva(pathname, gruppi.flatMap((g) => g.items));
   useEffect(() => { ref.current?.close(); }, [pathname]);
   return (
     <>
-      <button type="button" onClick={() => ref.current?.showModal()} aria-haspopup="dialog" aria-current={attivo ? "page" : undefined}
+      <button type="button" onClick={() => { setCerca(""); setGiro((n) => n + 1); ref.current?.showModal(); }} aria-haspopup="dialog" aria-current={attivo ? "page" : undefined}
         className={`flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors ${attivo ? "text-brand" : "text-ink-faint"}`}>
         <NavIcon name="menu" className="h-5 w-5" />
         Menu
@@ -30,7 +32,9 @@ export function MenuMobile({ gruppi, attivo, utente }: { gruppi: NavGroup[]; att
             <span className="text-sm text-ink-muted">{utente.nome} · {utente.ruolo}</span>
             <button type="button" className="flex h-11 w-11 items-center justify-center rounded-control text-ink-muted" aria-label="Chiudi il menu" onClick={() => ref.current?.close()}>✕</button>
           </div>
-          <nav aria-label="Tutte le sezioni" className="flex flex-col gap-3">
+          {/* la casella riparte vuota a ogni apertura; mentre si cerca il menu lascia il posto ai risultati */}
+          <div className="mb-3"><RicercaPagine key={giro} pagine={pagine} onScrivi={setCerca} onVai={() => ref.current?.close()} /></div>
+          <nav aria-label="Tutte le sezioni" className={`flex flex-col gap-3 ${cerca.trim() ? "hidden" : ""}`}>
             {gruppi.map((g) => (
               <div key={g.id}>
                 <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">{g.label}</div>

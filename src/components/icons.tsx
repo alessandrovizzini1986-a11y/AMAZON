@@ -24,9 +24,16 @@ export type IconName =
   | "user"
   | "logout"
   | "menu"
-  | "map";
+  | "map"
+  | "search";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </>
+  ),
   map: (
     <>
       <path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11Z" />
