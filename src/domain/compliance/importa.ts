@@ -1,9 +1,10 @@
 /**
  * Import dello stato letto sul portale (JSON incollato dall'admin). Calcola soltanto le differenze: chi le applica
- * lo decide dopo averle viste. Non crea righe e non cancella niente.
+ * lo decide dopo averle viste. Non cancella niente. Le righe che mancano le crea solo se l'admin lo chiede, e mai
+ * per i folder che in anagrafica sono segnati "non lo usiamo" (per esempio le Dilazioni).
  */
 import { z } from "zod";
-import { scadenzaInterna } from "./scadenze";
+import { scadenzaInterna, scadenzaPortale } from "./scadenze";
 import type { Stato } from "./stato";
 
 const file = z.object({ nome: z.string(), caricato_il: z.string().optional(), nota: z.string().optional() });
@@ -60,4 +61,31 @@ export function differenze(portale: RigaPortale[], registro: RigaRegistro[]): { 
     if (dopo || scadDopo || avviso) diff.push({ id: r.id, chi: `${p.entita} ${p.area} · ${String(p.mese).padStart(2, "0")}/${p.anno} · ${p.folder}`, statoPrima: r.stato, statoDopo: dopo, motivo, scadenzaPrima: r.scadenzaPortale, scadenzaDopo: scadDopo, scadenzaInterna: scadDopo ? scadenzaInterna(scadDopo) : null, avviso });
   }
   return { diff, nonTrovati };
+}
+
+export type TemplateImport = { id: string; entita: string; area: string; folder: string; regolaScadenza: string; usato: boolean };
+export type DaCreare = { templateId: string; anno: number; mese: number; chi: string; stato: Stato; motivo: string | null; scadenzaPortale: string | null; scadenzaInterna: string | null };
+
+/**
+ * I folder del portale che nel registro non hanno la riga. Tre casi: da creare (folder che usiamo), ignorati
+ * (in anagrafica "non lo usiamo": non li carichiamo mai, quindi niente riga), sconosciuti (non sono in anagrafica).
+ */
+export function mancanti(portale: RigaPortale[], registro: RigaRegistro[], template: TemplateImport[]): { daCreare: DaCreare[]; ignorati: string[]; sconosciuti: string[] } {
+  const ci = new Set(registro.map(chiave));
+  const tpl = new Map(template.map((t) => [`${t.entita}|${t.area}|${t.folder}`, t]));
+  const daCreare: DaCreare[] = [], ignorati: string[] = [], sconosciuti: string[] = [], visti = new Set<string>();
+  for (const p of portale) {
+    const k = chiave(p);
+    if (ci.has(k) || visti.has(k)) continue;
+    visti.add(k);
+    const chi = `${p.entita} ${p.area} ${String(p.mese).padStart(2, "0")}/${p.anno}: ${p.folder}`;
+    const t = tpl.get(`${p.entita}|${p.area}|${ALIAS[p.folder.trim()] ?? p.folder.trim()}`);
+    if (!t) { sconosciuti.push(chi); continue; }
+    if (!t.usato) { ignorati.push(chi); continue; }
+    const respinto = (p.file ?? []).find((f) => /FileNonConforme/i.test(f.nota ?? ""));
+    const stato: Stato = p.stato_portale === "VALIDATED" ? "VALIDATO" : p.stato_portale !== "OPEN" ? "CARICATO" : respinto ? "RESPINTO" : "DA_RICHIEDERE";
+    const scad = p.scadenza_portale ?? scadenzaPortale(t.regolaScadenza, p.anno, p.mese);
+    daCreare.push({ templateId: t.id, anno: p.anno, mese: p.mese, chi, stato, motivo: stato === "RESPINTO" ? respinto?.nota ?? "FileNonConforme" : null, scadenzaPortale: scad, scadenzaInterna: scad ? scadenzaInterna(scad) : null });
+  }
+  return { daCreare, ignorati, sconosciuti };
 }

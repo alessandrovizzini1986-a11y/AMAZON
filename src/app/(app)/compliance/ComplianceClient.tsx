@@ -8,7 +8,7 @@ import { giorniA, it, MESI, NOME_REGOLA, nomeMese, REGOLE, type Regola } from "@
 import { chiusa, COLORE_STATO, mia, NOME_STATO, puoSpuntare, puoTogliereSpunta, scaduta, STATI, type Stato } from "@/domain/compliance/stato";
 import { FAC_SIMILE } from "@/domain/compliance/seed";
 import { mailRichiesta, mailSollecito, mailto, nomeEntita } from "@/domain/compliance/mail";
-import { daIndirizzo, type Differenza } from "@/domain/compliance/importa";
+import { daIndirizzo, type DaCreare, type Differenza } from "@/domain/compliance/importa";
 import { anteprimaImport, applicaImport, cambiaStato, generaMeseAzione, salvaTemplate, segnaRichiesti, spunta, togliSpunta } from "./actions";
 
 type Tpl = { id: string; entita: string; area: string; folder: string; documento: string; formato: string; nomeFileStandard: string; regolaScadenza: string; mesiAttivi: string; owner: string; ownerEmail: string; usato: boolean };
@@ -46,10 +46,16 @@ export function ComplianceClient({ righe, oggi, admin, io, template }: Props) {
   // arrivo dal segnalibro del portale: i dati sono nell'indirizzo dopo il cancelletto. Li passo all'import e pulisco l'indirizzo
   const [daPortale, setDaPortale] = useState<string | null>(null);
   useEffect(() => {
-    const j = daIndirizzo(window.location.hash);
-    if (j === null) return;
-    router.replace(window.location.pathname, { scroll: false });
-    if (admin) { setDaPortale(j); setVista("GESTIONE"); } else setErrore("L'import dal portale lo può fare solo l'amministratore del registro.");
+    const leggi = () => {
+      const j = daIndirizzo(window.location.hash);
+      if (j === null) return;
+      router.replace(window.location.pathname, { scroll: false });
+      if (admin) { setDaPortale(null); setTimeout(() => { setDaPortale(j); setVista("GESTIONE"); }, 0); } else setErrore("L'import dal portale lo può fare solo l'amministratore del registro.");
+    };
+    leggi();
+    // la scheda del registro può essere già aperta quando il segnalibro riparte
+    window.addEventListener("hashchange", leggi);
+    return () => window.removeEventListener("hashchange", leggi);
   }, [admin]); // eslint-disable-line react-hooks/exhaustive-deps
   const fai = (f: () => Promise<unknown>) => parti(async () => { setErrore(null); try { await f(); router.refresh(); } catch (e) { setErrore(e instanceof Error ? e.message : "Operazione non riuscita"); } });
 
@@ -211,12 +217,13 @@ function Gestione({ template, attesa, fai, oggi, daPortale }: { template: Tpl[];
   const [mese, setMese] = useState(oggi.slice(0, 7));
   const [esito, setEsito] = useState<string | null>(null);
   const [json, setJson] = useState(daPortale ?? "");
-  const [ante, setAnte] = useState<{ diff: Differenza[]; nonTrovati: string[]; lettoIl: string } | null>(null);
+  const [ante, setAnte] = useState<{ diff: Differenza[]; daCreare: DaCreare[]; ignorati: string[]; sconosciuti: string[]; lettoIl: string } | null>(null);
+  const [crea, setCrea] = useState(false);
   const [errJson, setErrJson] = useState<string | null>(null);
   const [mod, setMod] = useState<Tpl | null>(null);
   const vedi = (testo: string) => fai(async () => { setErrJson(null); const r = await anteprimaImport(testo); if ("errore" in r) { setErrJson(r.errore); setAnte(null); } else setAnte(r); });
   // dati arrivati dal segnalibro: mostro subito le differenze, senza incollare nulla. Applicare resta una scelta
-  useEffect(() => { if (daPortale) vedi(daPortale); }, [daPortale]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (daPortale) { setJson(daPortale); setErrJson(null); setCrea(false); vedi(daPortale); } }, [daPortale]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="flex flex-col gap-4">
       <section className="card flex flex-col gap-2 p-3 md:p-4">
@@ -226,7 +233,7 @@ function Gestione({ template, attesa, fai, oggi, daPortale }: { template: Tpl[];
       </section>
       <section className="card flex flex-col gap-2 p-3 md:p-4">
         <h2 className="text-base font-semibold">Import dello stato dal portale</h2>
-        <p className="text-sm text-ink-muted">Con il segnalibro del portale i dati arrivano qui da soli; altrimenti incolla il JSON della lettura. Prima vedi le differenze, poi decidi se applicarle. Non crea righe, non cancella niente e non tocca chi ha caricato e quando.</p>
+        <p className="text-sm text-ink-muted">Con il segnalibro del portale i dati arrivano qui da soli; altrimenti incolla il JSON della lettura. Prima vedi le differenze, poi decidi se applicarle. Non cancella niente e non tocca chi ha caricato e quando; le righe che mancano le crea solo se metti la spunta.</p>
         {daPortale && <p className="rounded-control bg-brand-light px-3 py-2 text-sm text-brand">Dati arrivati dal portale con il segnalibro: controlla le differenze qui sotto e premi Applica.</p>}
         <textarea className="input min-h-[120px] font-mono text-xs" value={json} onChange={(e) => { setJson(e.target.value); setAnte(null); }} placeholder='{"letto_il": "2026-11-27T16:10:00", "righe": [ … ]}' aria-label="JSON letto dal portale" />
         <div><button type="button" className="btn-secondary" disabled={attesa || !json.trim()} onClick={() => vedi(json)}>Vedi le differenze</button></div>
@@ -234,9 +241,17 @@ function Gestione({ template, attesa, fai, oggi, daPortale }: { template: Tpl[];
         {ante && (
           <div className="flex flex-col gap-2 text-sm">
             <p>Lettura del {ante.lettoIl.replace("T", " ")}: <b>{ante.diff.length}</b> differenze.</p>
-            {ante.nonTrovati.length > 0 && <p className="rounded-control bg-orange-50 px-2 py-1 text-orange-800">Folder non trovati nel registro (non li creo): {ante.nonTrovati.join("; ")}</p>}
+            {ante.daCreare.length > 0 && (
+              <div className="rounded-control bg-orange-50 px-2 py-2 text-orange-900">
+                <label className="flex min-h-[40px] items-center gap-2 font-semibold"><input type="checkbox" className="h-5 w-5" checked={crea} onChange={(e) => setCrea(e.target.checked)} />Crea anche le {ante.daCreare.length} righe che nel registro mancano</label>
+                <p>Nascono con lo stato letto sul portale. Senza la spunta restano fuori dal registro.</p>
+                <ul className="mt-1 list-disc pl-5">{ante.daCreare.map((c) => <li key={c.chi}>{c.chi} → {NOME_STATO[c.stato]}</li>)}</ul>
+              </div>
+            )}
+            {ante.ignorati.length > 0 && <p className="text-ink-muted">Lasciati fuori perché in anagrafica sono &quot;non lo usiamo&quot;: {ante.ignorati.join("; ")}</p>}
+            {ante.sconosciuti.length > 0 && <p className="rounded-control bg-orange-50 px-2 py-1 text-orange-800">Folder del portale che non sono in anagrafica (non li creo): {ante.sconosciuti.join("; ")}</p>}
             <ul className="flex flex-col gap-1">{ante.diff.map((d) => <li key={d.id} className="border-t border-line pt-1"><b>{d.chi}</b>{d.statoDopo && <>: {NOME_STATO[d.statoPrima]} → <b>{NOME_STATO[d.statoDopo]}</b>{d.motivo ? ` (${d.motivo})` : ""}</>}{d.scadenzaDopo && <> · scadenza {it(d.scadenzaPrima) || "—"} → <b>{it(d.scadenzaDopo)}</b></>}{d.avviso && <div className="text-orange-800">{d.avviso}</div>}</li>)}</ul>
-            {ante.diff.some((d) => d.statoDopo || d.scadenzaDopo) && <div><button type="button" className="btn-primary" disabled={attesa} onClick={() => fai(async () => { const r = await applicaImport(json); setAnte(null); setJson(""); setErrJson(`Applicate ${r.applicate} modifiche.`); })}>Applica</button></div>}
+            {(ante.diff.some((d) => d.statoDopo || d.scadenzaDopo) || (crea && ante.daCreare.length > 0)) && <div><button type="button" className="btn-primary" disabled={attesa} onClick={() => fai(async () => { const r = await applicaImport(json, crea); setAnte(null); setJson(""); setCrea(false); setErrJson(`Applicate ${r.applicate} modifiche${r.create ? `, create ${r.create} righe` : ""}.`); })}>Applica</button></div>}
           </div>
         )}
       </section>

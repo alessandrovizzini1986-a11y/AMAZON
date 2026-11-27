@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { REGOLE, scadenzaInterna } from "@/domain/compliance/scadenze";
 import { puoSpuntare, puoTogliereSpunta, STATI, type Stato } from "@/domain/compliance/stato";
-import { differenze, schemaImport, type Differenza } from "@/domain/compliance/importa";
+import { differenze, mancanti, schemaImport, type DaCreare, type Differenza } from "@/domain/compliance/importa";
 import { generaMese, iso, righe } from "@/lib/compliance/dati";
 
 const giorno = (s: string | null) => (s ? new Date(`${s}T00:00:00Z`) : null);
@@ -81,7 +81,7 @@ export async function segnaRichiesti(ids: string[]) {
 }
 
 /** Anteprima dell'import: le differenze tra il JSON letto sul portale e il registro. Non scrive nulla. */
-export async function anteprimaImport(testo: string): Promise<{ diff: Differenza[]; nonTrovati: string[]; lettoIl: string } | { errore: string }> {
+export async function anteprimaImport(testo: string): Promise<{ diff: Differenza[]; nonTrovati: string[]; daCreare: DaCreare[]; ignorati: string[]; sconosciuti: string[]; lettoIl: string } | { errore: string }> {
   const user = await requireUser();
   assertCan(user, "compliance.manage");
   let json: unknown;
@@ -89,11 +89,12 @@ export async function anteprimaImport(testo: string): Promise<{ diff: Differenza
   const p = schemaImport.safeParse(json);
   if (!p.success) return { errore: `Formato non riconosciuto: ${p.error.issues.slice(0, 3).map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}` };
   const reg = (await righe()).map((r) => ({ id: r.id, entita: r.entita, area: r.area, anno: r.anno, mese: r.mese, folder: r.folder, stato: r.stato, scadenzaPortale: r.scadenzaPortale }));
-  return { ...differenze(p.data.righe, reg), lettoIl: p.data.letto_il };
+  const template = await db.complianceTemplate.findMany({ select: { id: true, entita: true, area: true, folder: true, regolaScadenza: true, usato: true } });
+  return { ...differenze(p.data.righe, reg), ...mancanti(p.data.righe, reg, template), lettoIl: p.data.letto_il };
 }
 
 /** Applica l'import dopo la conferma: ricalcola le differenze sul registro di adesso. Non tocca chi ha caricato e quando. */
-export async function applicaImport(testo: string): Promise<{ applicate: number }> {
+export async function applicaImport(testo: string, creaMancanti = false): Promise<{ applicate: number; create: number }> {
   const user = await requireUser();
   assertCan(user, "compliance.manage");
   const a = await anteprimaImport(testo);
@@ -106,9 +107,16 @@ export async function applicaImport(testo: string): Promise<{ applicate: number 
     else await db.complianceRiga.update({ where: { id: d.id }, data: { ...scad, aggiornatoDa: user.name } });
     n++;
   }
-  await audit({ userId: user.id, action: "compliance.import", entity: "ComplianceRiga", meta: { lettoIl: a.lettoIl, applicate: n, nonTrovati: a.nonTrovati.length } });
+  // righe che mancano: solo se l'admin lo ha chiesto, e solo per i folder che usiamo. Nascono con lo stato letto sul portale
+  let create = 0;
+  if (creaMancanti) for (const c of a.daCreare) {
+    if (await db.complianceRiga.findFirst({ where: { templateId: c.templateId, anno: c.anno, mese: c.mese }, select: { id: true } })) continue;
+    await db.complianceRiga.create({ data: { templateId: c.templateId, anno: c.anno, mese: c.mese, scadenzaPortale: giorno(c.scadenzaPortale), scadenzaInterna: giorno(c.scadenzaInterna), stato: c.stato, motivoRifiuto: c.motivo, ...(c.stato === "VALIDATO" ? { dataValidazione: new Date() } : {}), aggiornatoDa: user.name, storico: { create: { statoPrecedente: "", statoNuovo: c.stato, utente: user.name, origine: "import", nota: `portale letto il ${a.lettoIl}` } } } });
+    create++;
+  }
+  await audit({ userId: user.id, action: "compliance.import", entity: "ComplianceRiga", meta: { lettoIl: a.lettoIl, applicate: n, create, ignorati: a.ignorati.length, sconosciuti: a.sconosciuti.length } });
   fatto();
-  return { applicate: n };
+  return { applicate: n, create };
 }
 
 const tpl = z.object({ id: z.string(), documento: z.string().max(300), formato: z.string().max(30), nomeFileStandard: z.string().max(200), regolaScadenza: z.enum(REGOLE as [string, ...string[]]), mesiAttivi: z.string().regex(/^(\d{1,2}(,\d{1,2})*)?$/), owner: z.string().min(1).max(80), ownerEmail: z.string().max(200), usato: z.boolean() });
