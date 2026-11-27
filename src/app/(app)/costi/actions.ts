@@ -270,3 +270,15 @@ export async function salvaCostiGls(input: { mese: string; voci: z.infer<typeof 
   revalidatePath("/conto-economico");
   return { creataIl: creataIl.toISOString() };
 }
+
+const rigaPayGls = z.object({ matr: z.string().max(20), dipe: z.string().max(120), cod1: z.string().max(10), cod2: z.string().max(40), descrizione: z.string().max(200), conto: z.string().max(20), importo: z.number().finite(), componente: z.string().max(30), istituto: z.string().max(30).nullable() });
+
+/** Conserva nel sito il payroll GLS (CDC 5565) del mese, a blocchi: il primo blocco sostituisce quello che c'era. */
+export async function salvaPayrollGls(input: { mese: string; righe: z.infer<typeof rigaPayGls>[]; primo: boolean }) {
+  const user = await requireUser();
+  assertCan(user, "costi.run");
+  const m = mese.parse(input.mese);
+  const righe = z.array(rigaPayGls).max(4000).parse(input.righe);
+  if (input.primo) { await db.payrollGlsRiga.deleteMany({ where: { mesePaga: m } }); await audit({ userId: user.id, action: "costi.payrollGls", entity: "PayrollGlsRiga", meta: { mese: m } }); }
+  return (await db.payrollGlsRiga.createMany({ data: righe.map((r) => ({ ...r, mesePaga: m })) })).count;
+}

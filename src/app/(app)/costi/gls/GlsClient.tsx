@@ -22,10 +22,10 @@ import { excelFOGls, foglioFOGls, type CellaNoleggioGls } from "@/lib/costi/exce
 import { bloccoOre, foglioStimaPersonale } from "@/lib/costi/excelStimaPersonale";
 import type { Bucket } from "@/domain/costi/sic";
 import { trovaCDL } from "@/domain/costi/anagrafica";
-import { salvaCostiGls } from "../actions";
+import { salvaCostiGls, salvaPayrollGls } from "../actions";
 
 type Props = {
-  mese: string; fineMese: string; canRun: boolean; tariffe: ValorePerData[]; parametri: ValorePerData[]; festivi: Festivo[];
+  mese: string; fineMese: string; canRun: boolean; payrollSalvato: { righe: RigaPayroll[]; dipendenti: number } | null; tariffe: ValorePerData[]; parametri: ValorePerData[]; festivi: Festivo[];
   tariffeStd: TariffeStd | null; meseTariffe: string | null;
   fo: { carburante: number | null; q8File: string | null; autostrade: number | null; telepassFile: string | null; noleggi: CellaNoleggioGls[] };
 };
@@ -48,7 +48,7 @@ export function GlsClient(p: Props) {
   const [pres, setPres] = useState<Record<string, { nome: string; dati: PresenzeGls }>>({});
   const [cdl, setCdl] = useState<{ nome: string; righe: RigaCDL[]; versione: string | null } | null>(null);
   const [bb, setBb] = useState<{ nome: string; dati: Badgebox } | null>(null);
-  const [pay, setPay] = useState<{ nome: string; righe: RigaPayroll[]; dipendenti: number } | null>(null);
+  const [pay, setPay] = useState<{ nome: string; righe: RigaPayroll[]; dipendenti: number } | null>(p.payrollSalvato ? { nome: "già conservato nel sito", ...p.payrollSalvato } : null);
   const [lavoro, setLavoro] = useState(false);
   const [msg, setMsg] = useState<string[]>([]);
   const [errore, setErrore] = useState<string | null>(null);
@@ -82,6 +82,12 @@ export function GlsClient(p: Props) {
           const r = leggiPayroll(g, CDC_GLS);
           setPay({ nome: f.name, righe: r.righe, dipendenti: r.dipendenti });
           out.push(`${f.name}: payroll, CDC ${CDC_GLS}: ${r.dipendenti} dipendenti, ${eur(totalePayroll(r.righe))} €`);
+          // il sito conserva le righe GLS solo se il file è del mese della pagina (dal nome: …_MMAA_…)
+          const mm = /_(\d{2})(\d{2})_/.exec(f.name), meseFile = mm ? `20${mm[2]}-${mm[1]}` : null;
+          if (p.canRun && meseFile === p.mese) {
+            for (let i = 0; i < r.righe.length; i += 4000) await salvaPayrollGls({ mese: p.mese, righe: r.righe.slice(i, i + 4000), primo: i === 0 });
+            out.push("Payroll GLS conservato nel sito: la prossima volta non serve ricaricarlo.");
+          } else if (meseFile && meseFile !== p.mese) out.push(`Attenzione: il nome del file dice ${it(meseFile)}, la pagina è su ${it(p.mese)}: lo uso ma non lo conservo.`);
         } else if (isAnagraficaCDL(g)) throw new Error(`è un DB_CDL_base senza il foglio "${FOGLIO_CDL_GLS}"`);
         else throw new Error("file non riconosciuto (presenze GLS, DB_CDL_base, Badgebox o Costi del personale)");
       } catch (e) { out.push(`${f.name}: ${(e as Error).message}`); }

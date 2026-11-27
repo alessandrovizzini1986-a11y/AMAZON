@@ -1,14 +1,14 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { addebitiPerPersona, NOME_ADDEBITO, type Addebito, type TipoAddebito, CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_FONTE, costo, piuStraordinari, SOGLIA_FERIE, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
+import { addebitiPerPersona, NOME_ADDEBITO, type Addebito, type TipoAddebito, CATEGORIE, COEFF_COSTO_AZIENDA, COEFF_SENZA_RATEI_FERIE, COEFF_FONTE, type RateoFerie, costo, piuStraordinari, SOGLIA_FERIE, type Gruppo, type OrePersona, type RateiPersona, type TotaleMese, type VoceMese } from "@/domain/personale/buste";
 
 type OreStation = { mese: string; station: string; gruppo: Gruppo; persone: number; oreLav: number; oreStr: number; oreMagg: number; conStr: number };
 type FerieStation = { mese: string; station: string; gruppo: Gruppo; unita: "GG" | "ORE"; persone: number; ferie: number; rol: number; exfest: number; oltre: number; negativi: number };
 export type DatiBuste = {
   totali: TotaleMese[]; voci: VoceMese[]; oreStation: OreStation[];
   oreStr: Pick<OrePersona, "mese" | "station" | "gruppo" | "codice" | "nome" | "oreLav" | "oreStr">[];
-  ferieStation: FerieStation[]; addebiti: Addebito[]; ferieUltime: RateiPersona[]; stime: Record<string, { mese: string; ferie: number | null; rol: number | null; exfest: number | null }>; rotte: { mese: string; station: string; gruppo: Gruppo; rotte: number }[];
+  ferieStation: FerieStation[]; addebiti: Addebito[]; ferieUltime: RateiPersona[]; rateiFerie: RateoFerie[]; stime: Record<string, { mese: string; ferie: number | null; rol: number | null; exfest: number | null }>; rotte: { mese: string; station: string; gruppo: Gruppo; rotte: number }[];
 };
 type Scheda = "COSTO" | "VOCI" | "ORE" | "FERIE" | "MULTE";
 type Misura = "STIMATO" | "LORDO" | "TESTA" | "ROTTA" | "TESTE";
@@ -54,7 +54,7 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
 
   const valore = (righe: TotaleMese[], m: Misura) => {
     if (!righe.length) return null;
-    const c = costo(righe, dati.voci);
+    const c = costo(righe, dati.voci, dati.rateiFerie);
     const base = g === "SIC" ? c.stimato ?? 0 : c.lordo;
     if (m === "STIMATO") return c.stimato;
     if (m === "LORDO") return c.lordo;
@@ -65,7 +65,7 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
   };
   const fmt = (x: number | null, m: Misura) => (x === null ? "—" : m === "TESTE" ? n0(x) : m === "ROTTA" || m === "TESTA" ? eur(x) : eur(x));
 
-  const costoUltimo = costo(tot.filter((t) => t.mese === ultimo), dati.voci), costoAnno = costo(tot, dati.voci);
+  const costoUltimo = costo(tot.filter((t) => t.mese === ultimo), dati.voci, dati.rateiFerie), costoAnno = costo(tot, dati.voci, dati.rateiFerie);
 
   return (
     <div className="flex flex-col gap-5">
@@ -85,7 +85,7 @@ export function BusteClient({ dati, gls }: { dati: DatiBuste; gls: boolean }) {
             <Tessera titolo={g === "SIC" ? "Quota TFR · ultimo mese" : "Costo vero degli STD"} valore={g === "SIC" ? eur(costoUltimo.tfr) : "fattura agenzia"} nota={g === "SIC" ? undefined : "vedi Costi del personale"} />
           </div>
           <Riquadro titolo="Per station e mese della busta" sotto={g === "SIC"
-            ? <>Costo azienda stimato = (lordo di competenza + quota TFR) × {COEFF_COSTO_AZIENDA.toLocaleString("it-IT")}: il coefficiente aggiunge contributi, INAIL e ratei di 13ª, 14ª e ferie ed è ricavato dal {COEFF_FONTE}. Il lordo di competenza toglie le voci pagate una volta (13ª/14ª, ferie liquidate, TFR a chi esce) e gli anticipi per conto INPS. Il costo vero è in Costi del personale → Consuntivo, nei mesi in cui c'è il report paghe.</>
+            ? <>Costo azienda stimato = (lordo di competenza + quota TFR) × {COEFF_SENZA_RATEI_FERIE.toLocaleString("it-IT")} + rateo di ferie e permessi del mese. Il coefficiente aggiunge contributi, INAIL e ratei di 13ª e 14ª ed è ricavato dai {COEFF_FONTE}. Il rateo ferie è il maturato meno il goduto del mese, persona per persona, al valore dell&apos;anagrafica dei costi: scende quando si smaltiscono ferie. Dove non si può calcolare (gennaio, GLS) vale il coefficiente tutto compreso {COEFF_COSTO_AZIENDA.toLocaleString("it-IT")}. Il lordo di competenza toglie le voci pagate una volta (13ª/14ª, ferie liquidate, TFR a chi esce) e gli anticipi per conto INPS. Il costo vero è in Costi del personale → Consuntivo, nei mesi in cui c'è il report paghe.</>
             : <>Per gli STD la busta è dell&apos;agenzia: il lordo serve a capire le voci, il costo per noi è la fattura (Costi del personale).</>}>
             <div className="flex flex-wrap gap-2 text-sm">{misure.map(([k, nome]) => <button key={k} className={mis === k ? "btn-primary" : "btn-secondary"} onClick={() => setMisura(k)}>{nome}</button>)}</div>
             <Tab>

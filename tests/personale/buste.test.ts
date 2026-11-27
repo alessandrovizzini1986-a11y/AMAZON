@@ -54,3 +54,23 @@ describe("addebiti per persona", () => {
     expect(p[1].nome).toBe("B");
   });
 });
+
+import { rateoFerie, COEFF_SENZA_RATEI_FERIE } from "@/domain/personale/buste";
+describe("rateo ferie del mese", () => {
+  const rr = (x: object) => ({ codice: "1", station: "DER2", ferieMatur: 10, ferieGoduto: 4, rolMatur: 20, rolGoduto: 8, exfestMatur: 0, exfestGoduto: 0, ...x });
+  const val = (_s: string, c: string) => (c === "9" ? null : { ferieGg: 100, rolH: 15, exfH: 15 });
+  it("maturato meno goduto tra una busta e l'altra, al valore della persona", () => {
+    const [r] = rateoFerie("2026-10", [rr({ ferieMatur: 11.5, ferieGoduto: 9, rolMatur: 23, rolGoduto: 8 })], [rr({})], val);
+    // ferie +1,5 −5 = −3,5 gg × 100; ROL +3 h × 15
+    expect(r).toMatchObject({ mese: "2026-10", station: "DER2", importo: -305, persone: 1 });
+  });
+  it("chi non è nell'anagrafica costi vale la media della station; chi non ha la busta prima non conta", () => {
+    const [r] = rateoFerie("2026-10", [rr({ ferieMatur: 11 }), rr({ codice: "9", ferieMatur: 12 }), rr({ codice: "7" })], [rr({}), rr({ codice: "9" })], val);
+    expect(r.importo).toBe(300);
+    expect(r.persone).toBe(2);
+  });
+  it("il costo usa il rateo dove c'è, il coefficiente tutto compreso dove manca", () => {
+    const c = costo([t({}), t({ station: "DER1" })], [], [{ mese: "2026-09", station: "DER2", gruppo: "SIC", importo: -1000, persone: 10 }]);
+    expect(c.stimato).toBeCloseTo(21000 * COEFF_SENZA_RATEI_FERIE - 1000 + 21000 * COEFF_COSTO_AZIENDA);
+  });
+});
