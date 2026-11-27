@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { db } from "./db";
 import type { Role } from "@prisma/client";
 import { bloccato, SOLO_SUPER } from "@/components/navModel";
+import { soloCompliance } from "@/domain/compliance/stato";
 
 const COOKIE = "fleet_session";
 const SESSION_HOURS = 12;
@@ -93,6 +94,8 @@ export async function requireUser(): Promise<SessionUser> {
   // voce di menu tolta dal super admin: la pagina (e le sue chiamate) non si apre nemmeno scrivendo l'indirizzo a mano
   const percorso = (await headers()).get("x-percorso");
   if (percorso && bloccato(percorso, user.nascosti ?? [])) redirect("/");
+  // chi ha il solo ruolo Compliance vede il registro e il proprio account, nient'altro (anche scrivendo l'indirizzo a mano)
+  if (percorso && user.role === "COMPLIANCE" && !soloCompliance(percorso)) redirect("/compliance");
   return user;
 }
 

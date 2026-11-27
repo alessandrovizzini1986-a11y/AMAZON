@@ -12,3 +12,7 @@ Quando il titolare carica i PDF delle buste del mese (SIC per station, GLS) e il
 ## Ogni mese: report "Costi del personale PS" (payroll)
 
 Il file contiene Amazon (CDC 5569) e GLS (CDC 5565). Amazon va in `PayrollRiga` (Costi → Consuntivo), con la station presa dall'anagrafica dei costi e, per chi manca, dall'organico HR. GLS va in `PayrollGlsRiga` (la pagina Costi GLS lo usa senza ricaricare il file). Dopo ogni report nuovo ricontrolla i coefficienti di `src/domain/personale/buste.ts` (stima del costo in Buste paga) contro il costo vero.
+
+## Compliance Tool (`/compliance`)
+
+Registro dei documenti da caricare sul portale esterno Compliance Tool (SD Worx, per Amazon). Il sito **non** si collega al portale e non conserva documenti: si segna chi ha caricato cosa. Anagrafica dei folder e stato iniziale sono in `src/domain/compliance/seed.ts` (letti dal portale il 27/11/2026, senza un secondo controllo: da una sessione cloud non c'è un browser in cui il titolare possa fare il login). Nel codice ci sono solo i ruoli ("Referente PS", …): i nomi veri dei referenti e i fac-simile del portale stanno nel database, non nel repo. Ruolo `COMPLIANCE` = vede solo `/compliance`. I cedolini ripuliti per i folder LUL non stanno nel sito: li prepara la sessione ogni mese (vedi sopra) e li consegna in chat.

@@ -55,6 +55,7 @@ export const GRUPPI: Gruppo[] = [
       { href: "/fatture-amazon/fatturato", label: "Fatturato", icon: "dashboard", perm: "fatturato.view", descr: "per mese, DS e classe" },
       { href: "/fatture-amazon/rimborsi", label: "Rimborsi", icon: "euro", perm: "fatturato.view", descr: "parcheggi, pedaggi, carburante, training" },
       { href: "/fatture-amazon/forecast", label: "Forecast", icon: "refresh", perm: "forecast.view", descr: "rotte previste, stima del mese e storico" },
+      { href: "/compliance", label: "Compliance Tool", icon: "audit", perm: "compliance.view", descr: "documenti da caricare sul portale: chi, entro quando, cosa manca" },
     ],
   },
   {
@@ -192,7 +193,7 @@ export function menuAttivo(pathname: string, role: Role, n = 4): boolean {
 
 /** Pagina iniziale del ruolo. */
 export function paginaIniziale(role: Role, nascosti: string[] = []): string {
-  const candidate = [can({ role }, "home.view") ? "/home" : null, can({ role }, "dashboard.station") ? "/dashboard" : null, role === "STAGISTA" ? "/training" : null, "/vehicles"];
+  const candidate = [can({ role }, "home.view") ? "/home" : null, can({ role }, "dashboard.station") ? "/dashboard" : null, role === "STAGISTA" ? "/training" : null, role === "COMPLIANCE" ? "/compliance" : null, "/vehicles"];
   // se anche la pagina iniziale è stata nascosta, si atterra sul proprio account (che non si può nascondere)
   return candidate.find((h): h is string => !!h && !nascosti.includes(h)) ?? "/account";
 }

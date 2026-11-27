@@ -21,6 +21,7 @@ enum Role {
   DRIVER
   CONTROLLO // controlli presenze (stagista): solo modulo Presenze e vademecum
   STAGISTA // percorso di training: solo /training e /vademecum
+  COMPLIANCE // chi fornisce i documenti del Compliance Tool: vede solo /compliance
 }
 
 enum VehicleStatus {
@@ -1570,4 +1571,75 @@ model PayrollGlsRiga {
   istituto    String?
 
   @@index([mesePaga])
+}
+
+// ── Compliance Tool (portale esterno SD Worx per Amazon): registro di cosa va caricato, da chi, entro quando.
+// Il sito non si collega al portale e non conserva documenti: qui si segna soltanto.
+model ComplianceTemplate {
+  id               String   @id @default(cuid())
+  entita           String // PS | ADECCO
+  area             String // Giuslavoro | Fiscale
+  ordine           Int
+  folder           String // nome esatto del folder sul portale
+  documento        String
+  formato          String   @default("PDF")
+  nomeFileStandard String   @default("")
+  facSimile        String? // codice del fac-simile (01…16, A1, A2)
+  workflow         Boolean  @default(true) // false = "No workflow": chiuso già a CARICATO
+  regolaScadenza   String   @default("manuale") // fine_M+1 | 15_M+2 | 20_M+1 | manuale
+  frequenza        String   @default("mensile")
+  mesiAttivi       String   @default("") // es. "1,4,7,10"; vuoto = tutti
+  owner            String // chi fornisce e carica il documento
+  ownerEmail       String   @default("")
+  usato            Boolean  @default(true) // false = folder che ignoriamo (Dilazioni)
+  righe            ComplianceRiga[]
+
+  @@unique([entita, area, folder])
+}
+
+model ComplianceRiga {
+  id               String             @id @default(cuid())
+  templateId       String
+  template         ComplianceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  anno             Int
+  mese             Int // mese di competenza del documento
+  scadenzaPortale  DateTime?          @db.Date
+  scadenzaInterna  DateTime?          @db.Date // portale meno 5 giorni lavorativi
+  stato            String             @default("DA_RICHIEDERE")
+  caricatoDaId     String?
+  caricatoDa       String?
+  caricatoIl       DateTime?
+  nomeFileCaricato String?
+  dataRichiesta    DateTime?          @db.Date
+  dataRicezione    DateTime?          @db.Date
+  dataValidazione  DateTime?          @db.Date
+  motivoRifiuto    String?
+  note             String?
+  aggiornatoIl     DateTime           @updatedAt
+  aggiornatoDa     String?
+  storico          ComplianceStorico[]
+
+  @@unique([templateId, anno, mese])
+  @@index([anno, mese])
+}
+
+model ComplianceStorico {
+  id              String         @id @default(cuid())
+  rigaId          String
+  riga            ComplianceRiga @relation(fields: [rigaId], references: [id], onDelete: Cascade)
+  statoPrecedente String
+  statoNuovo      String
+  utente          String
+  data            DateTime       @default(now())
+  origine         String         @default("manuale") // manuale | import | seed
+  nota            String?
+
+  @@index([rigaId])
+}
+
+// Fac-simile scaricati dal portale: stanno qui e non nel repo, perché alcuni sono scansioni con dati di esempio.
+model ComplianceFacSimile {
+  file         String   @id // nome del file, come nell'elenco FAC_SIMILE
+  dati         Bytes
+  aggiornatoIl DateTime @default(now())
 }

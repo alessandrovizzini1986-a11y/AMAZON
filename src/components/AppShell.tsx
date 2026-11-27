@@ -17,6 +17,7 @@ const ROLE_LABEL: Record<SessionUser["role"], string> = {
   DRIVER: "Driver",
   CONTROLLO: "Controllo presenze",
   STAGISTA: "Stagista",
+  COMPLIANCE: "Compliance",
 };
 
 function initials(name: string): string {
